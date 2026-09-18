@@ -18,6 +18,9 @@ def test_runtime_is_safe_by_default() -> None:
     assert payload["execution_mode"] == "paper"
     assert payload["live_trading_enabled"] is False
     assert payload["allowed_timeframes"] == ["M5", "M15"]
+    assert payload["reference_capital_eur"] == 200.0
+    assert payload["risk_per_trade_fraction"] == 0.01
+    assert payload["absolute_max_risk_fraction"] == 0.02
 
 
 def test_ingest_and_read_m5_bar() -> None:

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.domain.market import MarketBar, Timeframe
 from app.domain.regime import MarketRegime
@@ -7,7 +7,7 @@ from app.services.replay import RegimeReplay
 
 
 def make_bars(count: int = 60) -> list[MarketBar]:
-    start = datetime(2026, 9, 1, tzinfo=timezone.utc)
+    start = datetime(2026, 9, 1, tzinfo=UTC)
     bars: list[MarketBar] = []
     price = 100.0
     for index in range(count):

@@ -16,6 +16,7 @@ def test_runtime_is_safe_by_default() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["execution_mode"] == "paper"
+    assert payload["decision_mode"] == "confirm"
     assert payload["live_trading_enabled"] is False
     assert payload["allowed_timeframes"] == ["M5", "M15"]
     assert payload["reference_capital_eur"] == 200.0

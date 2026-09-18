@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -18,7 +18,7 @@ def request() -> ExecutionProposalRequest:
         timeframe=Timeframe.M5,
         side=Side.BUY,
         strategy_id="qualified_strategy",
-        at=datetime(2026, 9, 18, tzinfo=timezone.utc),
+        at=datetime(2026, 9, 18, tzinfo=UTC),
         reason="test decision",
     )
 

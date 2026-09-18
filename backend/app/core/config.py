@@ -3,6 +3,8 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.domain.approval import DecisionMode
+
 
 class ExecutionMode(StrEnum):
     PAPER = "paper"
@@ -14,6 +16,7 @@ class Settings(BaseSettings):
     app_name: str = "Trading"
     api_prefix: str = "/api/v1"
     execution_mode: ExecutionMode = ExecutionMode.PAPER
+    decision_mode: DecisionMode = DecisionMode.CONFIRM
     live_trading_enabled: bool = False
     allowed_timeframes: tuple[str, ...] = ("M5", "M15")
 

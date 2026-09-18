@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 type RuntimeConfig = {
   execution_mode: string;
+  decision_mode: string;
   live_trading_enabled: boolean;
   allowed_timeframes: string[];
   reference_capital_eur: number;
@@ -28,11 +29,11 @@ export default function App() {
   return (
     <main className="shell">
       <header>
-        <p className="eyebrow">M5 / M15 · MT4 · CAPITAL-AWARE</p>
+        <p className="eyebrow">M5 / M15 · MT4 · REGIME-FIRST</p>
         <h1>Trading Control Center</h1>
         <p className="subtitle">
-          Le moteur sélectionne un marché seulement si le coût d’exécution,
-          le stop et le lot minimum sont compatibles avec le capital de référence.
+          M15 décide du contexte. M5 cherche l’entrée. Une stratégie ne peut
+          devenir active qu’après validation indépendante et contrôle des coûts.
         </p>
       </header>
 
@@ -42,8 +43,12 @@ export default function App() {
           <strong>{status}</strong>
         </article>
         <article className="card">
-          <span className="label">Mode</span>
+          <span className="label">Environnement</span>
           <strong>{config?.execution_mode ?? "—"}</strong>
+        </article>
+        <article className="card">
+          <span className="label">Décision</span>
+          <strong>{config?.decision_mode ?? "—"}</strong>
         </article>
         <article className="card">
           <span className="label">Capital référence</span>
@@ -69,13 +74,14 @@ export default function App() {
 
       <section className="panel">
         <div>
-          <p className="eyebrow">MARKET SELECTOR</p>
-          <h2>Le marché doit mériter le trade.</h2>
+          <p className="eyebrow">STRATEGY ADMISSION</p>
+          <h2>REJECTED → SHADOW → ACTIVE</h2>
         </div>
         <p>
-          Les prochains écrans classeront les instruments MT4 par coût relatif,
-          granularité du lot, régime M15 et edge historique walk-forward avant
-          qu’une stratégie M5 soit autorisée à entrer.
+          Le moteur de replay historique et le runtime utilisent le même chemin
+          causal. Le mode CONFIRM garde la validation humaine ; le mode AUTO
+          autorise directement une proposition qualifiée, sans contourner les
+          garde-fous de risque.
         </p>
       </section>
     </main>

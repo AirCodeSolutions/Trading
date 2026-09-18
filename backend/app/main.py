@@ -1,3 +1,4 @@
+from itertools import pairwise
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -66,7 +67,7 @@ def research_regime(bars: list[MarketBar]) -> RegimeSnapshot:
         raise HTTPException(status_code=422, detail="regime bars must belong to one symbol")
     if any(
         current.timestamp <= previous.timestamp
-        for previous, current in zip(bars, bars[1:], strict=False)
+        for previous, current in pairwise(bars)
     ):
         raise HTTPException(status_code=422, detail="regime bars must be chronological")
     return classify_regime(bars)

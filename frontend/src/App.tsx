@@ -4,6 +4,9 @@ type RuntimeConfig = {
   execution_mode: string;
   live_trading_enabled: boolean;
   allowed_timeframes: string[];
+  reference_capital_eur: number;
+  risk_per_trade_fraction: number;
+  absolute_max_risk_fraction: number;
 };
 
 export default function App() {
@@ -25,10 +28,11 @@ export default function App() {
   return (
     <main className="shell">
       <header>
-        <p className="eyebrow">M5 / M15 TRADING ENGINE</p>
+        <p className="eyebrow">M5 / M15 · MT4 · CAPITAL-AWARE</p>
         <h1>Trading Control Center</h1>
         <p className="subtitle">
-          Données de marché, décisions, risque et exécution dans une seule interface.
+          Le moteur sélectionne un marché seulement si le coût d’exécution,
+          le stop et le lot minimum sont compatibles avec le capital de référence.
         </p>
       </header>
 
@@ -42,8 +46,20 @@ export default function App() {
           <strong>{config?.execution_mode ?? "—"}</strong>
         </article>
         <article className="card">
-          <span className="label">Timeframes</span>
-          <strong>{config?.allowed_timeframes.join(" · ") ?? "—"}</strong>
+          <span className="label">Capital référence</span>
+          <strong>{config ? `${config.reference_capital_eur.toFixed(0)} €` : "—"}</strong>
+        </article>
+        <article className="card">
+          <span className="label">Risque base / trade</span>
+          <strong>
+            {config ? `${(config.risk_per_trade_fraction * 100).toFixed(1)} %` : "—"}
+          </strong>
+        </article>
+        <article className="card">
+          <span className="label">Plafond absolu / trade</span>
+          <strong>
+            {config ? `${(config.absolute_max_risk_fraction * 100).toFixed(1)} %` : "—"}
+          </strong>
         </article>
         <article className="card">
           <span className="label">Live trading</span>
@@ -53,13 +69,13 @@ export default function App() {
 
       <section className="panel">
         <div>
-          <p className="eyebrow">PROCHAINE ÉTAPE</p>
-          <h2>Brancher le flux de marché et le broker</h2>
+          <p className="eyebrow">MARKET SELECTOR</p>
+          <h2>Le marché doit mériter le trade.</h2>
         </div>
         <p>
-          Le socle accepte déjà des bougies M5/M15. Le connecteur de données,
-          le moteur de stratégie et l’adaptateur d’exécution seront branchés
-          sans coupler la logique de trading au broker.
+          Les prochains écrans classeront les instruments MT4 par coût relatif,
+          granularité du lot, régime M15 et edge historique walk-forward avant
+          qu’une stratégie M5 soit autorisée à entrer.
         </p>
       </section>
     </main>

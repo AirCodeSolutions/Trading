@@ -3,6 +3,8 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 
 from app.core.config import settings
+from app.domain.admission import AdmissionDecision, StrategyEvidence
+from app.domain.approval import ExecutionProposal, ExecutionProposalRequest
 from app.domain.broker import (
     MarketQualityRequest,
     MarketQualityResult,
@@ -10,13 +12,18 @@ from app.domain.broker import (
     PositionSizeResult,
 )
 from app.domain.market import MarketBar, Timeframe
+from app.domain.regime import RegimeSnapshot
+from app.services.admission import assess_strategy
+from app.services.approval_gate import ApprovalGate
 from app.services.capital_risk import size_position
 from app.services.market_quality import assess_market
 from app.services.market_store import MarketStore
 from app.services.mt4_csv import summarize_mt4_csv
+from app.services.regime import classify_regime
 
-app = FastAPI(title=settings.app_name, version="0.2.0")
+app = FastAPI(title=settings.app_name, version="0.3.0")
 market_store = MarketStore()
+approval_gate = ApprovalGate(settings.decision_mode)
 
 
 @app.get(f"{settings.api_prefix}/health")
@@ -28,6 +35,7 @@ def health() -> dict[str, str]:
 def runtime_config() -> dict[str, object]:
     return {
         "execution_mode": settings.execution_mode,
+        "decision_mode": settings.decision_mode,
         "live_trading_enabled": settings.live_trading_enabled,
         "allowed_timeframes": settings.allowed_timeframes,
         "reference_capital_eur": settings.reference_capital_eur,
@@ -46,6 +54,58 @@ def risk_size(request: PositionSizeRequest) -> PositionSizeResult:
 @app.post(f"{settings.api_prefix}/markets/quality", response_model=MarketQualityResult)
 def market_quality(request: MarketQualityRequest) -> MarketQualityResult:
     return assess_market(request)
+
+
+@app.post(f"{settings.api_prefix}/research/regime", response_model=RegimeSnapshot)
+def research_regime(bars: list[MarketBar]) -> RegimeSnapshot:
+    if not bars:
+        raise HTTPException(status_code=422, detail="bars are required")
+    if any(bar.timeframe != Timeframe.M15 for bar in bars):
+        raise HTTPException(status_code=422, detail="regime engine requires M15 bars")
+    if len({bar.symbol.upper() for bar in bars}) != 1:
+        raise HTTPException(status_code=422, detail="regime bars must belong to one symbol")
+    if any(
+        current.timestamp <= previous.timestamp
+        for previous, current in zip(bars, bars[1:], strict=False)
+    ):
+        raise HTTPException(status_code=422, detail="regime bars must be chronological")
+    return classify_regime(bars)
+
+
+@app.post(f"{settings.api_prefix}/research/admission", response_model=AdmissionDecision)
+def research_admission(evidence: StrategyEvidence) -> AdmissionDecision:
+    return assess_strategy(evidence)
+
+
+@app.post(f"{settings.api_prefix}/execution/proposals", response_model=ExecutionProposal)
+def create_execution_proposal(request: ExecutionProposalRequest) -> ExecutionProposal:
+    return approval_gate.create(request)
+
+
+@app.post(
+    f"{settings.api_prefix}/execution/proposals/{{proposal_id}}/approve",
+    response_model=ExecutionProposal,
+)
+def approve_execution_proposal(proposal_id: str) -> ExecutionProposal:
+    try:
+        return approval_gate.approve(proposal_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post(
+    f"{settings.api_prefix}/execution/proposals/{{proposal_id}}/decline",
+    response_model=ExecutionProposal,
+)
+def decline_execution_proposal(proposal_id: str) -> ExecutionProposal:
+    try:
+        return approval_gate.decline(proposal_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.post(f"{settings.api_prefix}/market/bars", status_code=201)

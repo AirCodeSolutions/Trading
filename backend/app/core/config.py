@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     max_margin_fraction: float = 0.25
 
     mt4_files_dir: Path | None = None
+    mt4_server_timezone: str = "Europe/Athens"
 
     model_config = SettingsConfigDict(
         env_prefix="TRADING_",

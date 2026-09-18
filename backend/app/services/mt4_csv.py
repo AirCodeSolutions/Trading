@@ -1,12 +1,24 @@
 import csv
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from app.core.config import settings
 from app.domain.market import MarketBar, Timeframe
+
+
+def _server_timezone() -> ZoneInfo:
+    try:
+        return ZoneInfo(settings.mt4_server_timezone)
+    except ZoneInfoNotFoundError as exc:
+        raise ValueError(
+            f"unknown MT4 server timezone: {settings.mt4_server_timezone}"
+        ) from exc
 
 
 def read_mt4_csv(path: Path, symbol: str, timeframe: Timeframe) -> list[MarketBar]:
     by_timestamp: dict[datetime, MarketBar] = {}
+    server_timezone = _server_timezone()
 
     with path.open(newline="", encoding="utf-8-sig") as handle:
         for row in csv.reader(handle):
@@ -18,7 +30,7 @@ def read_mt4_csv(path: Path, symbol: str, timeframe: Timeframe) -> list[MarketBa
                 timestamp = datetime.strptime(
                     f"{row[0].strip()} {row[1].strip()}",
                     "%Y%m%d %H:%M:%S",
-                )
+                ).replace(tzinfo=server_timezone)
                 bar = MarketBar(
                     symbol=symbol.upper(),
                     timeframe=timeframe,

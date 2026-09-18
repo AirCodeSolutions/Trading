@@ -1,4 +1,5 @@
-from typing import Protocol, Sequence
+from collections.abc import Sequence
+from typing import Protocol
 
 from app.domain.market import MarketBar, Timeframe
 from app.domain.trading import RiskDecision, TradeDecision

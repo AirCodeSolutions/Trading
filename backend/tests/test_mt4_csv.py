@@ -17,7 +17,7 @@ def test_reader_handles_header_reverse_order_and_duplicates(tmp_path: Path) -> N
     bars = read_mt4_csv(path, "EURUSD", Timeframe.M5)
 
     assert len(bars) == 2
-    assert bars[0].timestamp.isoformat() == "2026-09-18T10:00:00"
+    assert bars[0].timestamp.isoformat() == "2026-09-18T10:00:00+03:00"
     assert bars[1].close == 1.16
 
 
@@ -32,5 +32,5 @@ def test_reader_handles_mt4_file_without_header(tmp_path: Path) -> None:
     summary = summarize_mt4_csv(path, "BTCUSD", Timeframe.M15)
 
     assert summary["count"] == 2
-    assert summary["first_bar"].isoformat() == "2026-09-18T10:00:00"
-    assert summary["last_bar"].isoformat() == "2026-09-18T10:15:00"
+    assert summary["first_bar"].isoformat() == "2026-09-18T10:00:00+03:00"
+    assert summary["last_bar"].isoformat() == "2026-09-18T10:15:00+03:00"

@@ -1,5 +1,8 @@
-from app.domain.admission import AdmissionDecision, AdmissionState, StrategyEvidence
-
+from app.domain.admission import (
+    AdmissionDecision,
+    AdmissionState,
+    StrategyEvidence,
+)
 
 MIN_VALIDATION_TRADES = 40
 MIN_HOLDOUT_TRADES = 20

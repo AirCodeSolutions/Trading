@@ -1,4 +1,4 @@
-from decimal import Decimal, ROUND_FLOOR
+from decimal import ROUND_FLOOR, Decimal
 
 from app.core.config import settings
 from app.domain.broker import BrokerSymbolSpec, PositionSizeRequest, PositionSizeResult

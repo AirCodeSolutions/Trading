@@ -2,91 +2,135 @@
 
 ## Objectif
 
-Construire une application de trading intraday M5/M15 testable, observable et indépendante du broker.
+Construire une application de trading M5/M15 testable, observable et indépendante du broker, avec un chemin identique entre recherche causale et runtime.
 
 ## Flux cible
 
-1. **MT4 Market Data** — normalise bougies, quotes et spécifications broker.
-2. **Market Selector** — élimine les instruments dont spread, lot minimum ou marge sont incompatibles avec 200 EUR.
-3. **Regime Engine M15** — classe le marché avant toute recherche d'entrée.
-4. **Strategy Engine M5** — applique uniquement les mécanismes admis pour le régime courant.
-5. **Strategy Admission** — REJECTED, SHADOW ou ACTIVE selon validation et holdout.
-6. **Capital Risk Engine** — calcule le sizing depuis le capital économique, jamais depuis le gros solde démo.
-7. **Approval Gate** — mode AUTO ou CONFIRM.
-8. **MT4 Execution Adapter** — future couche d'envoi et rapprochement broker.
-9. **Ledger / Analytics** — décisions, rejets, fills, PnL, coûts et drawdown.
-10. **React UI** — vision portefeuille, régimes, opportunités et contrôle humain.
+1. **MT4 Market Data** — bougies fermées, quotes et spécifications broker.
+2. **Market Selector** — élimine les instruments incompatibles avec le capital.
+3. **Regime Engine M15** — classe le contexte avant toute recherche d'entrée.
+4. **Opportunity Engine M5** — produit des candidats propres au régime.
+5. **Causal Backtester** — exécute la bougie suivante avec modèle Bid/Ask.
+6. **Strategy Admission** — REJECTED, SHADOW ou ACTIVE.
+7. **Portfolio Matrix** — compare marché × mécanisme et ne qualifie que les couples ACTIVE.
+8. **Capital Risk Engine** — sizing depuis 200 EUR, jamais depuis le gros solde démo.
+9. **Approval Gate** — mode AUTO ou CONFIRM.
+10. **MT4 Execution Adapter** — future couche d'envoi et rapprochement broker.
+11. **Ledger / Analytics** — décisions, rejets, fills, PnL, coûts et drawdown.
+12. **React UI** — portefeuille, régimes, opportunités et contrôle humain.
 
 ## Regime Engine
 
 Le moteur M15 utilise uniquement l'historique disponible au moment de la décision.
 
-États initiaux :
+États :
 
-- `warmup` : historique insuffisant ;
-- `dead` : volatilité localement comprimée ;
-- `balanced_auction` : aucun mouvement directionnel dominant ;
-- `directional_expansion` : efficacité directionnelle et volatilité suffisantes ;
-- `post_shock` : grande bougie d'information directionnelle relative à l'ATR antérieur.
+- `warmup` ;
+- `dead` ;
+- `balanced_auction` ;
+- `directional_expansion` ;
+- `post_shock`.
 
-Les seuils initiaux sont des définitions de recherche fixes, pas des paramètres optimisés pour maximiser le PnL.
+Les seuils initiaux sont des définitions fixes de recherche, pas les meilleurs paramètres trouvés par grid search.
+
+## Opportunity Engine
+
+Trois mécanismes de recherche sont actuellement implémentés :
+
+### post_shock_continuation
+
+Après un choc M15 directionnel, le M5 doit fournir une confirmation alignée. Une barre M5 trop grande est refusée pour éviter de poursuivre un mouvement déjà consommé.
+
+### break_retest_reaccel
+
+Uniquement en régime M15 directionnel : cassure locale M5, retest causal du niveau, puis clôture de ré-accélération.
+
+### failed_auction_reversal
+
+Uniquement en régime M15 équilibré : sweep d'un extrême local M5, mèche significative et réintégration causale.
+
+Aucun de ces mécanismes n'est actif en production à ce stade.
+
+## Backtest causal
+
+Le signal est calculé à la clôture d'une bougie.
+
+L'entrée est réalisée sur l'ouverture de la bougie M5 suivante.
+
+Le modèle d'exécution :
+
+- BUY : entrée Ask, sorties sur Bid ;
+- SELL : entrée Bid, sorties sur Ask ;
+- spread issu du snapshot broker ;
+- slippage par défaut : 0.25 spread ;
+- si stop et target sont tous les deux touchés dans la même bougie, le stop gagne ;
+- un seul trade simultané par couple marché × mécanisme ;
+- lot calculé avec tick size, tick value, min lot, lot step et marge MT4.
+
+Les rejets d'exécution sont comptabilisés séparément des résultats de trading.
+
+## Limite de coût historique
+
+Les historiques actuels ne contiennent pas encore une série complète de spread tick-par-tick.
+
+Le backtest applique donc le spread du snapshot broker sur l'historique, plus un slippage modèle. Il s'agit d'une approximation conservatrice, mais pas d'une reconstruction parfaite des coûts historiques.
+
+La collecte d'un historique de spread fait partie des améliorations suivantes.
 
 ## Replay causal
 
-`RegimeReplay.push()` est le chemin incrémental utilisé barre par barre.
+`RegimeReplay.push()` est le chemin incrémental.
 
-`RegimeReplay.replay()` appelle exactement ce même chemin pour l'historique. Un test d'équivalence garantit que le traitement batch et le traitement progressif produisent les mêmes snapshots.
+`RegimeReplay.replay()` appelle ce même chemin pour l'historique. Un test d'équivalence protège contre une divergence batch/runtime.
 
 ## Strategy Admission
 
-Une stratégie n'est jamais activée parce qu'elle gagne sur la période d'entraînement.
+Une stratégie n'est jamais activée parce qu'elle gagne sur le train.
 
-- données insuffisantes en validation/holdout -> `SHADOW` ;
-- expectancy non positive, PF insuffisant ou drawdown excessif -> `REJECTED` ;
-- critères satisfaits sur validation **et** holdout -> `ACTIVE`.
+- preuve indépendante insuffisante -> `SHADOW` ;
+- critères indépendants suffisamment observés mais défaillants -> `REJECTED` ;
+- validation et holdout satisfaisants -> `ACTIVE`.
 
-Ces garde-fous limitent le data mining ; ils ne garantissent pas la rentabilité future.
+La matrice portefeuille ne renvoie un `qualified_strategy_id` que pour une stratégie ACTIVE.
 
 ## Capital
 
 Configuration initiale :
 
 - capital de référence : 200 EUR ;
-- risque de base : 1 % par trade ;
+- risque de base : 1 % ;
 - plafond absolu : 2 % ;
 - perte journalière maximale : 3 % ;
-- spread maximal : 15 % de la distance au stop ;
+- spread maximal : 15 % du stop ;
 - marge maximale : 25 % du capital.
 
-Le sizing est arrondi vers le bas au pas de lot MT4. Si le lot minimum dépasse le budget de risque, le trade est rejeté.
+Augmenter le risque ne constitue jamais un moyen de réparer un edge négatif.
 
 ## AUTO et CONFIRM
 
-Deux modes de décision existent :
+- `confirm` : proposition en attente d'approbation humaine ;
+- `auto` : proposition autorisée automatiquement si tout le pipeline l'autorise.
 
-- `confirm` : une proposition reste en attente jusqu'à approbation humaine ;
-- `auto` : une proposition est autorisée sans clic humain.
-
-Une proposition « authorized » n'est pas encore un ordre broker. L'adaptateur MT4 d'exécution reste une couche séparée et le live est toujours verrouillé.
-
-## Timeframes
-
-- M15 : contexte, régime, volatilité et structure.
-- M5 : déclenchement et exécution.
-- Une position peut durer plusieurs bougies.
+Une proposition autorisée n'est pas encore un ordre broker. Le live reste verrouillé.
 
 ## Passage paper -> demo -> live
 
-Le code démarre en `paper` et `confirm`.
+Le projet démarre en `paper + confirm`.
 
-Le mode `demo` utilisera le même pipeline que le futur live, tout en conservant un capital économique de 200 EUR.
+Avant le mode démo automatisé :
 
-Le mode `live` restera verrouillé tant que le backtest walk-forward, le replay incrémental, le sizing, le rapprochement des fills, les limites de perte et le kill switch ne sont pas validés.
+- au moins un couple doit être ACTIVE ;
+- le scanner runtime doit reproduire le même événement causal que le backtest ;
+- le ledger doit rapprocher proposition, ordre et fill ;
+- les limites journalières et le kill switch doivent être testés.
+
+Avant le live, ces preuves doivent être reproduites avec coûts et comportement broker observés.
 
 ## Prochains incréments
 
-- lire automatiquement toutes les spécifications exportées par MT4 ;
-- construire le backtester de trades net de spread/slippage ;
-- coder les mécanismes conditionnels au régime en SHADOW ;
-- ajouter le ledger persistant et le dashboard portefeuille ;
-- connecter l'exécution MT4 en démo.
+- analyser les sous-régimes du candidat BTC break/retest récent ;
+- collecter le spread dans le temps ;
+- ajouter le scanner runtime SHADOW ;
+- persister le ledger de recherche et les opportunités ;
+- enrichir le dashboard portefeuille ;
+- connecter ensuite l'exécution MT4 en démo.

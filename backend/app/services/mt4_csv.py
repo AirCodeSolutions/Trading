@@ -1,5 +1,5 @@
 import csv
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -16,34 +16,65 @@ def _server_timezone() -> ZoneInfo:
         ) from exc
 
 
+def _parse_bar_row(
+    row: list[str],
+    *,
+    symbol: str,
+    timeframe: Timeframe,
+    server_timezone: ZoneInfo,
+) -> MarketBar | None:
+    if not row:
+        return None
+
+    first = row[0].strip().lower()
+    if first in {"date", "timestamp"}:
+        return None
+
+    try:
+        if len(row) >= 7:
+            timestamp = datetime.strptime(
+                f"{row[0].strip()} {row[1].strip()}",
+                "%Y%m%d %H:%M:%S",
+            ).replace(tzinfo=server_timezone)
+            values = row[2:7]
+        elif len(row) >= 6:
+            unix_timestamp = int(row[0].strip())
+            timestamp = datetime.fromtimestamp(unix_timestamp, tz=UTC).astimezone(
+                server_timezone
+            )
+            values = row[1:6]
+        else:
+            return None
+
+        open_price, high, low, close, volume = (float(value) for value in values)
+        return MarketBar(
+            symbol=symbol.upper(),
+            timeframe=timeframe,
+            timestamp=timestamp,
+            open=open_price,
+            high=high,
+            low=low,
+            close=close,
+            volume=volume,
+        )
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
 def read_mt4_csv(path: Path, symbol: str, timeframe: Timeframe) -> list[MarketBar]:
     by_timestamp: dict[datetime, MarketBar] = {}
     server_timezone = _server_timezone()
 
     with path.open(newline="", encoding="utf-8-sig") as handle:
         for row in csv.reader(handle):
-            if not row or row[0].strip().lower() == "date":
-                continue
-            if len(row) < 7:
-                continue
-            try:
-                timestamp = datetime.strptime(
-                    f"{row[0].strip()} {row[1].strip()}",
-                    "%Y%m%d %H:%M:%S",
-                ).replace(tzinfo=server_timezone)
-                bar = MarketBar(
-                    symbol=symbol.upper(),
-                    timeframe=timeframe,
-                    timestamp=timestamp,
-                    open=float(row[2]),
-                    high=float(row[3]),
-                    low=float(row[4]),
-                    close=float(row[5]),
-                    volume=float(row[6]),
-                )
-            except (ValueError, TypeError):
-                continue
-            by_timestamp[timestamp] = bar
+            bar = _parse_bar_row(
+                row,
+                symbol=symbol,
+                timeframe=timeframe,
+                server_timezone=server_timezone,
+            )
+            if bar is not None:
+                by_timestamp[bar.timestamp] = bar
 
     return [by_timestamp[key] for key in sorted(by_timestamp)]
 

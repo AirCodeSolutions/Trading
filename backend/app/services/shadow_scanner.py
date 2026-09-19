@@ -17,7 +17,6 @@ from app.services.capital_risk import size_position
 from app.services.opportunity_strategies import _atr_series
 from app.services.replay import RegimeReplay
 
-
 VOLATILITY_PERCENTILE_LOOKBACK = 500
 MAX_SNAPSHOT_AGE = timedelta(minutes=10)
 

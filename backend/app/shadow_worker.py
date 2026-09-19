@@ -3,6 +3,7 @@ import time
 from datetime import datetime
 
 from app.core.config import settings
+from app.services.execution_cost_history import collect_execution_cost_snapshot
 from app.services.mt4_csv import _server_timezone
 from app.services.shadow_collector import collect_btc_break_retest_once
 
@@ -12,12 +13,19 @@ def main() -> None:
         raise SystemExit("TRADING_MT4_FILES_DIR is required")
 
     ledger_path = settings.shadow_ledger_dir / "BTCUSD_break_retest.jsonl"
+    costs_path = settings.shadow_ledger_dir / "execution_costs.jsonl"
     while True:
         try:
+            now = datetime.now(tz=_server_timezone())
+            collect_execution_cost_snapshot(
+                settings.mt4_files_dir,
+                costs_path,
+                now,
+            )
             result = collect_btc_break_retest_once(
                 settings.mt4_files_dir,
                 ledger_path,
-                datetime.now(tz=_server_timezone()),
+                now,
             )
             print(result.model_dump_json(), flush=True)
         except (OSError, TypeError, ValueError) as exc:

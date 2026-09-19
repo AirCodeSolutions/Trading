@@ -104,7 +104,7 @@ def submit_selected_demo_order(
         lots=trade.lots,
         stop_loss=trade.stop_price,
         take_profit=trade.target_price,
-        strategy_id=trade.mechanism.value,
+        strategy_id=selected,
         issued_at=now,
         magic_number=settings.demo_magic_number,
         slippage_points=settings.demo_max_slippage_points,

@@ -1,4 +1,3 @@
-import json
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -13,7 +12,6 @@ from app.domain.shadow_paper import (
     ShadowPaperTrade,
 )
 from app.domain.trading import Side
-
 
 TARGET_R = 1.8
 MAX_HOLDING_BARS = 18

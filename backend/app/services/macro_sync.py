@@ -2,6 +2,7 @@ import json
 import re
 from datetime import datetime
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from app.domain.macro import MacroEvent, MacroImpact
@@ -18,34 +19,29 @@ def sync_bls_calendar(
     *,
     timeout_seconds: int = 15,
 ) -> int:
-    request = Request(
-        BLS_ICS_URL,
-        headers={"User-Agent": "TradingResearch/1.0 macro-calendar"},
-    )
-    with urlopen(request, timeout=timeout_seconds) as response:
-        text = response.read().decode("utf-8", errors="replace")
-
-    bls_events = parse_bls_ics(text)
     base_events = [
         event
         for event in load_macro_events(base_path)
         if not event.event_id.startswith("bls-sync-")
     ]
+    request = Request(
+        BLS_ICS_URL,
+        headers={"User-Agent": "TradingResearch/1.0 macro-calendar"},
+    )
+    try:
+        with urlopen(request, timeout=timeout_seconds) as response:
+            text = response.read().decode("utf-8", errors="replace")
+    except (HTTPError, URLError, TimeoutError, OSError):
+        if not output_path.is_file():
+            _write_events(output_path, base_events)
+        return 0
+
+    bls_events = parse_bls_ics(text)
     merged = sorted(
         [*base_events, *bls_events],
         key=lambda event: event.start_at,
     )
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = output_path.with_suffix(output_path.suffix + ".tmp")
-    temporary.write_text(
-        json.dumps(
-            [event.model_dump(mode="json") for event in merged],
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
-    temporary.replace(output_path)
+    _write_events(output_path, merged)
     return len(bls_events)
 
 
@@ -120,3 +116,16 @@ def _dtstart(block: str) -> datetime | None:
         ).replace(tzinfo=timezone)
     except ValueError:
         return None
+
+
+def _write_events(path: Path, events: list[MacroEvent]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(
+        json.dumps(
+            [event.model_dump(mode="json") for event in events],
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    temporary.replace(path)

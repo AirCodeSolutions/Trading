@@ -1,7 +1,9 @@
 from collections.abc import Sequence
+from itertools import pairwise
 
 from app.domain.admission import EvidenceWindow, StrategyEvidence
-from app.domain.market import MarketBar
+from app.domain.broker import PositionSizeRequest
+from app.domain.market import MarketBar, Timeframe
 from app.domain.opportunity import (
     OpportunityBacktestConfig,
     OpportunityBacktestResult,
@@ -13,7 +15,6 @@ from app.domain.opportunity import (
 from app.domain.trading import Side
 from app.services.admission import assess_strategy
 from app.services.capital_risk import size_position
-from app.domain.broker import PositionSizeRequest
 from app.services.opportunity_strategies import generate_candidates
 
 
@@ -22,6 +23,7 @@ def run_opportunity_backtest(
     bars_m15: Sequence[MarketBar],
     config: OpportunityBacktestConfig,
 ) -> OpportunityBacktestResult:
+    _validate_inputs(bars_m5, bars_m15, config)
     candidates = generate_candidates(bars_m5, bars_m15, config.mechanism)
     outcomes: list[TradeOutcome] = []
     rejections: list[str] = []
@@ -80,6 +82,32 @@ def run_opportunity_backtest(
         holdout=holdout,
         admission=assess_strategy(evidence),
     )
+
+
+def _validate_inputs(
+    bars_m5: Sequence[MarketBar],
+    bars_m15: Sequence[MarketBar],
+    config: OpportunityBacktestConfig,
+) -> None:
+    if not bars_m5 or not bars_m15:
+        raise ValueError("M5 and M15 bars are required")
+    if any(bar.timeframe != Timeframe.M5 for bar in bars_m5):
+        raise ValueError("bars_m5 must contain M5 bars only")
+    if any(bar.timeframe != Timeframe.M15 for bar in bars_m15):
+        raise ValueError("bars_m15 must contain M15 bars only")
+
+    expected_symbol = config.spec.symbol.upper()
+    symbols = {
+        *(bar.symbol.upper() for bar in bars_m5),
+        *(bar.symbol.upper() for bar in bars_m15),
+    }
+    if symbols != {expected_symbol}:
+        raise ValueError("bar symbols must match the broker symbol spec")
+
+    if any(current.timestamp <= previous.timestamp for previous, current in pairwise(bars_m5)):
+        raise ValueError("M5 bars must be strictly chronological")
+    if any(current.timestamp <= previous.timestamp for previous, current in pairwise(bars_m15)):
+        raise ValueError("M15 bars must be strictly chronological")
 
 
 def _simulate_candidate(

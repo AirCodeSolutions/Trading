@@ -11,7 +11,6 @@ from app.services.shadow_ledger import append_shadow_observation
 from app.services.shadow_paper import advance_shadow_paper_book
 from app.services.shadow_scanner import scan_shadow_opportunity
 
-
 _MECHANISM_SLUG = {
     OpportunityMechanism.BREAK_RETEST_REACCEL: "break_retest",
     OpportunityMechanism.FAILED_AUCTION_REVERSAL: "failed_auction",

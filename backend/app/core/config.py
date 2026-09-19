@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     shadow_ledger_dir: Path = Path("runtime/shadow")
     shadow_collection_interval_seconds: int = 30
 
+    macro_events_path: Path = Path("config/macro_events_2026.json")
+
+    demo_execution_bridge_enabled: bool = False
+    demo_magic_number: int = 560619
+    demo_max_slippage_points: int = 100
+
     model_config = SettingsConfigDict(
         env_prefix="TRADING_",
         env_file=".env",

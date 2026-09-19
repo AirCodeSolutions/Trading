@@ -33,6 +33,33 @@ type ShadowDiagnostic = {
   reason: string;
 };
 
+type PaperTrade = {
+  trade_id: string;
+  side: "buy" | "sell";
+  signal_at: string;
+  entry_price: number;
+  stop_price: number;
+  target_price: number;
+  lots: number;
+  risk_eur: number;
+  status: "open" | "stop" | "target" | "timeout";
+  result_r: number | null;
+  pnl_eur: number | null;
+  bars_held: number;
+};
+
+type PaperSummary = {
+  closed_trades: number;
+  wins: number;
+  losses: number;
+  total_r: number;
+  expectancy_r: number;
+  profit_factor: number;
+  total_pnl_eur: number;
+  open_trade: PaperTrade | null;
+  recent_trades: PaperTrade[];
+};
+
 type MarketQuote = {
   symbol: string;
   as_of: string;
@@ -154,6 +181,7 @@ function MarketCard({ quote }: { quote: MarketQuote }) {
 export default function App() {
   const [config, setConfig] = useState<RuntimeConfig | null>(null);
   const [shadow, setShadow] = useState<ShadowDiagnostic | null>(null);
+  const [paper, setPaper] = useState<PaperSummary | null>(null);
   const [quotes, setQuotes] = useState<MarketQuote[]>([]);
   const [status, setStatus] = useState("Connexion au backend…");
 
@@ -162,11 +190,13 @@ export default function App() {
 
     const refreshCore = async () => {
       try {
-        const [healthResponse, configResponse, shadowResponse] = await Promise.all([
-          fetch("/api/v1/health"),
-          fetch("/api/v1/config"),
-          fetch("/api/v1/shadow/mt4/btc/break-retest")
-        ]);
+        const [healthResponse, configResponse, shadowResponse, paperResponse] =
+          await Promise.all([
+            fetch("/api/v1/health"),
+            fetch("/api/v1/config"),
+            fetch("/api/v1/shadow/mt4/btc/break-retest"),
+            fetch("/api/v1/shadow/mt4/btc/break-retest/paper")
+          ]);
         if (!healthResponse.ok || !configResponse.ok) {
           throw new Error("backend unavailable");
         }
@@ -174,11 +204,13 @@ export default function App() {
         const health = await healthResponse.json();
         const runtime = await configResponse.json();
         const shadowPayload = shadowResponse.ok ? await shadowResponse.json() : null;
+        const paperPayload = paperResponse.ok ? await paperResponse.json() : null;
 
         if (!active) return;
         setStatus(health.status === "ok" ? "Opérationnel" : "Dégradé");
         setConfig(runtime);
         setShadow(shadowPayload);
+        setPaper(paperPayload);
       } catch {
         if (active) setStatus("Backend indisponible");
       }
@@ -335,6 +367,107 @@ export default function App() {
             </p>
           </div>
         </div>
+      </section>
+
+      <section className="paper-panel">
+        <div className="shadow-heading">
+          <div>
+            <p className="eyebrow">PROSPECTIVE PAPER EVIDENCE · BTCUSD</p>
+            <h2>{paper?.open_trade ? "TRADE PAPER OUVERT" : "SUIVI PROSPECTIF"}</h2>
+          </div>
+          <span className="badge">
+            {paper ? `${paper.closed_trades} clôturé${paper.closed_trades > 1 ? "s" : ""}` : "—"}
+          </span>
+        </div>
+
+        <div className="metric-grid">
+          <div className="metric">
+            <span>Expectancy</span>
+            <strong>{paper ? `${paper.expectancy_r >= 0 ? "+" : ""}${paper.expectancy_r.toFixed(3)} R` : "—"}</strong>
+          </div>
+          <div className="metric">
+            <span>Profit factor</span>
+            <strong>{paper ? paper.profit_factor.toFixed(2) : "—"}</strong>
+          </div>
+          <div className="metric">
+            <span>Total R</span>
+            <strong>{paper ? `${paper.total_r >= 0 ? "+" : ""}${paper.total_r.toFixed(2)} R` : "—"}</strong>
+          </div>
+          <div className="metric">
+            <span>PnL paper</span>
+            <strong>{paper ? `${paper.total_pnl_eur >= 0 ? "+" : ""}${paper.total_pnl_eur.toFixed(2)} €` : "—"}</strong>
+          </div>
+          <div className="metric">
+            <span>Gagnants / perdants</span>
+            <strong>{paper ? `${paper.wins} / ${paper.losses}` : "—"}</strong>
+          </div>
+          <div className="metric">
+            <span>Win rate</span>
+            <strong>
+              {paper && paper.closed_trades
+                ? `${((paper.wins / paper.closed_trades) * 100).toFixed(0)} %`
+                : "—"}
+            </strong>
+          </div>
+        </div>
+
+        {paper?.open_trade ? (
+          <div className="paper-open">
+            <div>
+              <span className="label">Position paper</span>
+              <strong>{paper.open_trade.side.toUpperCase()} · {paper.open_trade.lots.toFixed(2)} lot</strong>
+            </div>
+            <div>
+              <span>Entrée</span>
+              <strong>{paper.open_trade.entry_price.toFixed(2)}</strong>
+            </div>
+            <div>
+              <span>Stop</span>
+              <strong>{paper.open_trade.stop_price.toFixed(2)}</strong>
+            </div>
+            <div>
+              <span>Target</span>
+              <strong>{paper.open_trade.target_price.toFixed(2)}</strong>
+            </div>
+            <div>
+              <span>Risque</span>
+              <strong>{paper.open_trade.risk_eur.toFixed(2)} €</strong>
+            </div>
+          </div>
+        ) : (
+          <p className="paper-empty">
+            Aucun trade paper ouvert. Le système attend un signal exécutable à 1 % de risque.
+          </p>
+        )}
+
+        {paper?.recent_trades.length ? (
+          <div className="paper-history">
+            <div className="paper-row paper-row-head">
+              <span>Signal</span>
+              <span>Side</span>
+              <span>Sortie</span>
+              <span>R</span>
+              <span>PnL</span>
+            </div>
+            {paper.recent_trades.map((trade) => (
+              <div className="paper-row" key={trade.trade_id}>
+                <span>{new Date(trade.signal_at).toLocaleString("fr-FR")}</span>
+                <span>{trade.side.toUpperCase()}</span>
+                <span>{trade.status.toUpperCase()}</span>
+                <span className={(trade.result_r ?? 0) >= 0 ? "positive" : "negative"}>
+                  {trade.result_r == null
+                    ? "—"
+                    : `${trade.result_r >= 0 ? "+" : ""}${trade.result_r.toFixed(2)} R`}
+                </span>
+                <span className={(trade.pnl_eur ?? 0) >= 0 ? "positive" : "negative"}>
+                  {trade.pnl_eur == null
+                    ? "—"
+                    : `${trade.pnl_eur >= 0 ? "+" : ""}${trade.pnl_eur.toFixed(2)} €`}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="panel">

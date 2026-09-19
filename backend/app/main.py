@@ -307,7 +307,7 @@ def demo_execution_status() -> DemoExecutionStatus:
 
 
 @app.post(
-    f"{settings.api_prefix}/execution/demo/submit-selected/{proposal_id}",
+    f"{settings.api_prefix}/execution/demo/submit-selected/{{proposal_id}}",
     response_model=DemoOrderCommand,
 )
 def submit_selected_demo_execution(proposal_id: str) -> DemoOrderCommand:

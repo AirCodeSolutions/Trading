@@ -17,7 +17,6 @@ from app.services.capital_risk import size_position
 from app.services.opportunity_strategies import _atr_series
 from app.services.replay import RegimeReplay
 
-
 VOLATILITY_PERCENTILE_LOOKBACK = 500
 MAX_SNAPSHOT_AGE = timedelta(minutes=10)
 
@@ -50,20 +49,20 @@ def scan_btc_break_retest_shadow(
     )
     momentum_12_atr = _momentum_12_atr(bars_m15, regime, regime_index)
 
-    base_payload = dict(
-        symbol="BTCUSD",
-        mechanism=OpportunityMechanism.BREAK_RETEST_REACCEL,
-        evaluated_at=evaluated_at,
-        latest_closed_m5_at=latest_m5.timestamp,
-        latest_closed_m15_at=bars_m15[regime_index].timestamp,
-        regime=regime.regime,
-        regime_direction=regime.direction,
-        atr_m15=regime.atr,
-        atr_ratio=regime.atr_ratio,
-        volatility_percentile=volatility_percentile,
-        momentum_12_atr=momentum_12_atr,
-        efficiency=regime.efficiency,
-    )
+    base_payload = {
+        "symbol": "BTCUSD",
+        "mechanism": OpportunityMechanism.BREAK_RETEST_REACCEL,
+        "evaluated_at": evaluated_at,
+        "latest_closed_m5_at": latest_m5.timestamp,
+        "latest_closed_m15_at": bars_m15[regime_index].timestamp,
+        "regime": regime.regime,
+        "regime_direction": regime.direction,
+        "atr_m15": regime.atr,
+        "atr_ratio": regime.atr_ratio,
+        "volatility_percentile": volatility_percentile,
+        "momentum_12_atr": momentum_12_atr,
+        "efficiency": regime.efficiency,
+    }
 
     snapshot_age = evaluated_at - signal_close
     if snapshot_age > MAX_SNAPSHOT_AGE or snapshot_age < -timedelta(minutes=1):

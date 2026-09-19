@@ -3,13 +3,14 @@ from datetime import datetime
 from pathlib import Path
 
 from app.domain.live_market import LiveMarketQuote, MarketFeedStatus
-from app.domain.market import Timeframe
+from app.domain.market import MarketBar, Timeframe
 from app.services.mt4_csv import mt4_epoch_to_server_datetime, read_mt4_csv
-from app.services.mt4_history import resolve_mt4_history_path
 from app.services.mt4_live_bars import read_closed_bar_snapshot
 
 LIVE_MAX_AGE_SECONDS = 120
 SPARKLINE_BARS = 48
+
+_history_cache: dict[Path, tuple[int, list[MarketBar]]] = {}
 
 
 def read_live_market_quotes(
@@ -51,31 +52,12 @@ def _read_quote(
     mid = (bid + ask) / 2
     spread = ask - bid
 
-    closes: list[float] = []
-    last_closed_m5_at = None
+    bars = _recent_m5_bars(files_dir, symbol)
+    closes = [bar.close for bar in bars]
+    last_closed_m5_at = bars[-1].timestamp if bars else None
     recent_change_pct = None
-    bars_path = files_dir / f"mt4_bars_{symbol}_M5.json"
-    bars = []
-    if bars_path.is_file():
-        try:
-            bars = read_closed_bar_snapshot(bars_path, symbol, Timeframe.M5)
-        except (OSError, TypeError, ValueError, json.JSONDecodeError):
-            bars = []
-
-    if not bars:
-        history_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M5)
-        if history_path is not None:
-            try:
-                bars = read_mt4_csv(history_path, symbol, Timeframe.M5)
-            except (OSError, TypeError, ValueError):
-                bars = []
-
-    if bars:
-        recent = bars[-SPARKLINE_BARS:]
-        closes = [bar.close for bar in recent]
-        last_closed_m5_at = bars[-1].timestamp
-        if len(closes) >= 2 and closes[0] > 0:
-            recent_change_pct = ((closes[-1] - closes[0]) / closes[0]) * 100
+    if len(closes) >= 2 and closes[0] > 0:
+        recent_change_pct = ((closes[-1] - closes[0]) / closes[0]) * 100
 
     return LiveMarketQuote(
         symbol=symbol,
@@ -92,3 +74,46 @@ def _read_quote(
         recent_change_pct=recent_change_pct,
         recent_m5_closes=closes,
     )
+
+
+def _recent_m5_bars(files_dir: Path, symbol: str) -> list[MarketBar]:
+    snapshot_path = files_dir / f"mt4_bars_{symbol}_M5.json"
+    if snapshot_path.is_file():
+        try:
+            bars = read_closed_bar_snapshot(snapshot_path, symbol, Timeframe.M5)
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            bars = []
+        if bars:
+            return bars[-SPARKLINE_BARS:]
+
+    # The legacy MT4 CSV is the continuously refreshed source on this terminal.
+    legacy_path = files_dir / f"{symbol}-M5.csv"
+    if legacy_path.is_file():
+        bars = _cached_history_tail(legacy_path, symbol)
+        if bars:
+            return bars
+
+    research_path = files_dir / f"mt4_research_bars_{symbol}_M5.csv"
+    if research_path.is_file():
+        return _cached_history_tail(research_path, symbol)
+
+    return []
+
+
+def _cached_history_tail(path: Path, symbol: str) -> list[MarketBar]:
+    try:
+        mtime_ns = path.stat().st_mtime_ns
+    except OSError:
+        return []
+
+    cached = _history_cache.get(path)
+    if cached is not None and cached[0] == mtime_ns:
+        return cached[1]
+
+    try:
+        bars = read_mt4_csv(path, symbol, Timeframe.M5)[-SPARKLINE_BARS:]
+    except (OSError, TypeError, ValueError):
+        bars = []
+
+    _history_cache[path] = (mtime_ns, bars)
+    return bars

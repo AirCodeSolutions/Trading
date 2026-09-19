@@ -16,6 +16,7 @@ from app.domain.broker import (
 )
 from app.domain.live_market import LiveMarketQuote
 from app.domain.market import MarketBar, Timeframe
+from app.domain.portfolio import MarketUniverseAsset, TradingOverview
 from app.domain.opportunity import (
     Mt4OpportunityBacktestRequest,
     OpportunityBacktestConfig,
@@ -30,8 +31,10 @@ from app.services.admission import assess_strategy
 from app.services.approval_gate import ApprovalGate
 from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
 from app.services.capital_risk import size_position
+from app.services.execution_cost_history import summarize_execution_costs
 from app.services.market_quality import assess_market
 from app.services.market_store import MarketStore
+from app.services.market_universe import build_market_universe
 from app.services.mt4_csv import _server_timezone, read_mt4_csv, summarize_mt4_csv
 from app.services.mt4_history import resolve_mt4_history_path
 from app.services.mt4_live_bars import read_closed_bar_snapshot
@@ -39,6 +42,7 @@ from app.services.mt4_live_quotes import read_live_market_quotes
 from app.services.mt4_specs import get_mt4_symbol_spec, list_mt4_symbol_specs
 from app.services.opportunity_backtester import run_opportunity_backtest
 from app.services.opportunity_matrix import run_mt4_portfolio_research
+from app.services.portfolio_overview import build_trading_overview
 from app.services.regime import classify_regime
 from app.services.shadow_collector import collect_btc_break_retest_once
 from app.services.shadow_paper import load_shadow_paper_summary
@@ -92,12 +96,42 @@ def market_quality(request: MarketQualityRequest) -> MarketQualityResult:
 
 
 @app.get(
+    f"{settings.api_prefix}/market/mt4/universe",
+    response_model=list[MarketUniverseAsset],
+)
+def mt4_market_universe() -> list[MarketUniverseAsset]:
+    return build_market_universe(
+        _mt4_files_dir(),
+        datetime.now(tz=_server_timezone()),
+    )
+
+
+@app.get(
     f"{settings.api_prefix}/market/mt4/live",
     response_model=list[LiveMarketQuote],
 )
 def mt4_live_market_quotes() -> list[LiveMarketQuote]:
     return read_live_market_quotes(
         _mt4_files_dir(),
+        datetime.now(tz=_server_timezone()),
+    )
+
+
+@app.get(f"{settings.api_prefix}/market/mt4/costs")
+def mt4_execution_costs() -> dict[str, dict[str, float | int]]:
+    return summarize_execution_costs(
+        settings.shadow_ledger_dir / "execution_costs.jsonl"
+    )
+
+
+@app.get(
+    f"{settings.api_prefix}/portfolio/overview",
+    response_model=TradingOverview,
+)
+def portfolio_overview() -> TradingOverview:
+    return build_trading_overview(
+        _mt4_files_dir(),
+        settings.shadow_ledger_dir,
         datetime.now(tz=_server_timezone()),
     )
 

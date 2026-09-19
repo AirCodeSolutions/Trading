@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from app.services.mt4_specs import (
     get_mt4_symbol_spec,
     list_mt4_symbol_specs,
@@ -77,4 +79,4 @@ def test_snapshot_takes_precedence_over_bridge_json(tmp_path: Path) -> None:
 
     specs = list_mt4_symbol_specs(tmp_path)
 
-    assert specs["XAUUSD"].spread == 0.2
+    assert specs["XAUUSD"].spread == pytest.approx(0.2)

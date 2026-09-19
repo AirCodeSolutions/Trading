@@ -5,7 +5,6 @@ from zoneinfo import ZoneInfo
 
 from app.services.macro_gate import macro_gate_status
 
-
 TZ = ZoneInfo("America/New_York")
 
 

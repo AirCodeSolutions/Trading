@@ -29,6 +29,7 @@ class Settings(BaseSettings):
 
     mt4_files_dir: Path | None = None
     mt4_server_timezone: str = "Europe/Athens"
+    shadow_ledger_dir: Path = Path("runtime/shadow")
 
     model_config = SettingsConfigDict(
         env_prefix="TRADING_",

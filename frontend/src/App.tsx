@@ -134,6 +134,60 @@ type CostSummary = Record<
   }
 >;
 
+type MacroEvent = {
+  event_id: string;
+  name: string;
+  start_at: string;
+  end_at: string;
+  impact: "medium" | "high";
+  currencies: string[];
+  source: string;
+};
+
+type MacroStatus = {
+  at: string;
+  blocked: boolean;
+  active_events: MacroEvent[];
+  next_event: MacroEvent | null;
+  reason: string;
+};
+
+type DemoExecutionStatus = {
+  guard: {
+    at: string;
+    ready: boolean;
+    execution_mode: string;
+    bridge_enabled: boolean;
+    live_trading_enabled: boolean;
+    broker_is_demo: boolean;
+    portfolio_action: "no_trade" | "paper_only" | "demo_eligible";
+    macro_blocked: boolean;
+    reasons: string[];
+  };
+  pending_command: {
+    command_id: string;
+    symbol: string;
+    side: "buy" | "sell";
+    lots: number;
+    strategy_id: string;
+  } | null;
+  latest_result: {
+    command_id: string;
+    status: string;
+    ticket: number;
+    error_code: number;
+    fill_price: number;
+    processed_at: string;
+  } | null;
+  bridge_positions: {
+    ticket: number;
+    symbol: string;
+    side: "buy" | "sell";
+    lots: number;
+    profit: number;
+  }[];
+};
+
 type MarketQuote = {
   symbol: string;
   as_of: string;
@@ -260,6 +314,8 @@ export default function App() {
   const [universe, setUniverse] = useState<MarketUniverseAsset[]>([]);
   const [overview, setOverview] = useState<TradingOverview | null>(null);
   const [costs, setCosts] = useState<CostSummary>({});
+  const [macro, setMacro] = useState<MacroStatus | null>(null);
+  const [demo, setDemo] = useState<DemoExecutionStatus | null>(null);
   const [status, setStatus] = useState("Connexion au backend…");
 
   useEffect(() => {
@@ -274,7 +330,9 @@ export default function App() {
           paperResponse,
           universeResponse,
           overviewResponse,
-          costsResponse
+          costsResponse,
+          macroResponse,
+          demoResponse
         ] = await Promise.all([
           fetch("/api/v1/health"),
           fetch("/api/v1/config"),
@@ -282,7 +340,9 @@ export default function App() {
           fetch("/api/v1/shadow/mt4/btc/break-retest/paper"),
           fetch("/api/v1/market/mt4/universe"),
           fetch("/api/v1/portfolio/overview"),
-          fetch("/api/v1/market/mt4/costs")
+          fetch("/api/v1/market/mt4/costs"),
+          fetch("/api/v1/macro/status"),
+          fetch("/api/v1/execution/demo/status")
         ]);
         if (!healthResponse.ok || !configResponse.ok) {
           throw new Error("backend unavailable");
@@ -295,6 +355,8 @@ export default function App() {
         const universePayload = universeResponse.ok ? await universeResponse.json() : [];
         const overviewPayload = overviewResponse.ok ? await overviewResponse.json() : null;
         const costsPayload = costsResponse.ok ? await costsResponse.json() : {};
+        const macroPayload = macroResponse.ok ? await macroResponse.json() : null;
+        const demoPayload = demoResponse.ok ? await demoResponse.json() : null;
 
         if (!active) return;
         setStatus(health.status === "ok" ? "Opérationnel" : "Dégradé");
@@ -304,6 +366,8 @@ export default function App() {
         setUniverse(universePayload);
         setOverview(overviewPayload);
         setCosts(costsPayload);
+        setMacro(macroPayload);
+        setDemo(demoPayload);
       } catch {
         if (active) setStatus("Backend indisponible");
       }
@@ -380,6 +444,18 @@ export default function App() {
         <article className="card">
           <span className="label">Live trading</span>
           <strong>{config?.live_trading_enabled ? "ACTIF" : "VERROUILLÉ"}</strong>
+        </article>
+        <article className="card">
+          <span className="label">Macro Gate</span>
+          <strong className={macro?.blocked ? "negative-text" : "positive-text"}>
+            {macro ? (macro.blocked ? "BLOCKED" : "CLEAR") : "—"}
+          </strong>
+        </article>
+        <article className="card">
+          <span className="label">Bridge DEMO</span>
+          <strong className={demo?.guard.ready ? "positive-text" : ""}>
+            {demo ? (demo.guard.ready ? "READY" : "LOCKED") : "—"}
+          </strong>
         </article>
       </section>
 
@@ -522,6 +598,62 @@ export default function App() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="gate-panel">
+        <div className="shadow-heading">
+          <div>
+            <p className="eyebrow">MACRO + EXECUTION GATE</p>
+            <h2>{macro?.blocked ? "BLACKOUT MACRO" : "EXECUTION CONTROL"}</h2>
+          </div>
+          <span className={`badge ${demo?.guard.ready ? "gate-ready" : "gate-locked"}`}>
+            {demo?.guard.ready ? "DEMO READY" : "DEMO LOCKED"}
+          </span>
+        </div>
+
+        <div className="gate-grid">
+          <div className="gate-card">
+            <span className="label">Macro</span>
+            <strong>{macro?.blocked ? "BLOCKED" : "CLEAR"}</strong>
+            <p>{macro?.reason ?? "Calendrier macro indisponible."}</p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Prochain événement</span>
+            <strong>{macro?.next_event?.name ?? "AUCUN"}</strong>
+            <p>
+              {macro?.next_event
+                ? `${new Date(macro.next_event.start_at).toLocaleString("fr-FR")} · ${macro.next_event.source}`
+                : "Aucun événement chargé."}
+            </p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Exécution DEMO</span>
+            <strong>{demo?.guard.execution_mode?.toUpperCase() ?? "—"}</strong>
+            <p>
+              {demo?.guard.ready
+                ? "Tous les verrous sont satisfaits."
+                : demo?.guard.reasons.join(" · ") || "Statut indisponible."}
+            </p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Bridge MT4</span>
+            <strong>{demo?.guard.bridge_enabled ? "ENABLED" : "DISABLED"}</strong>
+            <p>
+              {demo?.bridge_positions.length ?? 0} position(s) du bridge ·{" "}
+              {demo?.pending_command ? "commande en attente" : "aucune commande"}
+            </p>
+          </div>
+        </div>
+
+        {demo?.latest_result ? (
+          <div className="gate-result">
+            <span>Dernier résultat bridge</span>
+            <strong>{demo.latest_result.status.toUpperCase()}</strong>
+            <span>
+              ticket {demo.latest_result.ticket || "—"} · erreur {demo.latest_result.error_code}
+            </span>
+          </div>
+        ) : null}
       </section>
 
       <section className="shadow-panel">

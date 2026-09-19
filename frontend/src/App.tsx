@@ -60,6 +60,80 @@ type PaperSummary = {
   recent_trades: PaperTrade[];
 };
 
+type MarketUniverseAsset = {
+  symbol: string;
+  price: number;
+  price_source: "broker_quote" | "closed_m5";
+  as_of: string;
+  bid: number | null;
+  ask: number | null;
+  spread: number | null;
+  quote_live: boolean;
+  has_m5: boolean;
+  has_m15: boolean;
+  broker_spec_ready: boolean;
+  research_ready: boolean;
+  paper_ready: boolean;
+  reason: string;
+};
+
+type ProspectiveQualification = {
+  strategy_id: string;
+  state: "collecting" | "failed" | "supports_demo";
+  closed_trades: number;
+  expectancy_r: number;
+  profit_factor: number;
+  max_drawdown_r: number;
+  reason: string;
+};
+
+type PaperStrategyRuntime = {
+  strategy_id: string;
+  symbol: string;
+  mechanism: string;
+  summary: PaperSummary & { max_drawdown_r: number };
+  qualification: ProspectiveQualification;
+};
+
+type TradingOverview = {
+  broker: {
+    is_demo: boolean;
+    balance: number;
+    equity: number;
+    margin: number;
+    free_margin: number;
+    observed_positions: number;
+  } | null;
+  risk: {
+    reference_capital_eur: number;
+    paper_closed_pnl_eur: number;
+    paper_total_r: number;
+    paper_open_risk_eur: number;
+    paper_open_positions: number;
+    max_daily_loss_eur: number;
+    remaining_daily_loss_budget_eur: number;
+  };
+  portfolio: {
+    action: "no_trade" | "paper_only" | "demo_eligible";
+    selected_strategy_id: string | null;
+    reason: string;
+    historical_active: boolean;
+    prospective_supports_demo: boolean;
+  };
+  qualifications: ProspectiveQualification[];
+  paper_strategies: PaperStrategyRuntime[];
+};
+
+type CostSummary = Record<
+  string,
+  {
+    samples: number;
+    average_spread: number;
+    max_spread: number;
+    average_spread_pct: number;
+  }
+>;
+
 type MarketQuote = {
   symbol: string;
   as_of: string;
@@ -183,6 +257,9 @@ export default function App() {
   const [shadow, setShadow] = useState<ShadowDiagnostic | null>(null);
   const [paper, setPaper] = useState<PaperSummary | null>(null);
   const [quotes, setQuotes] = useState<MarketQuote[]>([]);
+  const [universe, setUniverse] = useState<MarketUniverseAsset[]>([]);
+  const [overview, setOverview] = useState<TradingOverview | null>(null);
+  const [costs, setCosts] = useState<CostSummary>({});
   const [status, setStatus] = useState("Connexion au backend…");
 
   useEffect(() => {
@@ -190,13 +267,23 @@ export default function App() {
 
     const refreshCore = async () => {
       try {
-        const [healthResponse, configResponse, shadowResponse, paperResponse] =
-          await Promise.all([
-            fetch("/api/v1/health"),
-            fetch("/api/v1/config"),
-            fetch("/api/v1/shadow/mt4/btc/break-retest"),
-            fetch("/api/v1/shadow/mt4/btc/break-retest/paper")
-          ]);
+        const [
+          healthResponse,
+          configResponse,
+          shadowResponse,
+          paperResponse,
+          universeResponse,
+          overviewResponse,
+          costsResponse
+        ] = await Promise.all([
+          fetch("/api/v1/health"),
+          fetch("/api/v1/config"),
+          fetch("/api/v1/shadow/mt4/btc/break-retest"),
+          fetch("/api/v1/shadow/mt4/btc/break-retest/paper"),
+          fetch("/api/v1/market/mt4/universe"),
+          fetch("/api/v1/portfolio/overview"),
+          fetch("/api/v1/market/mt4/costs")
+        ]);
         if (!healthResponse.ok || !configResponse.ok) {
           throw new Error("backend unavailable");
         }
@@ -205,12 +292,18 @@ export default function App() {
         const runtime = await configResponse.json();
         const shadowPayload = shadowResponse.ok ? await shadowResponse.json() : null;
         const paperPayload = paperResponse.ok ? await paperResponse.json() : null;
+        const universePayload = universeResponse.ok ? await universeResponse.json() : [];
+        const overviewPayload = overviewResponse.ok ? await overviewResponse.json() : null;
+        const costsPayload = costsResponse.ok ? await costsResponse.json() : {};
 
         if (!active) return;
         setStatus(health.status === "ok" ? "Opérationnel" : "Dégradé");
         setConfig(runtime);
         setShadow(shadowPayload);
         setPaper(paperPayload);
+        setUniverse(universePayload);
+        setOverview(overviewPayload);
+        setCosts(costsPayload);
       } catch {
         if (active) setStatus("Backend indisponible");
       }
@@ -269,17 +362,19 @@ export default function App() {
           <strong>{quotes.length ? `${liveCount}/${quotes.length} LIVE` : "—"}</strong>
         </article>
         <article className="card">
-          <span className="label">Environnement</span>
-          <strong>{config?.execution_mode ?? "—"}</strong>
+          <span className="label">Portfolio Manager</span>
+          <strong>{overview?.portfolio.action.replaceAll("_", " ") ?? "—"}</strong>
         </article>
         <article className="card">
           <span className="label">Capital référence</span>
           <strong>{config ? `${config.reference_capital_eur.toFixed(0)} €` : "—"}</strong>
         </article>
         <article className="card">
-          <span className="label">Risque base / trade</span>
+          <span className="label">PnL paper</span>
           <strong>
-            {config ? `${(config.risk_per_trade_fraction * 100).toFixed(1)} %` : "—"}
+            {overview
+              ? `${overview.risk.paper_closed_pnl_eur >= 0 ? "+" : ""}${overview.risk.paper_closed_pnl_eur.toFixed(2)} €`
+              : "—"}
           </strong>
         </article>
         <article className="card">
@@ -306,6 +401,126 @@ export default function App() {
           ) : (
             <div className="empty-market">Flux MT4 indisponible.</div>
           )}
+        </div>
+
+        <div className="universe-table">
+          <div className="universe-row universe-head">
+            <span>Actif</span>
+            <span>Prix / source</span>
+            <span>M5/M15</span>
+            <span>Spec</span>
+            <span>Paper</span>
+            <span>État</span>
+          </div>
+          {universe.map((asset) => (
+            <div className="universe-row" key={asset.symbol}>
+              <strong>{asset.symbol}</strong>
+              <span>
+                {asset.price.toLocaleString("fr-FR", { maximumFractionDigits: 5 })}
+                <small>{asset.price_source === "broker_quote" ? " quote" : " close M5"}</small>
+              </span>
+              <span>{asset.has_m5 && asset.has_m15 ? "OK" : "INCOMPLET"}</span>
+              <span>{asset.broker_spec_ready ? "OK" : "MANQUANTE"}</span>
+              <span className={asset.paper_ready ? "positive" : ""}>
+                {asset.paper_ready ? "READY" : "LOCK"}
+              </span>
+              <span className="universe-reason">{asset.reason}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="portfolio-panel">
+        <div className="shadow-heading">
+          <div>
+            <p className="eyebrow">PORTFOLIO MANAGER · 200 € ÉCONOMIQUES</p>
+            <h2>{overview?.portfolio.action.replaceAll("_", " ").toUpperCase() ?? "—"}</h2>
+          </div>
+          <span className="badge">
+            {overview?.portfolio.selected_strategy_id ?? "AUCUNE STRATÉGIE"}
+          </span>
+        </div>
+
+        <div className="metric-grid">
+          <div className="metric">
+            <span>PnL paper clôturé</span>
+            <strong>
+              {overview
+                ? `${overview.risk.paper_closed_pnl_eur >= 0 ? "+" : ""}${overview.risk.paper_closed_pnl_eur.toFixed(2)} €`
+                : "—"}
+            </strong>
+          </div>
+          <div className="metric">
+            <span>Total R</span>
+            <strong>{overview ? `${overview.risk.paper_total_r.toFixed(2)} R` : "—"}</strong>
+          </div>
+          <div className="metric">
+            <span>Risque paper ouvert</span>
+            <strong>{overview ? `${overview.risk.paper_open_risk_eur.toFixed(2)} €` : "—"}</strong>
+          </div>
+          <div className="metric">
+            <span>Budget perte journalier</span>
+            <strong>{overview ? `${overview.risk.remaining_daily_loss_budget_eur.toFixed(2)} €` : "—"}</strong>
+          </div>
+          <div className="metric">
+            <span>Compte broker</span>
+            <strong>{overview?.broker?.is_demo ? "DEMO" : "—"}</strong>
+          </div>
+          <div className="metric">
+            <span>Positions broker observées</span>
+            <strong>{overview?.broker?.observed_positions ?? "—"}</strong>
+          </div>
+        </div>
+
+        <div className="decision-strip">
+          <div>
+            <span className="label">Décision portefeuille</span>
+            <p>{overview?.portfolio.reason ?? "Indisponible"}</p>
+          </div>
+          <div>
+            <span className="label">Solde broker DEMO observé</span>
+            <p>
+              {overview?.broker
+                ? `${overview.broker.balance.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} € — ne pilote pas le sizing`
+                : "Non disponible"}
+            </p>
+          </div>
+        </div>
+
+        <div className="strategy-table">
+          <div className="strategy-row strategy-head">
+            <span>Stratégie</span>
+            <span>Trades</span>
+            <span>Expectancy</span>
+            <span>PF</span>
+            <span>DD</span>
+            <span>Qualification</span>
+          </div>
+          {overview?.paper_strategies.length ? (
+            overview.paper_strategies.map((row) => (
+              <div className="strategy-row" key={row.strategy_id}>
+                <strong>{row.strategy_id}</strong>
+                <span>{row.summary.closed_trades}</span>
+                <span>{row.summary.expectancy_r.toFixed(3)} R</span>
+                <span>{row.summary.profit_factor.toFixed(2)}</span>
+                <span>{row.summary.max_drawdown_r.toFixed(2)} R</span>
+                <span>{row.qualification.state.replaceAll("_", " ").toUpperCase()}</span>
+              </div>
+            ))
+          ) : (
+            <div className="strategy-empty">Aucune preuve paper disponible pour le moment.</div>
+          )}
+        </div>
+
+        <div className="cost-grid">
+          {Object.entries(costs).map(([symbol, cost]) => (
+            <div className="cost-card" key={symbol}>
+              <strong>{symbol}</strong>
+              <span>{cost.samples} mesures spread</span>
+              <span>Moy. {cost.average_spread.toFixed(5)}</span>
+              <span>Max {cost.max_spread.toFixed(5)}</span>
+            </div>
+          ))}
         </div>
       </section>
 

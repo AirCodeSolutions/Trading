@@ -14,6 +14,7 @@ from app.domain.broker import (
     PositionSizeRequest,
     PositionSizeResult,
 )
+from app.domain.live_market import LiveMarketQuote
 from app.domain.market import MarketBar, Timeframe
 from app.domain.opportunity import (
     Mt4OpportunityBacktestRequest,
@@ -33,6 +34,7 @@ from app.services.market_store import MarketStore
 from app.services.mt4_csv import _server_timezone, read_mt4_csv, summarize_mt4_csv
 from app.services.mt4_history import resolve_mt4_history_path
 from app.services.mt4_live_bars import read_closed_bar_snapshot
+from app.services.mt4_live_quotes import read_live_market_quotes
 from app.services.mt4_specs import get_mt4_symbol_spec, list_mt4_symbol_specs
 from app.services.opportunity_backtester import run_opportunity_backtest
 from app.services.opportunity_matrix import run_mt4_portfolio_research
@@ -85,6 +87,17 @@ def risk_size(request: PositionSizeRequest) -> PositionSizeResult:
 @app.post(f"{settings.api_prefix}/markets/quality", response_model=MarketQualityResult)
 def market_quality(request: MarketQualityRequest) -> MarketQualityResult:
     return assess_market(request)
+
+
+@app.get(
+    f"{settings.api_prefix}/market/mt4/live",
+    response_model=list[LiveMarketQuote],
+)
+def mt4_live_market_quotes() -> list[LiveMarketQuote]:
+    return read_live_market_quotes(
+        _mt4_files_dir(),
+        datetime.now(tz=_server_timezone()),
+    )
 
 
 @app.get(f"{settings.api_prefix}/market/mt4/specs", response_model=list[BrokerSymbolSpec])

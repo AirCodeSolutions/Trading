@@ -5,7 +5,6 @@ from zoneinfo import ZoneInfo
 
 from app.services.market_universe import build_market_universe
 
-
 TZ = ZoneInfo("Europe/Athens")
 
 

@@ -248,6 +248,13 @@ def load_shadow_paper_summary(
     gains = sum(result for result in results if result > 0)
     losses = -sum(result for result in results if result < 0)
     profit_factor = gains / losses if losses > 0 else (99.0 if gains > 0 else 0.0)
+    equity = 0.0
+    peak = 0.0
+    max_drawdown = 0.0
+    for result in results:
+        equity += result
+        peak = max(peak, equity)
+        max_drawdown = max(max_drawdown, peak - equity)
 
     return ShadowPaperSummary(
         closed_trades=len(trades),
@@ -256,6 +263,7 @@ def load_shadow_paper_summary(
         total_r=sum(results),
         expectancy_r=(sum(results) / len(results)) if results else 0.0,
         profit_factor=profit_factor,
+        max_drawdown_r=max_drawdown,
         total_pnl_eur=sum(
             trade.pnl_eur or 0.0 for trade in trades
         ),

@@ -8,7 +8,6 @@ from app.services.execution_cost_history import (
     summarize_execution_costs,
 )
 
-
 TZ = ZoneInfo("Europe/Athens")
 
 

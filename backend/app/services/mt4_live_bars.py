@@ -24,7 +24,7 @@ def read_closed_bar_snapshot(
 
     raw_bars = payload.get("bars")
     if not isinstance(raw_bars, dict):
-        raise ValueError("MT4 bar snapshot bars must be an object")
+        raise TypeError("MT4 bar snapshot bars must be an object")
 
     timezone = _server_timezone()
     by_timestamp = {}

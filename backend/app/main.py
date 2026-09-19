@@ -18,6 +18,8 @@ from app.domain.opportunity import (
     Mt4OpportunityBacktestRequest,
     OpportunityBacktestConfig,
     OpportunityBacktestResult,
+    PortfolioResearchRequest,
+    PortfolioResearchResult,
 )
 from app.domain.regime import RegimeSnapshot
 from app.services.admission import assess_strategy
@@ -29,6 +31,7 @@ from app.services.mt4_csv import read_mt4_csv, summarize_mt4_csv
 from app.services.mt4_history import resolve_mt4_history_path
 from app.services.mt4_specs import get_mt4_symbol_spec, list_mt4_symbol_specs
 from app.services.opportunity_backtester import run_opportunity_backtest
+from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.regime import classify_regime
 
 app = FastAPI(title=settings.app_name, version="0.4.0")
@@ -114,6 +117,19 @@ def mt4_opportunity_backtest(
     )
     try:
         return run_opportunity_backtest(bars_m5, bars_m15, config)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post(
+    f"{settings.api_prefix}/research/mt4/matrix",
+    response_model=PortfolioResearchResult,
+)
+def mt4_portfolio_research(
+    request: PortfolioResearchRequest,
+) -> PortfolioResearchResult:
+    try:
+        return run_mt4_portfolio_research(_mt4_files_dir(), request)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

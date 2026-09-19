@@ -16,7 +16,6 @@ from app.domain.broker import (
 )
 from app.domain.live_market import LiveMarketQuote
 from app.domain.market import MarketBar, Timeframe
-from app.domain.portfolio import MarketUniverseAsset, TradingOverview
 from app.domain.opportunity import (
     Mt4OpportunityBacktestRequest,
     OpportunityBacktestConfig,
@@ -24,6 +23,7 @@ from app.domain.opportunity import (
     PortfolioResearchRequest,
     PortfolioResearchResult,
 )
+from app.domain.portfolio import MarketUniverseAsset, TradingOverview
 from app.domain.regime import RegimeSnapshot
 from app.domain.shadow import ShadowCollectionResult, ShadowOpportunityDiagnostic
 from app.domain.shadow_paper import ShadowPaperSummary

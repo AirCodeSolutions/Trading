@@ -44,6 +44,8 @@ class ShadowOpportunityDiagnostic(BaseModel):
     reclaim_atr_m5: float | None = None
     signal_close_location: float | None = Field(default=None, ge=0, le=1)
     structural_stop: float | None = None
+    target_r: float | None = Field(default=None, gt=0)
+    max_holding_bars: int | None = Field(default=None, gt=0)
     base_risk: ShadowSizingSnapshot | None = None
     max_risk: ShadowSizingSnapshot | None = None
     reason: str

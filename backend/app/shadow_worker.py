@@ -20,8 +20,8 @@ def main() -> None:
                 datetime.now(tz=_server_timezone()),
             )
             print(result.model_dump_json(), flush=True)
-        except Exception as exc:
-            print(f'{{"shadow_worker_error": {exc!r}}}', flush=True)
+        except (OSError, TypeError, ValueError) as exc:
+            print(json.dumps({"shadow_worker_error": repr(exc)}), flush=True)
         time.sleep(settings.shadow_collection_interval_seconds)
 
 

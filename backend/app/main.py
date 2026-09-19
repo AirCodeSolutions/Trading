@@ -23,7 +23,7 @@ from app.domain.opportunity import (
     PortfolioResearchResult,
 )
 from app.domain.regime import RegimeSnapshot
-from app.domain.shadow import ShadowOpportunityDiagnostic
+from app.domain.shadow import ShadowCollectionResult, ShadowOpportunityDiagnostic
 from app.services.admission import assess_strategy
 from app.services.approval_gate import ApprovalGate
 from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
@@ -37,6 +37,7 @@ from app.services.mt4_specs import get_mt4_symbol_spec, list_mt4_symbol_specs
 from app.services.opportunity_backtester import run_opportunity_backtest
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.regime import classify_regime
+from app.services.shadow_collector import collect_btc_break_retest_once
 
 app = FastAPI(title=settings.app_name, version="0.4.0")
 market_store = MarketStore()
@@ -116,6 +117,24 @@ def btc_break_retest_shadow() -> ShadowOpportunityDiagnostic:
             spec,
             datetime.now(tz=_server_timezone()),
         )
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post(
+    f"{settings.api_prefix}/shadow/mt4/btc/break-retest/collect",
+    response_model=ShadowCollectionResult,
+)
+def collect_btc_break_retest_shadow() -> ShadowCollectionResult:
+    ledger_path = settings.shadow_ledger_dir / "BTCUSD_break_retest.jsonl"
+    try:
+        return collect_btc_break_retest_once(
+            _mt4_files_dir(),
+            ledger_path,
+            datetime.now(tz=_server_timezone()),
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

@@ -1,6 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
+from app.domain.market import Timeframe
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.shadow import ShadowCollectionResult
 from app.services.market_universe import build_market_universe
@@ -37,13 +38,13 @@ def collect_all_shadow_once(
         bars_m5 = load_closed_market_bars(
             files_dir,
             asset.symbol,
-            timeframe=_m5(),
+            timeframe=Timeframe.M5,
             evaluated_at=evaluated_at,
         )
         bars_m15 = load_closed_market_bars(
             files_dir,
             asset.symbol,
-            timeframe=_m15(),
+            timeframe=Timeframe.M15,
             evaluated_at=evaluated_at,
         )
         if len(bars_m5) < 30 or len(bars_m15) < 50:
@@ -80,14 +81,3 @@ def collect_all_shadow_once(
 
     return results
 
-
-def _m5():
-    from app.domain.market import Timeframe
-
-    return Timeframe.M5
-
-
-def _m15():
-    from app.domain.market import Timeframe
-
-    return Timeframe.M15

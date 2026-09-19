@@ -13,8 +13,8 @@ from app.domain.shadow_paper import (
 )
 from app.domain.trading import Side
 
-TARGET_R = 1.8
-MAX_HOLDING_BARS = 18
+DEFAULT_TARGET_R = 1.8
+DEFAULT_MAX_HOLDING_BARS = 18
 RECENT_TRADES_LIMIT = 10
 
 
@@ -83,10 +83,14 @@ def create_paper_trade(
     if risk_distance <= 0:
         raise ValueError("paper trade stop geometry is invalid")
 
+    target_r = diagnostic.target_r or DEFAULT_TARGET_R
+    max_holding_bars = (
+        diagnostic.max_holding_bars or DEFAULT_MAX_HOLDING_BARS
+    )
     target = (
-        entry + TARGET_R * risk_distance
+        entry + target_r * risk_distance
         if side == Side.BUY
-        else entry - TARGET_R * risk_distance
+        else entry - target_r * risk_distance
     )
     signal_at = diagnostic.latest_closed_m5_at + timedelta(minutes=5)
     trade_id = (
@@ -109,8 +113,8 @@ def create_paper_trade(
         lots=diagnostic.base_risk.lots,
         risk_eur=diagnostic.base_risk.expected_loss_eur,
         risk_distance=risk_distance,
-        target_r=TARGET_R,
-        max_holding_bars=MAX_HOLDING_BARS,
+        target_r=target_r,
+        max_holding_bars=max_holding_bars,
     )
 
 

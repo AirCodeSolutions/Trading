@@ -1,6 +1,6 @@
 from bisect import bisect_right
 from collections.abc import Sequence
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from app.domain.market import MarketBar
 from app.domain.opportunity import OpportunityCandidate, OpportunityMechanism
@@ -38,15 +38,15 @@ def _atr_series(bars: Sequence[MarketBar], period: int = 14) -> list[float]:
 
 def _regime_timeline(
     bars_m15: Sequence[MarketBar],
-) -> tuple[list[object], list[RegimeSnapshot]]:
+) -> tuple[list[datetime], list[RegimeSnapshot]]:
     snapshots = RegimeReplay().replay(bars_m15)
     close_times = [bar.timestamp + timedelta(minutes=15) for bar in bars_m15]
     return close_times, snapshots
 
 
 def _regime_at(
-    signal_close: object,
-    close_times: Sequence[object],
+    signal_close: datetime,
+    close_times: Sequence[datetime],
     snapshots: Sequence[RegimeSnapshot],
 ) -> RegimeSnapshot | None:
     index = bisect_right(close_times, signal_close) - 1
@@ -64,7 +64,7 @@ def generate_candidates(
     close_times, regimes = _regime_timeline(bars_m15)
     atr_m5 = _atr_series(bars_m5)
     candidates: list[OpportunityCandidate] = []
-    last_shock_at = None
+    last_shock_at: datetime | None = None
 
     for index in range(25, len(bars_m5) - 1):
         bar = bars_m5[index]

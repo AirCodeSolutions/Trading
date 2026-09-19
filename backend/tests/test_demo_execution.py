@@ -29,7 +29,6 @@ from app.services.demo_execution import (
     submit_selected_demo_order,
 )
 
-
 TZ = ZoneInfo("Europe/Athens")
 NOW = datetime(2026, 9, 19, 18, 30, tzinfo=TZ)
 STRATEGY = "BTCUSD:break_retest_reaccel"

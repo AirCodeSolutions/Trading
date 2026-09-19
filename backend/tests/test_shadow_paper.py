@@ -20,7 +20,6 @@ from app.services.shadow_paper import (
     resolve_open_trade,
 )
 
-
 TZ = ZoneInfo("Europe/Athens")
 START = datetime(2026, 9, 19, 13, 0, tzinfo=TZ)
 

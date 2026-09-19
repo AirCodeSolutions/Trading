@@ -4,7 +4,8 @@ from pathlib import Path
 
 from app.domain.live_market import LiveMarketQuote, MarketFeedStatus
 from app.domain.market import Timeframe
-from app.services.mt4_csv import mt4_epoch_to_server_datetime
+from app.services.mt4_csv import mt4_epoch_to_server_datetime, read_mt4_csv
+from app.services.mt4_history import resolve_mt4_history_path
 from app.services.mt4_live_bars import read_closed_bar_snapshot
 
 LIVE_MAX_AGE_SECONDS = 120
@@ -54,17 +55,27 @@ def _read_quote(
     last_closed_m5_at = None
     recent_change_pct = None
     bars_path = files_dir / f"mt4_bars_{symbol}_M5.json"
+    bars = []
     if bars_path.is_file():
         try:
             bars = read_closed_bar_snapshot(bars_path, symbol, Timeframe.M5)
         except (OSError, TypeError, ValueError, json.JSONDecodeError):
             bars = []
-        if bars:
-            recent = bars[-SPARKLINE_BARS:]
-            closes = [bar.close for bar in recent]
-            last_closed_m5_at = bars[-1].timestamp
-            if len(closes) >= 2 and closes[0] > 0:
-                recent_change_pct = ((closes[-1] - closes[0]) / closes[0]) * 100
+
+    if not bars:
+        history_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M5)
+        if history_path is not None:
+            try:
+                bars = read_mt4_csv(history_path, symbol, Timeframe.M5)
+            except (OSError, TypeError, ValueError):
+                bars = []
+
+    if bars:
+        recent = bars[-SPARKLINE_BARS:]
+        closes = [bar.close for bar in recent]
+        last_closed_m5_at = bars[-1].timestamp
+        if len(closes) >= 2 and closes[0] > 0:
+            recent_change_pct = ((closes[-1] - closes[0]) / closes[0]) * 100
 
     return LiveMarketQuote(
         symbol=symbol,

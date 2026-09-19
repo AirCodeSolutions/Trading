@@ -1,0 +1,85 @@
+from collections import Counter
+from datetime import datetime
+from enum import StrEnum
+
+from pydantic import BaseModel, Field
+
+from app.domain.admission import AdmissionDecision
+from app.domain.broker import BrokerSymbolSpec
+from app.domain.trading import Side
+
+
+class OpportunityMechanism(StrEnum):
+    POST_SHOCK_CONTINUATION = "post_shock_continuation"
+    BREAK_RETEST_REACCEL = "break_retest_reaccel"
+    FAILED_AUCTION_REVERSAL = "failed_auction_reversal"
+
+
+class ResearchSplit(BaseModel):
+    train_end: datetime
+    validation_end: datetime
+
+
+class OpportunityBacktestConfig(BaseModel):
+    spec: BrokerSymbolSpec
+    mechanism: OpportunityMechanism
+    split: ResearchSplit
+    requested_risk_fraction: float | None = Field(default=None, gt=0, le=1)
+    slippage_spread_fraction: float = Field(default=0.25, ge=0, le=3)
+
+
+class OpportunityCandidate(BaseModel):
+    symbol: str
+    mechanism: OpportunityMechanism
+    side: Side
+    signal_at: datetime
+    entry_at: datetime
+    signal_index: int = Field(ge=0)
+    entry_index: int = Field(ge=0)
+    structural_stop: float = Field(gt=0)
+    target_r: float = Field(gt=0)
+    max_holding_bars: int = Field(gt=0)
+    reason: str
+
+
+class TradeOutcome(BaseModel):
+    symbol: str
+    mechanism: OpportunityMechanism
+    side: Side
+    signal_at: datetime
+    entry_at: datetime
+    exit_at: datetime
+    lots: float = Field(gt=0)
+    risk_eur: float = Field(gt=0)
+    result_r: float
+    pnl_eur: float
+    execution_cost_r: float = Field(ge=0)
+    exit_reason: str
+
+
+class PerformanceSummary(BaseModel):
+    trades: int = Field(ge=0)
+    total_r: float
+    expectancy_r: float
+    profit_factor: float = Field(ge=0)
+    win_rate: float = Field(ge=0, le=1)
+    max_drawdown_r: float = Field(ge=0)
+    total_pnl_eur: float
+    average_execution_cost_r: float = Field(ge=0)
+
+
+class OpportunityBacktestResult(BaseModel):
+    symbol: str
+    mechanism: OpportunityMechanism
+    candidates: int = Field(ge=0)
+    executed: int = Field(ge=0)
+    rejected: int = Field(ge=0)
+    rejection_reasons: dict[str, int]
+    train: PerformanceSummary
+    validation: PerformanceSummary
+    holdout: PerformanceSummary
+    admission: AdmissionDecision
+
+
+def rejection_counter(values: list[str]) -> dict[str, int]:
+    return dict(Counter(values))

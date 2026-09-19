@@ -7,14 +7,24 @@ TAG="trading_new_autostart"
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
-mkdir -p "$RUNTIME/logs"
+mkdir -p "$RUNTIME/logs" "$RUNTIME/shadow"
 
-(crontab -l 2>/dev/null || true)   | grep -v "$TAG"   >"$TMP"
+if [ ! -f "$RUNTIME/macro_events.json" ]; then
+  cp "$BASE/backend/config/macro_events_2026.json" "$RUNTIME/macro_events.json"
+fi
+
+(
+  cd "$BASE/backend"
+  .venv/bin/python scripts/sync_macro_calendar.py     --base config/macro_events_2026.json     --output "$RUNTIME/macro_events.json"
+) >>"$RUNTIME/logs/macro-sync.log" 2>&1 || true
+
+(crontab -l 2>/dev/null || true)   | awk -v tag="$TAG" 'index($0, tag) == 0'   >"$TMP"
 
 cat >>"$TMP" <<EOF
 @reboot sleep 20 && bash $BASE/ops/start_trading.sh >> $RUNTIME/logs/autostart.log 2>&1 # $TAG
 */5 * * * * bash $BASE/ops/start_trading.sh >> $RUNTIME/logs/watchdog.log 2>&1 # $TAG
+17 5 * * * cd $BASE/backend && .venv/bin/python scripts/sync_macro_calendar.py --base config/macro_events_2026.json --output $RUNTIME/macro_events.json >> $RUNTIME/logs/macro-sync.log 2>&1 # $TAG
 EOF
 
 crontab "$TMP"
-echo "Trading autostart installed for $BASE"
+echo "Trading autostart and macro sync installed for $BASE"

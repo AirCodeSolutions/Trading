@@ -21,6 +21,8 @@ class ResearchSplit(BaseModel):
 
     @model_validator(mode="after")
     def validate_order(self) -> "ResearchSplit":
+        if self.train_end.utcoffset() is None or self.validation_end.utcoffset() is None:
+            raise ValueError("research split datetimes must be timezone-aware")
         if self.validation_end <= self.train_end:
             raise ValueError("validation_end must be after train_end")
         return self

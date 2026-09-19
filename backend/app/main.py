@@ -44,6 +44,7 @@ from app.services.opportunity_backtester import run_opportunity_backtest
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.portfolio_overview import build_trading_overview
 from app.services.regime import classify_regime
+from app.services.runtime_admission_registry import save_research_admissions
 from app.services.shadow_collector import collect_btc_break_retest_once
 from app.services.shadow_paper import load_shadow_paper_summary
 
@@ -239,7 +240,12 @@ def mt4_portfolio_research(
     request: PortfolioResearchRequest,
 ) -> PortfolioResearchResult:
     try:
-        return run_mt4_portfolio_research(_mt4_files_dir(), request)
+        result = run_mt4_portfolio_research(_mt4_files_dir(), request)
+        save_research_admissions(
+            settings.shadow_ledger_dir / "strategy_admissions.json",
+            result,
+        )
+        return result
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

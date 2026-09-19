@@ -7,7 +7,6 @@ from app.domain.regime import MarketRegime
 from app.domain.shadow import ShadowOpportunityDiagnostic, ShadowSignalState
 from app.services.shadow_ledger import append_shadow_observation
 
-
 TZ = ZoneInfo("Europe/Athens")
 
 

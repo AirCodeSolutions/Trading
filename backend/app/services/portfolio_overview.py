@@ -13,7 +13,6 @@ from app.services.broker_account import read_broker_demo_snapshot
 from app.services.prospective_qualification import assess_prospective
 from app.services.shadow_paper import load_shadow_paper_summary
 
-
 BTC_BREAK_RETEST_STRATEGY_ID = "BTCUSD:break_retest_reaccel"
 
 

@@ -42,4 +42,5 @@ def test_overview_keeps_demo_balance_separate_from_200_eur_reference(
     assert overview.broker.balance == 873900
     assert overview.risk.reference_capital_eur == 200
     assert overview.portfolio.action == "no_trade"
-    assert overview.qualifications[0].state == "collecting"
+    assert overview.qualifications == []
+    assert overview.paper_strategies == []

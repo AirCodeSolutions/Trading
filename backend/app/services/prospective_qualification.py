@@ -4,7 +4,6 @@ from app.domain.portfolio import (
 )
 from app.domain.shadow_paper import ShadowPaperSummary
 
-
 MIN_PROSPECTIVE_TRADES = 20
 MIN_PROFIT_FACTOR = 1.05
 MAX_DRAWDOWN_R = 12.0

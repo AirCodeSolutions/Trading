@@ -1,12 +1,11 @@
 import json
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from urllib.request import Request, urlopen
 
 from app.domain.macro import MacroEvent, MacroImpact
 from app.services.macro_gate import load_macro_events
-
 
 BLS_ICS_URL = "https://www.bls.gov/schedule/news_release/bls.ics"
 _HIGH_IMPACT = ("Employment Situation", "Consumer Price Index")
@@ -108,10 +107,10 @@ def _dtstart(block: str) -> datetime | None:
 
     timezone_name = match.group(1) or "America/New_York"
     try:
-        from zoneinfo import ZoneInfo
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
         timezone = ZoneInfo(timezone_name)
-    except Exception:
+    except ZoneInfoNotFoundError:
         return None
 
     try:

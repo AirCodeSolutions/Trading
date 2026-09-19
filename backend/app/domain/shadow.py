@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.regime import MarketRegime
+from app.domain.shadow_paper import ShadowPaperSummary
 from app.domain.trading import Side
 
 
@@ -52,3 +53,4 @@ class ShadowCollectionResult(BaseModel):
     appended: bool
     ledger_path: str
     diagnostic: ShadowOpportunityDiagnostic
+    paper: ShadowPaperSummary | None = None

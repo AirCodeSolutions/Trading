@@ -94,7 +94,10 @@ def scan_btc_break_retest_shadow(
     if side == Side.BUY:
         structural_stop = min(raw_stop, entry - 0.65 * current_atr_m5)
     else:
-        structural_stop = max(raw_stop, entry + 0.65 * current_atr_m5)
+        structural_stop = max(
+            raw_stop + spec.spread,
+            entry + 0.65 * current_atr_m5,
+        )
 
     base_sizing = _sizing_snapshot(
         spec,

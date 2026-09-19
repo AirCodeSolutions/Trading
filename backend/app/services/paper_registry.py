@@ -5,7 +5,6 @@ from app.domain.portfolio import PaperStrategyRuntime
 from app.services.prospective_qualification import assess_prospective
 from app.services.shadow_paper import load_shadow_paper_summary
 
-
 _SLUG_TO_MECHANISM = {
     "break_retest": OpportunityMechanism.BREAK_RETEST_REACCEL,
     "failed_auction": OpportunityMechanism.FAILED_AUCTION_REVERSAL,

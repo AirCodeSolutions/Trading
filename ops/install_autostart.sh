@@ -12,8 +12,8 @@ mkdir -p "$RUNTIME/logs"
 (crontab -l 2>/dev/null || true)   | grep -v "$TAG"   >"$TMP"
 
 cat >>"$TMP" <<EOF
-@reboot sleep 20 && $BASE/ops/start_trading.sh >> $RUNTIME/logs/autostart.log 2>&1 # $TAG
-*/5 * * * * $BASE/ops/start_trading.sh >> $RUNTIME/logs/watchdog.log 2>&1 # $TAG
+@reboot sleep 20 && bash $BASE/ops/start_trading.sh >> $RUNTIME/logs/autostart.log 2>&1 # $TAG
+*/5 * * * * bash $BASE/ops/start_trading.sh >> $RUNTIME/logs/watchdog.log 2>&1 # $TAG
 EOF
 
 crontab "$TMP"

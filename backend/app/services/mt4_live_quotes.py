@@ -7,7 +7,6 @@ from app.domain.market import Timeframe
 from app.services.mt4_csv import mt4_epoch_to_server_datetime
 from app.services.mt4_live_bars import read_closed_bar_snapshot
 
-
 LIVE_MAX_AGE_SECONDS = 120
 SPARKLINE_BARS = 48
 

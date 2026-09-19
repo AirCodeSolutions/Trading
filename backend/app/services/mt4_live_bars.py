@@ -1,19 +1,8 @@
 import json
-from datetime import UTC, datetime
 from pathlib import Path
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from app.core.config import settings
 from app.domain.market import MarketBar, Timeframe
-
-
-def _server_timezone() -> ZoneInfo:
-    try:
-        return ZoneInfo(settings.mt4_server_timezone)
-    except ZoneInfoNotFoundError as exc:
-        raise ValueError(
-            f"unknown MT4 server timezone: {settings.mt4_server_timezone}"
-        ) from exc
+from app.services.mt4_csv import _server_timezone, mt4_epoch_to_server_datetime
 
 
 def read_closed_bar_snapshot(
@@ -38,13 +27,13 @@ def read_closed_bar_snapshot(
         raise ValueError("MT4 bar snapshot bars must be an object")
 
     timezone = _server_timezone()
-    by_timestamp: dict[datetime, MarketBar] = {}
+    by_timestamp = {}
     for raw in raw_bars.values():
         try:
-            timestamp = datetime.fromtimestamp(
+            timestamp = mt4_epoch_to_server_datetime(
                 int(raw["timestamp"]),
-                tz=UTC,
-            ).astimezone(timezone)
+                timezone,
+            )
             bar = MarketBar(
                 symbol=symbol,
                 timeframe=expected_timeframe,

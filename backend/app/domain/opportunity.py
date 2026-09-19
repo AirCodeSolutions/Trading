@@ -15,6 +15,10 @@ class OpportunityMechanism(StrEnum):
     FAILED_AUCTION_REVERSAL = "failed_auction_reversal"
 
 
+def all_mechanisms() -> list[OpportunityMechanism]:
+    return list(OpportunityMechanism)
+
+
 class ResearchSplit(BaseModel):
     train_end: datetime
     validation_end: datetime
@@ -40,6 +44,14 @@ class Mt4OpportunityBacktestRequest(BaseModel):
     symbol: str = Field(min_length=1, max_length=32)
     mechanism: OpportunityMechanism
     split: ResearchSplit
+    requested_risk_fraction: float | None = Field(default=None, gt=0, le=1)
+    slippage_spread_fraction: float = Field(default=0.25, ge=0, le=3)
+
+
+class PortfolioResearchRequest(BaseModel):
+    split: ResearchSplit
+    symbols: list[str] | None = None
+    mechanisms: list[OpportunityMechanism] = Field(default_factory=all_mechanisms)
     requested_risk_fraction: float | None = Field(default=None, gt=0, le=1)
     slippage_spread_fraction: float = Field(default=0.25, ge=0, le=3)
 
@@ -95,6 +107,13 @@ class OpportunityBacktestResult(BaseModel):
     validation: PerformanceSummary
     holdout: PerformanceSummary
     admission: AdmissionDecision
+
+
+class PortfolioResearchResult(BaseModel):
+    results: list[OpportunityBacktestResult]
+    skipped_symbols: dict[str, str]
+    qualified_strategy_id: str | None
+    selection_reason: str
 
 
 def rejection_counter(values: list[str]) -> dict[str, int]:

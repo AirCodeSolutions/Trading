@@ -3,6 +3,9 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
+from app.domain.opportunity import OpportunityMechanism
+from app.domain.shadow_paper import ShadowPaperSummary
+
 
 class MarketPriceSource(StrEnum):
     BROKER_QUOTE = "broker_quote"
@@ -40,6 +43,14 @@ class ProspectiveQualification(BaseModel):
     profit_factor: float = Field(ge=0)
     max_drawdown_r: float = Field(ge=0)
     reason: str
+
+
+class PaperStrategyRuntime(BaseModel):
+    strategy_id: str
+    symbol: str
+    mechanism: OpportunityMechanism
+    summary: ShadowPaperSummary
+    qualification: ProspectiveQualification
 
 
 class PortfolioAction(StrEnum):
@@ -82,3 +93,4 @@ class TradingOverview(BaseModel):
     risk: PortfolioRiskSnapshot
     portfolio: PortfolioDecision
     qualifications: list[ProspectiveQualification]
+    paper_strategies: list[PaperStrategyRuntime] = Field(default_factory=list)

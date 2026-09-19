@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type RuntimeConfig = {
   execution_mode: string;
@@ -33,8 +33,37 @@ type ShadowDiagnostic = {
   reason: string;
 };
 
+type MarketQuote = {
+  symbol: string;
+  as_of: string;
+  bid: number;
+  ask: number;
+  mid: number;
+  spread: number;
+  spread_pct: number;
+  digits: number;
+  age_seconds: number;
+  status: "live" | "stale";
+  last_closed_m5_at: string | null;
+  recent_change_pct: number | null;
+  recent_m5_closes: number[];
+};
+
 function formatNumber(value: number | null | undefined, digits = 2) {
   return value == null ? "—" : value.toFixed(digits);
+}
+
+function formatPrice(value: number, digits: number) {
+  return value.toLocaleString("fr-FR", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits
+  });
+}
+
+function formatAge(seconds: number) {
+  if (seconds < 60) return `${Math.round(seconds)} s`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)} min`;
+  return `${(seconds / 3600).toFixed(1)} h`;
 }
 
 function stateLabel(state: ShadowDiagnostic["state"] | undefined) {
@@ -44,15 +73,94 @@ function stateLabel(state: ShadowDiagnostic["state"] | undefined) {
   return "—";
 }
 
+function Sparkline({ values }: { values: number[] }) {
+  const points = useMemo(() => {
+    if (values.length < 2) return "";
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    return values
+      .map((value, index) => {
+        const x = (index / (values.length - 1)) * 100;
+        const y = 34 - ((value - min) / range) * 30;
+        return `${x.toFixed(2)},${y.toFixed(2)}`;
+      })
+      .join(" ");
+  }, [values]);
+
+  return (
+    <svg className="sparkline" viewBox="0 0 100 38" role="img" aria-label="Évolution récente M5">
+      <polyline points={points} fill="none" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+function MarketCard({ quote }: { quote: MarketQuote }) {
+  const changeClass =
+    quote.recent_change_pct == null
+      ? ""
+      : quote.recent_change_pct >= 0
+        ? "positive"
+        : "negative";
+
+  return (
+    <article className="market-card">
+      <div className="market-card-top">
+        <div>
+          <span className="market-symbol">{quote.symbol}</span>
+          <span className={`feed-status feed-${quote.status}`}>
+            {quote.status === "live" ? "LIVE" : "STALE"}
+          </span>
+        </div>
+        <span className="quote-age">{formatAge(quote.age_seconds)}</span>
+      </div>
+
+      <div className="market-price">
+        {formatPrice(quote.mid, quote.digits)}
+      </div>
+
+      <div className="quote-row">
+        <span>
+          BID <strong>{formatPrice(quote.bid, quote.digits)}</strong>
+        </span>
+        <span>
+          ASK <strong>{formatPrice(quote.ask, quote.digits)}</strong>
+        </span>
+      </div>
+
+      <Sparkline values={quote.recent_m5_closes} />
+
+      <div className="market-footer">
+        <span>
+          Spread <strong>{formatPrice(quote.spread, quote.digits)}</strong>
+        </span>
+        <span className={changeClass}>
+          M5 récent{" "}
+          <strong>
+            {quote.recent_change_pct == null
+              ? "—"
+              : `${quote.recent_change_pct >= 0 ? "+" : ""}${quote.recent_change_pct.toFixed(2)} %`}
+          </strong>
+        </span>
+      </div>
+
+      <div className="quote-time">
+        Dernière cote : {new Date(quote.as_of).toLocaleString("fr-FR")}
+      </div>
+    </article>
+  );
+}
+
 export default function App() {
   const [config, setConfig] = useState<RuntimeConfig | null>(null);
   const [shadow, setShadow] = useState<ShadowDiagnostic | null>(null);
+  const [quotes, setQuotes] = useState<MarketQuote[]>([]);
   const [status, setStatus] = useState("Connexion au backend…");
 
   useEffect(() => {
     let active = true;
 
-    const refresh = async () => {
+    const refreshCore = async () => {
       try {
         const [healthResponse, configResponse, shadowResponse] = await Promise.all([
           fetch("/api/v1/health"),
@@ -76,13 +184,37 @@ export default function App() {
       }
     };
 
-    void refresh();
-    const timer = window.setInterval(refresh, 30_000);
+    void refreshCore();
+    const timer = window.setInterval(refreshCore, 30_000);
     return () => {
       active = false;
       window.clearInterval(timer);
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const refreshQuotes = async () => {
+      try {
+        const response = await fetch("/api/v1/market/mt4/live");
+        if (!response.ok) throw new Error("market feed unavailable");
+        const payload = (await response.json()) as MarketQuote[];
+        if (active) setQuotes(payload);
+      } catch {
+        if (active) setQuotes([]);
+      }
+    };
+
+    void refreshQuotes();
+    const timer = window.setInterval(refreshQuotes, 5_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const liveCount = quotes.filter((quote) => quote.status === "live").length;
 
   return (
     <main className="shell">
@@ -90,8 +222,8 @@ export default function App() {
         <p className="eyebrow">M5 / M15 · MT4 · REGIME-FIRST</p>
         <h1>Trading Control Center</h1>
         <p className="subtitle">
-          Le système cherche l’edge avant de chercher le trade. Le live reste
-          verrouillé tant qu’aucune stratégie n’est qualifiée.
+          Marché réel MT4, détection de régime et collecte SHADOW dans une vue unique.
+          Le live trading reste verrouillé tant qu’aucune stratégie n’est qualifiée.
         </p>
       </header>
 
@@ -101,12 +233,12 @@ export default function App() {
           <strong>{status}</strong>
         </article>
         <article className="card">
-          <span className="label">Environnement</span>
-          <strong>{config?.execution_mode ?? "—"}</strong>
+          <span className="label">Flux marché</span>
+          <strong>{quotes.length ? `${liveCount}/${quotes.length} LIVE` : "—"}</strong>
         </article>
         <article className="card">
-          <span className="label">Décision</span>
-          <strong>{config?.decision_mode ?? "—"}</strong>
+          <span className="label">Environnement</span>
+          <strong>{config?.execution_mode ?? "—"}</strong>
         </article>
         <article className="card">
           <span className="label">Capital référence</span>
@@ -122,6 +254,27 @@ export default function App() {
           <span className="label">Live trading</span>
           <strong>{config?.live_trading_enabled ? "ACTIF" : "VERROUILLÉ"}</strong>
         </article>
+      </section>
+
+      <section className="market-section">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">MARKET FEED · MT4</p>
+            <h2>Prix réels des actifs</h2>
+          </div>
+          <p>
+            Rafraîchissement toutes les 5 secondes. Une cote ancienne est marquée STALE
+            et n’est jamais présentée comme un prix temps réel.
+          </p>
+        </div>
+
+        <div className="market-grid">
+          {quotes.length ? (
+            quotes.map((quote) => <MarketCard key={quote.symbol} quote={quote} />)
+          ) : (
+            <div className="empty-market">Flux MT4 indisponible.</div>
+          )}
+        </div>
       </section>
 
       <section className="shadow-panel">

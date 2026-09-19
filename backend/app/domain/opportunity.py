@@ -2,7 +2,7 @@ from collections import Counter
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.domain.admission import AdmissionDecision
 from app.domain.broker import BrokerSymbolSpec
@@ -19,9 +19,23 @@ class ResearchSplit(BaseModel):
     train_end: datetime
     validation_end: datetime
 
+    @model_validator(mode="after")
+    def validate_order(self) -> "ResearchSplit":
+        if self.validation_end <= self.train_end:
+            raise ValueError("validation_end must be after train_end")
+        return self
+
 
 class OpportunityBacktestConfig(BaseModel):
     spec: BrokerSymbolSpec
+    mechanism: OpportunityMechanism
+    split: ResearchSplit
+    requested_risk_fraction: float | None = Field(default=None, gt=0, le=1)
+    slippage_spread_fraction: float = Field(default=0.25, ge=0, le=3)
+
+
+class Mt4OpportunityBacktestRequest(BaseModel):
+    symbol: str = Field(min_length=1, max_length=32)
     mechanism: OpportunityMechanism
     split: ResearchSplit
     requested_risk_fraction: float | None = Field(default=None, gt=0, le=1)

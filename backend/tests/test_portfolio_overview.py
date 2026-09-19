@@ -5,7 +5,6 @@ from zoneinfo import ZoneInfo
 
 from app.services.portfolio_overview import build_trading_overview
 
-
 TZ = ZoneInfo("Europe/Athens")
 
 

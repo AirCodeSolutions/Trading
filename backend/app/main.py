@@ -25,6 +25,7 @@ from app.domain.opportunity import (
 )
 from app.domain.regime import RegimeSnapshot
 from app.domain.shadow import ShadowCollectionResult, ShadowOpportunityDiagnostic
+from app.domain.shadow_paper import ShadowPaperSummary
 from app.services.admission import assess_strategy
 from app.services.approval_gate import ApprovalGate
 from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
@@ -40,6 +41,7 @@ from app.services.opportunity_backtester import run_opportunity_backtest
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.regime import classify_regime
 from app.services.shadow_collector import collect_btc_break_retest_once
+from app.services.shadow_paper import load_shadow_paper_summary
 
 app = FastAPI(title=settings.app_name, version="0.4.0")
 market_store = MarketStore()
@@ -132,6 +134,16 @@ def btc_break_retest_shadow() -> ShadowOpportunityDiagnostic:
         )
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get(
+    f"{settings.api_prefix}/shadow/mt4/btc/break-retest/paper",
+    response_model=ShadowPaperSummary,
+)
+def btc_break_retest_paper_summary() -> ShadowPaperSummary:
+    state_path = settings.shadow_ledger_dir / "BTCUSD_break_retest_paper_state.json"
+    trades_path = settings.shadow_ledger_dir / "BTCUSD_break_retest_paper_trades.jsonl"
+    return load_shadow_paper_summary(state_path, trades_path)
 
 
 @app.post(

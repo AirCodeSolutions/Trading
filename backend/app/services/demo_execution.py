@@ -17,7 +17,6 @@ from app.domain.macro import MacroGateStatus
 from app.domain.portfolio import PortfolioAction, TradingOverview
 from app.domain.trading import Side
 
-
 COMMAND_FILE = "trading_demo_command.csv"
 RESULT_FILE = "trading_demo_result.csv"
 POSITIONS_FILE = "trading_demo_positions.csv"

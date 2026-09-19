@@ -205,3 +205,157 @@ h1 {
     flex-direction: column;
   }
 }
+
+
+.market-section {
+  margin-top: 14px;
+  padding: 30px;
+  border: 1px solid #1c2b3a;
+  border-radius: 18px;
+  background: rgba(13, 24, 35, 0.82);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.22);
+}
+
+.section-heading {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: end;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: 32px;
+  letter-spacing: -0.035em;
+}
+
+.section-heading > p {
+  margin: 0;
+  color: #9cabbc;
+  line-height: 1.6;
+}
+
+.market-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.market-card {
+  min-height: 290px;
+  padding: 20px;
+  border: 1px solid #223446;
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(19, 34, 48, 0.92), rgba(8, 17, 26, 0.92));
+}
+
+.market-card-top,
+.market-footer,
+.quote-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+}
+
+.market-symbol {
+  margin-right: 10px;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.feed-status {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.feed-live {
+  background: rgba(120, 216, 199, 0.12);
+  color: #78d8c7;
+}
+
+.feed-stale {
+  background: rgba(244, 190, 90, 0.1);
+  color: #f4be5a;
+}
+
+.quote-age,
+.quote-time {
+  color: #718297;
+  font-size: 11px;
+}
+
+.market-price {
+  margin-top: 26px;
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.quote-row {
+  margin-top: 16px;
+  color: #718297;
+  font-size: 11px;
+}
+
+.quote-row strong,
+.market-footer strong {
+  margin-left: 6px;
+  color: #d7e2ee;
+}
+
+.sparkline {
+  width: 100%;
+  height: 74px;
+  margin-top: 16px;
+  overflow: visible;
+}
+
+.sparkline polyline {
+  stroke: #78d8c7;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.market-footer {
+  padding-top: 12px;
+  border-top: 1px solid #1c2b3a;
+  color: #718297;
+  font-size: 11px;
+}
+
+.market-footer .positive strong {
+  color: #78d8c7;
+}
+
+.market-footer .negative strong {
+  color: #f08c8c;
+}
+
+.quote-time {
+  margin-top: 12px;
+}
+
+.empty-market {
+  grid-column: 1 / -1;
+  padding: 28px;
+  border: 1px dashed #2b3c4c;
+  border-radius: 14px;
+  color: #9cabbc;
+  text-align: center;
+}
+
+@media (max-width: 780px) {
+  .section-heading {
+    grid-template-columns: 1fr;
+  }
+}

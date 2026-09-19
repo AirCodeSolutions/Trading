@@ -47,7 +47,7 @@ def build_market_universe(
             quote_live = False
 
         research_ready = has_m5 and has_m15
-        paper_ready = research_ready and spec_ready and quote is not None
+        paper_ready = research_ready and spec_ready and quote is not None and quote_live
         reason = _reason(
             research_ready=research_ready,
             spec_ready=spec_ready,

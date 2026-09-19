@@ -46,3 +46,9 @@ class ShadowOpportunityDiagnostic(BaseModel):
     base_risk: ShadowSizingSnapshot | None = None
     max_risk: ShadowSizingSnapshot | None = None
     reason: str
+
+
+class ShadowCollectionResult(BaseModel):
+    appended: bool
+    ledger_path: str
+    diagnostic: ShadowOpportunityDiagnostic

@@ -16,6 +16,15 @@ def _server_timezone() -> ZoneInfo:
         ) from exc
 
 
+def mt4_epoch_to_server_datetime(
+    unix_timestamp: int,
+    server_timezone: ZoneInfo | None = None,
+) -> datetime:
+    timezone = server_timezone or _server_timezone()
+    server_wall_clock = datetime.fromtimestamp(unix_timestamp, tz=UTC)
+    return server_wall_clock.replace(tzinfo=timezone)
+
+
 def _parse_bar_row(
     row: list[str],
     *,
@@ -38,9 +47,9 @@ def _parse_bar_row(
             ).replace(tzinfo=server_timezone)
             values = row[2:7]
         elif len(row) >= 6:
-            unix_timestamp = int(row[0].strip())
-            timestamp = datetime.fromtimestamp(unix_timestamp, tz=UTC).astimezone(
-                server_timezone
+            timestamp = mt4_epoch_to_server_datetime(
+                int(row[0].strip()),
+                server_timezone,
             )
             values = row[1:6]
         else:

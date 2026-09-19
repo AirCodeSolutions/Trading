@@ -1,3 +1,4 @@
+from datetime import datetime
 from itertools import pairwise
 from pathlib import Path
 
@@ -22,17 +23,21 @@ from app.domain.opportunity import (
     PortfolioResearchResult,
 )
 from app.domain.regime import RegimeSnapshot
+from app.domain.shadow import ShadowCollectionResult, ShadowOpportunityDiagnostic
 from app.services.admission import assess_strategy
 from app.services.approval_gate import ApprovalGate
+from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
 from app.services.capital_risk import size_position
 from app.services.market_quality import assess_market
 from app.services.market_store import MarketStore
-from app.services.mt4_csv import read_mt4_csv, summarize_mt4_csv
+from app.services.mt4_csv import _server_timezone, read_mt4_csv, summarize_mt4_csv
 from app.services.mt4_history import resolve_mt4_history_path
+from app.services.mt4_live_bars import read_closed_bar_snapshot
 from app.services.mt4_specs import get_mt4_symbol_spec, list_mt4_symbol_specs
 from app.services.opportunity_backtester import run_opportunity_backtest
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.regime import classify_regime
+from app.services.shadow_collector import collect_btc_break_retest_once
 
 app = FastAPI(title=settings.app_name, version="0.4.0")
 market_store = MarketStore()
@@ -86,6 +91,52 @@ def market_quality(request: MarketQualityRequest) -> MarketQualityResult:
 def mt4_symbol_specs() -> list[BrokerSymbolSpec]:
     specs = list_mt4_symbol_specs(_mt4_files_dir())
     return [specs[key] for key in sorted(specs)]
+
+
+@app.get(
+    f"{settings.api_prefix}/shadow/mt4/btc/break-retest",
+    response_model=ShadowOpportunityDiagnostic,
+)
+def btc_break_retest_shadow() -> ShadowOpportunityDiagnostic:
+    files_dir = _mt4_files_dir()
+    spec = get_mt4_symbol_spec(files_dir, "BTCUSD")
+    if spec is None:
+        raise HTTPException(status_code=404, detail="BTCUSD broker symbol spec not found")
+
+    m5_path = files_dir / "mt4_bars_BTCUSD_M5.json"
+    m15_path = files_dir / "mt4_bars_BTCUSD_M15.json"
+    if not m5_path.is_file() or not m15_path.is_file():
+        raise HTTPException(status_code=404, detail="BTCUSD closed-bar snapshots not found")
+
+    try:
+        bars_m5 = read_closed_bar_snapshot(m5_path, "BTCUSD", Timeframe.M5)
+        bars_m15 = read_closed_bar_snapshot(m15_path, "BTCUSD", Timeframe.M15)
+        return scan_btc_break_retest_shadow(
+            bars_m5,
+            bars_m15,
+            spec,
+            datetime.now(tz=_server_timezone()),
+        )
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post(
+    f"{settings.api_prefix}/shadow/mt4/btc/break-retest/collect",
+    response_model=ShadowCollectionResult,
+)
+def collect_btc_break_retest_shadow() -> ShadowCollectionResult:
+    ledger_path = settings.shadow_ledger_dir / "BTCUSD_break_retest.jsonl"
+    try:
+        return collect_btc_break_retest_once(
+            _mt4_files_dir(),
+            ledger_path,
+            datetime.now(tz=_server_timezone()),
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.post(

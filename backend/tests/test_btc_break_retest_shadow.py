@@ -12,7 +12,6 @@ from app.services.btc_break_retest_shadow import (
 )
 from app.services.opportunity_strategies import _atr_series
 
-
 TZ = ZoneInfo("Europe/Athens")
 
 

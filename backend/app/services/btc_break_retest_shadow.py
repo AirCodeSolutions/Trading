@@ -19,6 +19,7 @@ from app.services.replay import RegimeReplay
 
 
 VOLATILITY_PERCENTILE_LOOKBACK = 500
+MAX_SNAPSHOT_AGE = timedelta(minutes=10)
 
 
 def scan_btc_break_retest_shadow(
@@ -31,6 +32,8 @@ def scan_btc_break_retest_shadow(
         raise ValueError("BTC break/retest shadow scanner requires BTCUSD spec")
     if len(bars_m5) < 30 or len(bars_m15) < 50:
         raise ValueError("insufficient M5/M15 closed bars for shadow scan")
+    if evaluated_at.utcoffset() is None:
+        raise ValueError("evaluated_at must be timezone-aware")
 
     snapshots = RegimeReplay(max_history=600).replay(bars_m15)
     m15_close_times = [bar.timestamp + timedelta(minutes=15) for bar in bars_m15]
@@ -62,6 +65,14 @@ def scan_btc_break_retest_shadow(
         efficiency=regime.efficiency,
     )
 
+    snapshot_age = evaluated_at - signal_close
+    if snapshot_age > MAX_SNAPSHOT_AGE or snapshot_age < -timedelta(minutes=1):
+        return ShadowOpportunityDiagnostic(
+            **base_payload,
+            state=ShadowSignalState.NO_SIGNAL,
+            reason="latest M5 snapshot is stale or timestamp-inconsistent",
+        )
+
     if regime.regime != MarketRegime.DIRECTIONAL or regime.direction == 0:
         return ShadowOpportunityDiagnostic(
             **base_payload,
@@ -80,10 +91,11 @@ def scan_btc_break_retest_shadow(
 
     side, raw_stop, break_strength, retest_depth, reclaim, close_location = signal
     entry = spec.ask if side == Side.BUY else spec.bid
+    current_atr_m5 = atr_m5[-1]
     if side == Side.BUY:
-        structural_stop = min(raw_stop, entry - 0.65 * regime.atr)
+        structural_stop = min(raw_stop, entry - 0.65 * current_atr_m5)
     else:
-        structural_stop = max(raw_stop, entry + 0.65 * regime.atr)
+        structural_stop = max(raw_stop, entry + 0.65 * current_atr_m5)
 
     base_sizing = _sizing_snapshot(
         spec,

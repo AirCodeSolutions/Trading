@@ -7,24 +7,46 @@ from app.core.config import settings
 from app.domain.admission import AdmissionDecision, StrategyEvidence
 from app.domain.approval import ExecutionProposal, ExecutionProposalRequest
 from app.domain.broker import (
+    BrokerSymbolSpec,
     MarketQualityRequest,
     MarketQualityResult,
     PositionSizeRequest,
     PositionSizeResult,
 )
 from app.domain.market import MarketBar, Timeframe
+from app.domain.opportunity import (
+    Mt4OpportunityBacktestRequest,
+    OpportunityBacktestConfig,
+    OpportunityBacktestResult,
+)
 from app.domain.regime import RegimeSnapshot
 from app.services.admission import assess_strategy
 from app.services.approval_gate import ApprovalGate
 from app.services.capital_risk import size_position
 from app.services.market_quality import assess_market
 from app.services.market_store import MarketStore
-from app.services.mt4_csv import summarize_mt4_csv
+from app.services.mt4_csv import read_mt4_csv, summarize_mt4_csv
+from app.services.mt4_history import resolve_mt4_history_path
+from app.services.mt4_specs import get_mt4_symbol_spec, list_mt4_symbol_specs
+from app.services.opportunity_backtester import run_opportunity_backtest
 from app.services.regime import classify_regime
 
-app = FastAPI(title=settings.app_name, version="0.3.0")
+app = FastAPI(title=settings.app_name, version="0.4.0")
 market_store = MarketStore()
 approval_gate = ApprovalGate(settings.decision_mode)
+
+
+def _mt4_files_dir() -> Path:
+    if settings.mt4_files_dir is None:
+        raise HTTPException(status_code=503, detail="MT4 files directory is not configured")
+    return Path(settings.mt4_files_dir)
+
+
+def _normalized_symbol(symbol: str) -> str:
+    normalized = symbol.upper()
+    if not normalized.isalnum() or len(normalized) > 32:
+        raise HTTPException(status_code=422, detail="invalid symbol")
+    return normalized
 
 
 @app.get(f"{settings.api_prefix}/health")
@@ -55,6 +77,45 @@ def risk_size(request: PositionSizeRequest) -> PositionSizeResult:
 @app.post(f"{settings.api_prefix}/markets/quality", response_model=MarketQualityResult)
 def market_quality(request: MarketQualityRequest) -> MarketQualityResult:
     return assess_market(request)
+
+
+@app.get(f"{settings.api_prefix}/market/mt4/specs", response_model=list[BrokerSymbolSpec])
+def mt4_symbol_specs() -> list[BrokerSymbolSpec]:
+    specs = list_mt4_symbol_specs(_mt4_files_dir())
+    return [specs[key] for key in sorted(specs)]
+
+
+@app.post(
+    f"{settings.api_prefix}/research/mt4/backtest",
+    response_model=OpportunityBacktestResult,
+)
+def mt4_opportunity_backtest(
+    request: Mt4OpportunityBacktestRequest,
+) -> OpportunityBacktestResult:
+    files_dir = _mt4_files_dir()
+    symbol = _normalized_symbol(request.symbol)
+    spec = get_mt4_symbol_spec(files_dir, symbol)
+    if spec is None:
+        raise HTTPException(status_code=404, detail="MT4 broker symbol spec not found")
+
+    m5_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M5)
+    m15_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M15)
+    if m5_path is None or m15_path is None:
+        raise HTTPException(status_code=404, detail="M5/M15 MT4 history not found")
+
+    bars_m5 = read_mt4_csv(m5_path, symbol, Timeframe.M5)
+    bars_m15 = read_mt4_csv(m15_path, symbol, Timeframe.M15)
+    config = OpportunityBacktestConfig(
+        spec=spec,
+        mechanism=request.mechanism,
+        split=request.split,
+        requested_risk_fraction=request.requested_risk_fraction,
+        slippage_spread_fraction=request.slippage_spread_fraction,
+    )
+    try:
+        return run_opportunity_backtest(bars_m5, bars_m15, config)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.post(f"{settings.api_prefix}/research/regime", response_model=RegimeSnapshot)
@@ -135,15 +196,9 @@ def latest_bar(symbol: str, timeframe: Timeframe) -> MarketBar:
 
 @app.get(f"{settings.api_prefix}/market/mt4/{{symbol}}/{{timeframe}}/summary")
 def mt4_history_summary(symbol: str, timeframe: Timeframe) -> dict[str, object]:
-    if settings.mt4_files_dir is None:
-        raise HTTPException(status_code=503, detail="MT4 files directory is not configured")
-
-    normalized_symbol = symbol.upper()
-    if not normalized_symbol.isalnum() or len(normalized_symbol) > 32:
-        raise HTTPException(status_code=422, detail="invalid symbol")
-
-    path = Path(settings.mt4_files_dir) / f"{normalized_symbol}-{timeframe.value}.csv"
-    if not path.is_file():
+    files_dir = _mt4_files_dir()
+    normalized_symbol = _normalized_symbol(symbol)
+    path = resolve_mt4_history_path(files_dir, normalized_symbol, timeframe)
+    if path is None:
         raise HTTPException(status_code=404, detail="MT4 history file not found")
-
     return summarize_mt4_csv(path, normalized_symbol, timeframe)

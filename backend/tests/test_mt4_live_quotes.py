@@ -6,7 +6,6 @@ from zoneinfo import ZoneInfo
 from app.domain.live_market import MarketFeedStatus
 from app.services.mt4_live_quotes import read_live_market_quotes
 
-
 TZ = ZoneInfo("Europe/Athens")
 
 

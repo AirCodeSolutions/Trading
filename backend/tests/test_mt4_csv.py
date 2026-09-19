@@ -36,18 +36,17 @@ def test_reader_handles_mt4_file_without_header(tmp_path: Path) -> None:
     assert summary["last_bar"].isoformat() == "2026-09-18T10:15:00+03:00"
 
 
-def test_reader_handles_closed_bar_epoch_research_export(tmp_path: Path) -> None:
-    path = tmp_path / "mt4_research_bars_XAUUSD_M5.csv"
+def test_reader_preserves_mt4_server_wall_clock_for_epoch_export(tmp_path: Path) -> None:
+    path = tmp_path / "mt4_research_bars_BTCUSD_M5.csv"
     path.write_text(
         "timestamp,open,high,low,close,volume\n"
-        "1789718400,4300,4301,4299,4300.5,100\n"
-        "1789718700,4300.5,4302,4300,4301.5,120\n",
+        "1789821000,81397.92,81425.61,81249.73,81295.77,1931\n"
+        "1789821300,81295.71,81305.66,81246.84,81300.10,1931\n",
         encoding="utf-8",
     )
 
-    bars = read_mt4_csv(path, "XAUUSD", Timeframe.M5)
+    bars = read_mt4_csv(path, "BTCUSD", Timeframe.M5)
 
     assert len(bars) == 2
-    assert bars[0].timestamp.tzinfo is not None
-    assert bars[1].timestamp > bars[0].timestamp
-    assert bars[1].close == 4301.5
+    assert bars[0].timestamp.isoformat() == "2026-09-19T12:30:00+03:00"
+    assert bars[1].timestamp.isoformat() == "2026-09-19T12:35:00+03:00"

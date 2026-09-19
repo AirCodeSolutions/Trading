@@ -14,15 +14,14 @@ def collect_execution_cost_snapshot(
     if not quotes:
         return 0
 
-    previous = _last_record(ledger_path)
-    previous_key = _record_key(previous) if previous is not None else None
+    previous_quote_at = _latest_quote_at_by_symbol(ledger_path)
     appended = 0
     ledger_path.parent.mkdir(parents=True, exist_ok=True)
 
     with ledger_path.open("a", encoding="utf-8") as handle:
         for quote in quotes:
-            key = (quote.symbol, quote.as_of.isoformat())
-            if key == previous_key:
+            quote_at = quote.as_of.isoformat()
+            if previous_quote_at.get(quote.symbol) == quote_at:
                 continue
             record = {
                 "observed_at": now.isoformat(),
@@ -71,13 +70,14 @@ def summarize_execution_costs(
     return result
 
 
-def _last_record(path: Path) -> dict[str, object] | None:
-    records = _tail_records(path, 1)
-    return records[-1] if records else None
-
-
-def _record_key(record: dict[str, object]) -> tuple[str, str]:
-    return str(record.get("symbol", "")), str(record.get("quote_at", ""))
+def _latest_quote_at_by_symbol(path: Path) -> dict[str, str]:
+    latest: dict[str, str] = {}
+    for record in _tail_records(path, 500):
+        symbol = str(record.get("symbol", ""))
+        quote_at = str(record.get("quote_at", ""))
+        if symbol and quote_at:
+            latest[symbol] = quote_at
+    return latest
 
 
 def _tail_records(path: Path, limit: int) -> list[dict[str, object]]:

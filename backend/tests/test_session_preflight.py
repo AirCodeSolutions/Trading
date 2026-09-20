@@ -59,9 +59,10 @@ def write_market(
     *,
     timestamp: int,
     include_spec: bool = True,
+    m5_time: str = "17:20:00",
 ) -> None:
     (files_dir / "EURUSD-M5.csv").write_text(
-        "20260919,17:20:00,1.14,1.15,1.13,1.145,100\n",
+        f"20260919,{m5_time},1.14,1.15,1.13,1.145,100\n",
         encoding="utf-8",
     )
     (files_dir / "EURUSD-M15.csv").write_text(
@@ -229,3 +230,31 @@ def test_preflight_reports_market_reopen_warmup(
     assert result.status == "warming_up"
     assert result.warming_symbols == ["EURUSD"]
     assert result.ready_symbols == []
+
+
+def test_preflight_waits_for_first_fresh_closed_m5_after_quote_returns(
+    tmp_path: Path,
+) -> None:
+    files_dir = tmp_path / "mt4"
+    runtime_dir = tmp_path / "runtime"
+    files_dir.mkdir()
+    write_market(
+        files_dir,
+        timestamp=1789838948,
+        m5_time="16:00:00",
+    )
+    write_heartbeat(runtime_dir)
+
+    result = build_session_preflight(
+        files_dir=files_dir,
+        runtime_dir=runtime_dir,
+        now=NOW,
+        macro=macro(),
+        overview=overview(),
+        demo_execution_ready=False,
+        watch_symbols=("EURUSD",),
+    )
+
+    assert result.status == "warming_up"
+    assert result.warming_symbols == ["EURUSD"]
+    assert "fresh closed M5" in result.assets[0].reason

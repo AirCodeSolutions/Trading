@@ -102,7 +102,7 @@ def test_stop_wins_when_stop_and_target_touch_same_m5_bar() -> None:
     )
     resolved = resolve_open_trade(
         trade,
-        [bar(0, high=102.2, low=98.9, close=101.0)],
+        [bar(1, high=102.2, low=98.9, close=101.0)],
     )
 
     assert resolved.status == PaperTradeStatus.STOP
@@ -118,7 +118,7 @@ def test_target_resolves_at_frozen_1_8r() -> None:
     )
     resolved = resolve_open_trade(
         trade,
-        [bar(0, high=102.0, low=99.5, close=101.9)],
+        [bar(1, high=102.0, low=99.5, close=101.9)],
     )
 
     assert resolved.status == PaperTradeStatus.TARGET
@@ -134,7 +134,7 @@ def test_timeout_marks_to_market_after_18_closed_bars() -> None:
     )
     bars = [
         bar(index, high=100.6, low=99.6, close=100.6)
-        for index in range(18)
+        for index in range(1, 19)
     ]
 
     resolved = resolve_open_trade(trade, bars)
@@ -195,3 +195,22 @@ def test_rejected_strategy_does_not_open_new_paper_trade(tmp_path: Path) -> None
 
     assert result.open_trade is None
     assert result.closed_trades == 0
+
+
+def test_partial_entry_bar_is_never_used_for_outcome() -> None:
+    trade = create_paper_trade(
+        diagnostic=diagnostic(),
+        spec=spec(),
+        evaluated_at=START + timedelta(minutes=5, seconds=2),
+    )
+
+    resolved = resolve_open_trade(
+        trade,
+        [
+            bar(0, high=102.2, low=98.9, close=100.0),
+            bar(1, high=100.5, low=99.8, close=100.2),
+        ],
+    )
+
+    assert resolved.status == PaperTradeStatus.OPEN
+    assert resolved.bars_held == 1

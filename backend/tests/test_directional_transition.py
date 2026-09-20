@@ -6,7 +6,6 @@ from app.domain.trading import Side
 from app.services.opportunity_strategies import _directional_transition_candidate
 from app.services.shadow_scanner import _directional_transition_signal
 
-
 START = datetime(2026, 1, 1, tzinfo=UTC)
 
 

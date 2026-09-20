@@ -43,7 +43,8 @@ Mécanismes de recherche actuels :
 
 - `post_shock_continuation` ;
 - `break_retest_reaccel` ;
-- `failed_auction_reversal`.
+- `failed_auction_reversal` ;
+- `directional_transition` — première transition causale M15 vers `directional_expansion`.
 
 Le backtester :
 

@@ -69,7 +69,8 @@ def generate_candidates(
     for index in range(25, len(bars_m5) - 1):
         bar = bars_m5[index]
         signal_close = bar.timestamp + timedelta(minutes=5)
-        regime = _regime_at(signal_close, close_times, regimes)
+        regime_index = bisect_right(close_times, signal_close) - 1
+        regime = regimes[regime_index] if regime_index >= 0 else None
         if regime is None or regime.regime == MarketRegime.WARMUP:
             continue
 
@@ -104,10 +105,60 @@ def generate_candidates(
                 index,
             )
 
+        elif mechanism == OpportunityMechanism.DIRECTIONAL_TRANSITION:
+            if regime_index < 1 or signal_close != close_times[regime_index]:
+                continue
+            previous_regime = regimes[regime_index - 1]
+            if regime.regime != MarketRegime.DIRECTIONAL or regime.direction == 0:
+                continue
+            if (
+                previous_regime.regime == MarketRegime.DIRECTIONAL
+                and previous_regime.direction == regime.direction
+            ):
+                continue
+            candidate = _directional_transition_candidate(
+                bars_m5,
+                index,
+                regime,
+            )
+
         if candidate is not None:
             candidates.append(candidate)
 
     return candidates
+
+
+def _directional_transition_candidate(
+    bars: Sequence[MarketBar],
+    index: int,
+    regime: RegimeSnapshot,
+) -> OpportunityCandidate | None:
+    if regime.atr <= 0 or index + 1 >= len(bars):
+        return None
+
+    bar = bars[index]
+    entry = bars[index + 1]
+    side = Side.BUY if regime.direction > 0 else Side.SELL
+    if side == Side.BUY:
+        stop = entry.open - 0.80 * regime.atr
+        if stop <= 0:
+            return None
+    else:
+        stop = entry.open + 0.80 * regime.atr
+
+    return OpportunityCandidate(
+        symbol=bar.symbol,
+        mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+        side=side,
+        signal_at=bar.timestamp + timedelta(minutes=5),
+        entry_at=entry.timestamp,
+        signal_index=index,
+        entry_index=index + 1,
+        structural_stop=stop,
+        target_r=1.8,
+        max_holding_bars=18,
+        reason="first causal M15 transition into directional expansion",
+    )
 
 
 def _post_shock_candidate(

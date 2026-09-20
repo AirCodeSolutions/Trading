@@ -10,6 +10,7 @@ _SLUG_TO_MECHANISM = {
     "break_retest": OpportunityMechanism.BREAK_RETEST_REACCEL,
     "failed_auction": OpportunityMechanism.FAILED_AUCTION_REVERSAL,
     "post_shock": OpportunityMechanism.POST_SHOCK_CONTINUATION,
+    "directional_transition": OpportunityMechanism.DIRECTIONAL_TRANSITION,
 }
 
 

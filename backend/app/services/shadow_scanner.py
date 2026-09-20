@@ -76,10 +76,14 @@ def scan_shadow_opportunity(
             reason="latest M5 snapshot is stale or timestamp-inconsistent",
         )
 
+    previous_regime = snapshots[regime_index - 1] if regime_index >= 1 else None
+    is_new_m15_close = signal_close == m15_close_times[regime_index]
     signal = _detect_signal(
         bars_m5,
         atr_m5,
         regime,
+        previous_regime,
+        is_new_m15_close,
         mechanism,
     )
     if signal is None:
@@ -103,7 +107,12 @@ def scan_shadow_opportunity(
     ) = signal
 
     entry = spec.ask if side == Side.BUY else spec.bid
-    if side == Side.BUY:
+    if mechanism == OpportunityMechanism.DIRECTIONAL_TRANSITION:
+        if side == Side.BUY:
+            structural_stop = entry - stop_atr
+        else:
+            structural_stop = entry + stop_atr + spec.spread
+    elif side == Side.BUY:
         structural_stop = min(raw_stop, entry - stop_atr)
     else:
         structural_stop = max(raw_stop + spec.spread, entry + stop_atr)
@@ -152,6 +161,8 @@ def _detect_signal(
     bars: Sequence[MarketBar],
     atr: Sequence[float],
     regime: RegimeSnapshot,
+    previous_regime: RegimeSnapshot | None,
+    is_new_m15_close: bool,
     mechanism: OpportunityMechanism,
 ) -> tuple[
     Side,
@@ -171,7 +182,51 @@ def _detect_signal(
         return _failed_auction_signal(bars, atr, regime)
     if mechanism == OpportunityMechanism.POST_SHOCK_CONTINUATION:
         return _post_shock_signal(bars, regime)
+    if mechanism == OpportunityMechanism.DIRECTIONAL_TRANSITION:
+        return _directional_transition_signal(
+            bars,
+            regime,
+            previous_regime,
+            is_new_m15_close,
+        )
     return None
+
+
+def _directional_transition_signal(
+    bars: Sequence[MarketBar],
+    regime: RegimeSnapshot,
+    previous_regime: RegimeSnapshot | None,
+    is_new_m15_close: bool,
+):
+    if (
+        not is_new_m15_close
+        or previous_regime is None
+        or regime.regime != MarketRegime.DIRECTIONAL
+        or regime.direction == 0
+        or regime.atr <= 0
+    ):
+        return None
+    if (
+        previous_regime.regime == MarketRegime.DIRECTIONAL
+        and previous_regime.direction == regime.direction
+    ):
+        return None
+
+    bar = bars[-1]
+    side = Side.BUY if regime.direction > 0 else Side.SELL
+    raw_stop = bar.low if side == Side.BUY else bar.high
+    return (
+        side,
+        raw_stop,
+        1.8,
+        18,
+        0.80 * regime.atr,
+        None,
+        None,
+        None,
+        None,
+        "first causal M15 transition into directional expansion",
+    )
 
 
 def _break_retest_signal(

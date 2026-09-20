@@ -37,7 +37,7 @@ Les seuils initiaux sont des définitions fixes de recherche, pas les meilleurs 
 
 ## Opportunity Engine
 
-Trois mécanismes de recherche sont actuellement implémentés :
+Quatre mécanismes de recherche sont actuellement implémentés :
 
 ### post_shock_continuation
 
@@ -50,6 +50,13 @@ Uniquement en régime M15 directionnel : cassure locale M5, retest causal du niv
 ### failed_auction_reversal
 
 Uniquement en régime M15 équilibré : sweep d'un extrême local M5, mèche significative et réintégration causale.
+
+### directional_transition
+
+Déclenché une seule fois à la clôture M15 qui bascule vers `directional_expansion`.
+L'entrée se fait sur la M5 suivante, avec stop structurel fixe à 0,8 ATR M15,
+target 1,8R et horizon 18 M5. Ce mécanisme reste SHADOW tant que la validation
+prospective et le holdout sont insuffisants.
 
 Aucun de ces mécanismes n'est actif en production à ce stade.
 

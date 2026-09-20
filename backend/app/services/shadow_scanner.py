@@ -16,6 +16,7 @@ from app.domain.trading import Side
 from app.services.capital_risk import size_position
 from app.services.opportunity_strategies import _atr_series
 from app.services.replay import RegimeReplay
+from app.services.session_continuity import reopen_warmup_remaining
 
 VOLATILITY_PERCENTILE_LOOKBACK = 500
 MAX_SNAPSHOT_AGE = timedelta(minutes=10)
@@ -67,6 +68,17 @@ def scan_shadow_opportunity(
         "momentum_12_atr": momentum_12_atr,
         "efficiency": regime.efficiency,
     }
+
+    warmup_remaining = reopen_warmup_remaining(bars_m5)
+    if warmup_remaining > 0:
+        return ShadowOpportunityDiagnostic(
+            **base_payload,
+            state=ShadowSignalState.NO_SIGNAL,
+            reason=(
+                "session reopen warmup: "
+                f"{warmup_remaining} closed M5 bar(s) remaining"
+            ),
+        )
 
     snapshot_age = evaluated_at - signal_close
     if snapshot_age > MAX_SNAPSHOT_AGE or snapshot_age < -timedelta(minutes=1):

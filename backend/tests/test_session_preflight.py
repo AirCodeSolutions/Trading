@@ -13,7 +13,6 @@ from app.domain.portfolio import (
 from app.domain.session import ShadowWorkerHeartbeat
 from app.services.session_preflight import build_session_preflight
 
-
 TZ = ZoneInfo("Europe/Athens")
 NOW = datetime(2026, 9, 19, 17, 30, tzinfo=TZ)
 

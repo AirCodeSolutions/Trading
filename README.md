@@ -189,3 +189,18 @@ The UI classifies the runtime as:
 
 The watchdog runs every minute. A stale worker heartbeat causes only the SHADOW
 worker to restart; backend, frontend and MT4 are left untouched.
+
+
+## Session reopen continuity guard
+
+A large M5 discontinuity (>20 minutes) is treated as a session/data reopen, not as
+a tradable information shock. The first three closed M5 bars after the gap are
+warmup-only:
+
+- SHADOW signals are suppressed;
+- historical candidate generation applies the same rule;
+- the worker heartbeat reports warming markets;
+- Session Preflight displays `WARMING_UP` until three full M5 bars are available.
+
+This prevents weekend gaps or feed interruptions from becoming artificial
+`post_shock`, breakout or transition opportunities.

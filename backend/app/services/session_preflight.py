@@ -51,13 +51,22 @@ def build_session_preflight(
         and worker_age <= WORKER_STALE_SECONDS
     )
 
+    warming_from_worker = (
+        set(heartbeat.warming_up_symbols)
+        if heartbeat is not None
+        else set()
+    )
+
     assets: list[SessionAssetStatus] = []
     for symbol in watch_symbols:
         normalized = symbol.upper()
         asset = by_symbol.get(normalized)
         if asset is None:
             continue
-        state = _asset_state(asset)
+        state = _asset_state(
+            asset,
+            warming_up=normalized in warming_from_worker,
+        )
         assets.append(
             SessionAssetStatus(
                 symbol=normalized,
@@ -74,6 +83,11 @@ def build_session_preflight(
         )
 
     ready = [item.symbol for item in assets if item.state == SessionAssetState.READY]
+    warming = [
+        item.symbol
+        for item in assets
+        if item.state == SessionAssetState.WARMING_UP
+    ]
     waiting = [
         item.symbol
         for item in assets
@@ -87,6 +101,7 @@ def build_session_preflight(
     ]
 
     non_btc_ready = [symbol for symbol in ready if symbol != "BTCUSD"]
+    non_btc_warming = [symbol for symbol in warming if symbol != "BTCUSD"]
     live_but_degraded = [
         item.symbol
         for item in assets
@@ -104,12 +119,20 @@ def build_session_preflight(
             "open-market data is live but incomplete for: "
             + ", ".join(live_but_degraded)
         )
+    elif non_btc_warming and not non_btc_ready:
+        status = SessionReadinessStatus.WARMING_UP
+        reason = (
+            "market reopened; waiting for three complete M5 bars: "
+            + ", ".join(non_btc_warming)
+        )
     elif non_btc_ready:
         status = SessionReadinessStatus.READY
         reason = (
             "session runtime is healthy; paper-ready markets: "
             + ", ".join(ready)
         )
+        if warming:
+            reason += "; warming: " + ", ".join(warming)
     else:
         status = SessionReadinessStatus.WAITING_MARKET
         reason = (
@@ -129,6 +152,7 @@ def build_session_preflight(
         portfolio_action=overview.portfolio.action.value,
         demo_execution_ready=demo_execution_ready,
         ready_symbols=ready,
+        warming_symbols=warming,
         waiting_symbols=waiting,
         degraded_symbols=degraded,
         assets=assets,
@@ -136,11 +160,17 @@ def build_session_preflight(
     )
 
 
-def _asset_state(asset) -> SessionAssetState:
+def _asset_state(
+    asset,
+    *,
+    warming_up: bool,
+) -> SessionAssetState:
     if not asset.has_m5 or not asset.has_m15:
         return SessionAssetState.MISSING_HISTORY
     if not asset.broker_spec_ready:
         return SessionAssetState.MISSING_SPEC
     if not asset.quote_live:
         return SessionAssetState.WAITING_QUOTE
+    if warming_up:
+        return SessionAssetState.WARMING_UP
     return SessionAssetState.READY

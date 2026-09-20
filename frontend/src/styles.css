@@ -647,6 +647,7 @@ h1 {
     rgba(13, 24, 35, 0.94);
 }
 
+.preflight-warming_up,
 .preflight-waiting_market {
   border-color: rgba(244, 190, 90, 0.48);
   background:

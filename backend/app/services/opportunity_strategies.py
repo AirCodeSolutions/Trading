@@ -7,6 +7,7 @@ from app.domain.opportunity import OpportunityCandidate, OpportunityMechanism
 from app.domain.regime import MarketRegime, RegimeSnapshot
 from app.domain.trading import Side
 from app.services.replay import RegimeReplay
+from app.services.session_continuity import reopen_warmup_remaining
 
 
 def _true_ranges(bars: Sequence[MarketBar]) -> list[float]:
@@ -67,6 +68,9 @@ def generate_candidates(
     last_shock_at: datetime | None = None
 
     for index in range(25, len(bars_m5) - 1):
+        if reopen_warmup_remaining(bars_m5, index) > 0:
+            continue
+
         bar = bars_m5[index]
         signal_close = bar.timestamp + timedelta(minutes=5)
         regime_index = bisect_right(close_times, signal_close) - 1

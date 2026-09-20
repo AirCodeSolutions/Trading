@@ -8,8 +8,8 @@ from app.services.market_universe import build_market_universe
 from app.services.mt4_market_data import load_closed_market_bars
 from app.services.mt4_specs import get_mt4_symbol_spec
 from app.services.shadow_ledger import append_shadow_observation
-from app.services.shadow_scanner import scan_shadow_opportunity
 from app.services.shadow_paper import advance_shadow_paper_book
+from app.services.shadow_scanner import scan_shadow_opportunity
 
 _MECHANISM_SLUG = {
     OpportunityMechanism.BREAK_RETEST_REACCEL: "break_retest",

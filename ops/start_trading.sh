@@ -25,6 +25,21 @@ pid_alive() {
   [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
 }
 
+worker_healthy() {
+  local pid_file="$RUNTIME/pids/shadow-worker.pid"
+  local heartbeat="$RUNTIME/shadow/worker_heartbeat.json"
+
+  pid_alive "$pid_file" || return 1
+  [ -f "$heartbeat" ] || return 1
+  grep -q '"ok": true' "$heartbeat" || return 1
+
+  local now mtime age
+  now="$(date +%s)"
+  mtime="$(stat -c %Y "$heartbeat" 2>/dev/null || echo 0)"
+  age=$((now - mtime))
+  [ "$age" -le 180 ]
+}
+
 if ! port_listening "$BACKEND_PORT"; then
   (
     cd "$BASE/backend"
@@ -54,4 +69,9 @@ if ! port_listening "$FRONTEND_PORT"; then
       >>"$RUNTIME/logs/frontend.log" 2>&1 &
     echo $! >"$RUNTIME/pids/frontend.pid"
   )
+fi
+
+
+if port_listening "$BACKEND_PORT"; then
+  curl -fsS --max-time 3     "http://127.0.0.1:$BACKEND_PORT/api/v1/session/preflight"     >>"$RUNTIME/logs/session-preflight.jsonl" 2>/dev/null     && printf '\n' >>"$RUNTIME/logs/session-preflight.jsonl"     || true
 fi

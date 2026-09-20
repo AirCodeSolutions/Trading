@@ -27,6 +27,7 @@ from app.domain.opportunity import (
 )
 from app.domain.portfolio import MarketUniverseAsset, TradingOverview
 from app.domain.regime import RegimeSnapshot
+from app.domain.session import SessionPreflight
 from app.domain.shadow import ShadowCollectionResult, ShadowOpportunityDiagnostic
 from app.domain.shadow_paper import ShadowPaperSummary
 from app.services.admission import assess_strategy
@@ -49,6 +50,7 @@ from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.portfolio_overview import build_trading_overview
 from app.services.regime import classify_regime
 from app.services.runtime_admission_registry import save_research_admissions
+from app.services.session_preflight import build_session_preflight
 from app.services.shadow_collector import collect_btc_break_retest_once
 from app.services.shadow_paper import load_shadow_paper_summary
 
@@ -73,6 +75,36 @@ def _normalized_symbol(symbol: str) -> str:
 @app.get(f"{settings.api_prefix}/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": settings.app_name}
+
+
+@app.get(
+    f"{settings.api_prefix}/session/preflight",
+    response_model=SessionPreflight,
+)
+def session_preflight() -> SessionPreflight:
+    now = datetime.now(tz=_server_timezone())
+    files_dir = _mt4_files_dir()
+    overview = build_trading_overview(
+        files_dir,
+        settings.shadow_ledger_dir,
+        now,
+    )
+    macro = macro_gate_status(settings.macro_events_path, now)
+    demo = build_demo_status(
+        files_dir=files_dir,
+        overview=overview,
+        macro=macro,
+        now=now,
+    )
+    return build_session_preflight(
+        files_dir=files_dir,
+        runtime_dir=settings.shadow_ledger_dir,
+        now=now,
+        macro=macro,
+        overview=overview,
+        demo_execution_ready=demo.guard.ready,
+        watch_symbols=settings.session_watch_symbols,
+    )
 
 
 @app.get(

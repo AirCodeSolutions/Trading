@@ -192,6 +192,30 @@ type DemoExecutionStatus = {
   }[];
 };
 
+type SessionPreflight = {
+  at: string;
+  status: "ready" | "waiting_market" | "degraded" | "blocked";
+  worker_ok: boolean;
+  worker_age_seconds: number | null;
+  macro_blocked: boolean;
+  portfolio_action: string;
+  demo_execution_ready: boolean;
+  ready_symbols: string[];
+  waiting_symbols: string[];
+  degraded_symbols: string[];
+  assets: {
+    symbol: string;
+    state: "ready" | "waiting_quote" | "missing_spec" | "missing_history";
+    quote_live: boolean;
+    paper_ready: boolean;
+    broker_spec_ready: boolean;
+    has_m5: boolean;
+    has_m15: boolean;
+    reason: string;
+  }[];
+  reason: string;
+};
+
 type MarketQuote = {
   symbol: string;
   as_of: string;
@@ -320,6 +344,7 @@ export default function App() {
   const [costs, setCosts] = useState<CostSummary>({});
   const [macro, setMacro] = useState<MacroStatus | null>(null);
   const [demo, setDemo] = useState<DemoExecutionStatus | null>(null);
+  const [preflight, setPreflight] = useState<SessionPreflight | null>(null);
   const [status, setStatus] = useState("Connexion au backend…");
 
   useEffect(() => {
@@ -336,7 +361,8 @@ export default function App() {
           overviewResponse,
           costsResponse,
           macroResponse,
-          demoResponse
+          demoResponse,
+          preflightResponse
         ] = await Promise.all([
           fetch("/api/v1/health"),
           fetch("/api/v1/config"),
@@ -346,7 +372,8 @@ export default function App() {
           fetch("/api/v1/portfolio/overview"),
           fetch("/api/v1/market/mt4/costs"),
           fetch("/api/v1/macro/status"),
-          fetch("/api/v1/execution/demo/status")
+          fetch("/api/v1/execution/demo/status"),
+          fetch("/api/v1/session/preflight")
         ]);
         if (!healthResponse.ok || !configResponse.ok) {
           throw new Error("backend unavailable");
@@ -361,6 +388,9 @@ export default function App() {
         const costsPayload = costsResponse.ok ? await costsResponse.json() : {};
         const macroPayload = macroResponse.ok ? await macroResponse.json() : null;
         const demoPayload = demoResponse.ok ? await demoResponse.json() : null;
+        const preflightPayload = preflightResponse.ok
+          ? await preflightResponse.json()
+          : null;
 
         if (!active) return;
         setStatus(health.status === "ok" ? "Opérationnel" : "Dégradé");
@@ -372,6 +402,7 @@ export default function App() {
         setCosts(costsPayload);
         setMacro(macroPayload);
         setDemo(demoPayload);
+        setPreflight(preflightPayload);
       } catch {
         if (active) setStatus("Backend indisponible");
       }
@@ -419,6 +450,52 @@ export default function App() {
           Le live trading reste verrouillé tant qu’aucune stratégie n’est qualifiée.
         </p>
       </header>
+
+      <section className={`preflight-panel preflight-${preflight?.status ?? "unknown"}`}>
+        <div className="shadow-heading">
+          <div>
+            <p className="eyebrow">SESSION PREFLIGHT · REPRISE AUTOMATIQUE</p>
+            <h2>{preflight?.status.replaceAll("_", " ").toUpperCase() ?? "CHARGEMENT"}</h2>
+          </div>
+          <span className="badge">
+            Worker {preflight?.worker_ok ? "OK" : "KO"}
+            {preflight?.worker_age_seconds != null
+              ? ` · ${Math.round(preflight.worker_age_seconds)} s`
+              : ""}
+          </span>
+        </div>
+
+        <div className="preflight-metrics">
+          <div>
+            <span>READY</span>
+            <strong>{preflight?.ready_symbols.join(", ") || "—"}</strong>
+          </div>
+          <div>
+            <span>EN ATTENTE MARCHÉ</span>
+            <strong>{preflight?.waiting_symbols.join(", ") || "—"}</strong>
+          </div>
+          <div>
+            <span>DÉGRADÉ</span>
+            <strong>{preflight?.degraded_symbols.join(", ") || "—"}</strong>
+          </div>
+          <div>
+            <span>MACRO</span>
+            <strong>{preflight ? (preflight.macro_blocked ? "BLOCKED" : "CLEAR") : "—"}</strong>
+          </div>
+          <div>
+            <span>PORTFOLIO</span>
+            <strong>{preflight?.portfolio_action.replaceAll("_", " ").toUpperCase() ?? "—"}</strong>
+          </div>
+          <div>
+            <span>DEMO</span>
+            <strong>{preflight ? (preflight.demo_execution_ready ? "READY" : "LOCKED") : "—"}</strong>
+          </div>
+        </div>
+
+        <p className="preflight-reason">
+          {preflight?.reason ?? "Vérification de la session en cours…"}
+        </p>
+      </section>
 
       <section className="grid">
         <article className="card">

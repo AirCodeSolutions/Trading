@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     mt4_server_timezone: str = "Europe/Athens"
     shadow_ledger_dir: Path = Path("runtime/shadow")
     shadow_collection_interval_seconds: int = 30
+    session_watch_symbols: tuple[str, ...] = (
+        "BTCUSD",
+        "EURUSD",
+        "GBPUSD",
+        "XAUUSD",
+        "XAGUSD",
+    )
 
     macro_events_path: Path = Path("config/macro_events_2026.json")
 

@@ -36,7 +36,7 @@ fi
 
 cat >>"$TMP" <<EOF
 @reboot sleep 20 && bash $BASE/ops/start_trading.sh >> $RUNTIME/logs/autostart.log 2>&1 # $TAG
-*/5 * * * * bash $BASE/ops/start_trading.sh >> $RUNTIME/logs/watchdog.log 2>&1 # $TAG
+* * * * * bash $BASE/ops/start_trading.sh >> $RUNTIME/logs/watchdog.log 2>&1 # $TAG
 17 5 * * * cd $BASE/backend && .venv/bin/python scripts/sync_macro_calendar.py --base config/macro_events_2026.json --output $RUNTIME/macro_events.json >> $RUNTIME/logs/macro-sync.log 2>&1 # $TAG
 43 5 * * * cd $BASE/backend && .venv/bin/python scripts/refresh_research_admissions.py --files-dir "$TRADING_MT4_FILES_DIR" --runtime-dir $RUNTIME/shadow --timezone "${TRADING_MT4_SERVER_TIMEZONE:-Europe/Athens}" >> $RUNTIME/logs/research-admission.log 2>&1 # $TAG
 EOF

@@ -73,3 +73,38 @@ def test_live_market_prefers_continuously_refreshed_legacy_m5_history(
     assert quote.last_closed_m5_at is not None
     assert quote.last_closed_m5_at.isoformat() == "2026-09-18T23:50:00+03:00"
     assert quote.recent_m5_closes == [4377.89, 4378.28]
+
+
+def test_multi_market_exporter_csv_adds_live_quote(tmp_path: Path) -> None:
+    (tmp_path / "trading_symbol_specs.csv").write_text(
+        "timestamp,symbol,bid,ask,digits,contract_size,tick_size,tick_value,point,min_lot,max_lot,lot_step,stop_level,margin_required\n"
+        "1789838948,GBPUSD,1.34000,1.34012,5,100000,0.00001,0.87,0.00001,0.01,100,0.01,0,100\n",
+        encoding="utf-8",
+    )
+    now = datetime(2026, 9, 19, 17, 30, 0, tzinfo=TZ)
+
+    quotes = read_live_market_quotes(tmp_path, now)
+
+    assert len(quotes) == 1
+    quote = quotes[0]
+    assert quote.symbol == "GBPUSD"
+    assert quote.bid == 1.34
+    assert quote.ask == 1.34012
+    assert quote.status == MarketFeedStatus.LIVE
+
+
+def test_newest_quote_wins_between_json_and_multi_market_exporter(
+    tmp_path: Path,
+) -> None:
+    write_quote(tmp_path / "mt4_data_BTCUSD.json", 1789838948)
+    (tmp_path / "trading_symbol_specs.csv").write_text(
+        "timestamp,symbol,bid,ask,digits,contract_size,tick_size,tick_value,point,min_lot,max_lot,lot_step,stop_level,margin_required\n"
+        "1789839000,BTCUSD,81600,81624.5,2,1,0.01,0.0087,0.01,0.01,10,0.01,0,140\n",
+        encoding="utf-8",
+    )
+    now = datetime(2026, 9, 19, 17, 31, 0, tzinfo=TZ)
+
+    quote = read_live_market_quotes(tmp_path, now)[0]
+
+    assert quote.bid == 81600
+    assert quote.ask == 81624.5

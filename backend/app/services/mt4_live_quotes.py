@@ -1,3 +1,4 @@
+import csv
 import json
 from datetime import datetime
 from pathlib import Path
@@ -17,19 +18,49 @@ def read_live_market_quotes(
     files_dir: Path,
     now: datetime,
 ) -> list[LiveMarketQuote]:
-    quotes: list[LiveMarketQuote] = []
+    raw_quotes: dict[str, tuple[datetime, float, float, int]] = {}
+
+    snapshot_path = files_dir / "trading_symbol_specs.csv"
+    if snapshot_path.is_file():
+        try:
+            with snapshot_path.open(newline="", encoding="utf-8-sig") as handle:
+                for row in csv.DictReader(handle):
+                    parsed = _parse_csv_quote(row)
+                    if parsed is not None:
+                        _keep_newest(raw_quotes, *parsed)
+        except OSError:
+            pass
+
     for path in sorted(files_dir.glob("mt4_data_*.json")):
-        quote = _read_quote(path, files_dir, now)
-        if quote is not None:
-            quotes.append(quote)
-    return quotes
+        parsed = _parse_json_quote(path)
+        if parsed is not None:
+            _keep_newest(raw_quotes, *parsed)
+
+    return [
+        _build_quote(symbol, values, files_dir, now)
+        for symbol, values in sorted(raw_quotes.items())
+    ]
 
 
-def _read_quote(
+def _parse_csv_quote(
+    row: dict[str, str | None],
+) -> tuple[str, datetime, float, float, int] | None:
+    try:
+        symbol = str(row["symbol"]).strip().upper()
+        timestamp = mt4_epoch_to_server_datetime(int(str(row["timestamp"])))
+        bid = float(str(row["bid"]))
+        ask = float(str(row["ask"]))
+        digits = int(str(row["digits"]))
+    except (KeyError, TypeError, ValueError):
+        return None
+    if not symbol or bid <= 0 or ask <= 0 or ask < bid:
+        return None
+    return symbol, timestamp, bid, ask, digits
+
+
+def _parse_json_quote(
     path: Path,
-    files_dir: Path,
-    now: datetime,
-) -> LiveMarketQuote | None:
+) -> tuple[str, datetime, float, float, int] | None:
     try:
         payload = json.loads(path.read_text(encoding="utf-8-sig"))
         symbol = str(payload["symbol"]).upper()
@@ -37,12 +68,33 @@ def _read_quote(
         bid = float(payload["bid"])
         ask = float(payload["ask"])
         digits = int(payload["digits"])
-    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError, OSError):
         return None
-
-    if bid <= 0 or ask <= 0 or ask < bid:
+    if not symbol or bid <= 0 or ask <= 0 or ask < bid:
         return None
+    return symbol, timestamp, bid, ask, digits
 
+
+def _keep_newest(
+    quotes: dict[str, tuple[datetime, float, float, int]],
+    symbol: str,
+    timestamp: datetime,
+    bid: float,
+    ask: float,
+    digits: int,
+) -> None:
+    current = quotes.get(symbol)
+    if current is None or timestamp >= current[0]:
+        quotes[symbol] = (timestamp, bid, ask, digits)
+
+
+def _build_quote(
+    symbol: str,
+    values: tuple[datetime, float, float, int],
+    files_dir: Path,
+    now: datetime,
+) -> LiveMarketQuote:
+    timestamp, bid, ask, digits = values
     age_seconds = max(0.0, (now - timestamp).total_seconds())
     status = (
         MarketFeedStatus.LIVE
@@ -86,7 +138,6 @@ def _recent_m5_bars(files_dir: Path, symbol: str) -> list[MarketBar]:
         if bars:
             return bars[-SPARKLINE_BARS:]
 
-    # The legacy MT4 CSV is the continuously refreshed source on this terminal.
     legacy_path = files_dir / f"{symbol}-M5.csv"
     if legacy_path.is_file():
         bars = _cached_history_tail(legacy_path, symbol)

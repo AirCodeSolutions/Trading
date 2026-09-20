@@ -1,12 +1,12 @@
-import json
 from datetime import datetime
 from pathlib import Path
 
+from app.domain.live_market import MarketFeedStatus
 from app.domain.market import Timeframe
 from app.domain.portfolio import MarketPriceSource, MarketUniverseAsset
-from app.services.mt4_csv import mt4_epoch_to_server_datetime, read_mt4_csv
+from app.services.mt4_csv import read_mt4_csv
 from app.services.mt4_history import resolve_mt4_history_path
-from app.services.mt4_live_quotes import LIVE_MAX_AGE_SECONDS
+from app.services.mt4_live_quotes import read_live_market_quotes
 from app.services.mt4_specs import list_mt4_symbol_specs
 
 
@@ -14,12 +14,16 @@ def build_market_universe(
     files_dir: Path,
     now: datetime,
 ) -> list[MarketUniverseAsset]:
-    symbols = _discover_symbols(files_dir)
     specs = list_mt4_symbol_specs(files_dir)
+    quotes = {
+        quote.symbol: quote
+        for quote in read_live_market_quotes(files_dir, now)
+    }
+    symbols = _discover_symbols(files_dir) | set(specs) | set(quotes)
     assets: list[MarketUniverseAsset] = []
 
     for symbol in sorted(symbols):
-        quote = _read_quote(files_dir / f"mt4_data_{symbol}.json", now)
+        quote = quotes.get(symbol)
         m5_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M5)
         m15_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M15)
         has_m5 = m5_path is not None
@@ -27,13 +31,13 @@ def build_market_universe(
         spec_ready = symbol in specs
 
         if quote is not None:
-            price = quote["mid"]
-            as_of = quote["as_of"]
+            price = quote.mid
+            as_of = quote.as_of
             source = MarketPriceSource.BROKER_QUOTE
-            bid = quote["bid"]
-            ask = quote["ask"]
-            spread = ask - bid
-            quote_live = quote["age_seconds"] <= LIVE_MAX_AGE_SECONDS
+            bid = quote.bid
+            ask = quote.ask
+            spread = quote.spread
+            quote_live = quote.status == MarketFeedStatus.LIVE
         else:
             bar = _last_bar(m5_path, symbol) if m5_path is not None else None
             if bar is None:
@@ -47,7 +51,12 @@ def build_market_universe(
             quote_live = False
 
         research_ready = has_m5 and has_m15
-        paper_ready = research_ready and spec_ready and quote is not None and quote_live
+        paper_ready = (
+            research_ready
+            and spec_ready
+            and quote is not None
+            and quote_live
+        )
         reason = _reason(
             research_ready=research_ready,
             spec_ready=spec_ready,
@@ -86,27 +95,6 @@ def _discover_symbols(files_dir: Path) -> set[str]:
     for path in files_dir.glob("mt4_data_*.json"):
         symbols.add(path.stem.removeprefix("mt4_data_"))
     return {symbol for symbol in symbols if symbol}
-
-
-def _read_quote(path: Path, now: datetime) -> dict[str, object] | None:
-    if not path.is_file():
-        return None
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8-sig"))
-        bid = float(payload["bid"])
-        ask = float(payload["ask"])
-        as_of = mt4_epoch_to_server_datetime(int(payload["timestamp"]))
-    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
-        return None
-    if bid <= 0 or ask < bid:
-        return None
-    return {
-        "bid": bid,
-        "ask": ask,
-        "mid": (bid + ask) / 2,
-        "as_of": as_of,
-        "age_seconds": max(0.0, (now - as_of).total_seconds()),
-    }
 
 
 def _last_bar(path: Path, symbol: str):

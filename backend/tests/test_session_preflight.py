@@ -95,6 +95,7 @@ def write_heartbeat(
     *,
     at: datetime = NOW,
     ok: bool = True,
+    warming_up_symbols: list[str] | None = None,
 ) -> None:
     runtime_dir.mkdir(parents=True, exist_ok=True)
     heartbeat = ShadowWorkerHeartbeat(
@@ -104,6 +105,7 @@ def write_heartbeat(
         shadow_scans=4,
         signals=0,
         paper_ready_symbols=["EURUSD"],
+        warming_up_symbols=warming_up_symbols or [],
     )
     (runtime_dir / "worker_heartbeat.json").write_text(
         heartbeat.model_dump_json(),
@@ -203,3 +205,27 @@ def test_preflight_degrades_live_market_missing_spec(
 
     assert result.status == "degraded"
     assert result.degraded_symbols == ["EURUSD"]
+
+
+def test_preflight_reports_market_reopen_warmup(
+    tmp_path: Path,
+) -> None:
+    files_dir = tmp_path / "mt4"
+    runtime_dir = tmp_path / "runtime"
+    files_dir.mkdir()
+    write_market(files_dir, timestamp=1789838948)
+    write_heartbeat(runtime_dir, warming_up_symbols=["EURUSD"])
+
+    result = build_session_preflight(
+        files_dir=files_dir,
+        runtime_dir=runtime_dir,
+        now=NOW,
+        macro=macro(),
+        overview=overview(),
+        demo_execution_ready=False,
+        watch_symbols=("EURUSD",),
+    )
+
+    assert result.status == "warming_up"
+    assert result.warming_symbols == ["EURUSD"]
+    assert result.ready_symbols == []

@@ -127,8 +127,9 @@ def resolve_open_trade(
     if trade.status != PaperTradeStatus.OPEN:
         return trade
 
+    first_full_bar_at = _next_full_m5_bar_start(trade.opened_at)
     future_bars = [
-        bar for bar in bars_m5 if bar.timestamp >= trade.entry_bar_at
+        bar for bar in bars_m5 if bar.timestamp >= first_full_bar_at
     ][: trade.max_holding_bars]
 
     for index, bar in enumerate(future_bars, start=1):
@@ -179,6 +180,15 @@ def resolve_open_trade(
         result_r=result_r,
         bars_held=trade.max_holding_bars,
     )
+
+
+def _next_full_m5_bar_start(at: datetime) -> datetime:
+    minute_floor = at.replace(second=0, microsecond=0)
+    remainder = minute_floor.minute % 5
+    if remainder == 0 and at.second == 0 and at.microsecond == 0:
+        return minute_floor
+    minutes = 5 - remainder if remainder else 5
+    return minute_floor + timedelta(minutes=minutes)
 
 
 def _close_trade(

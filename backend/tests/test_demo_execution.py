@@ -89,10 +89,14 @@ def overview() -> TradingOverview:
         ),
         risk=PortfolioRiskSnapshot(
             reference_capital_eur=200,
-            paper_closed_pnl_eur=8,
-            paper_total_r=4,
-            paper_open_risk_eur=2,
-            paper_open_positions=1,
+            research_paper_closed_pnl_eur=8,
+            research_paper_total_r=4,
+            research_paper_open_risk_eur=2,
+            research_paper_open_positions=1,
+            selected_daily_pnl_eur=0,
+            selected_daily_r=0,
+            selected_open_risk_eur=2,
+            selected_open_positions=1,
             max_daily_loss_eur=6,
             remaining_daily_loss_budget_eur=6,
         ),
@@ -182,3 +186,43 @@ def test_demo_submit_writes_command_only_when_all_guards_pass(
     assert parsed.strategy_id == STRATEGY
     assert parsed.stop_loss == 80800
     assert parsed.take_profit == 81360
+
+
+def test_demo_submit_refuses_when_broker_already_has_position(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "execution_mode", ExecutionMode.DEMO)
+    monkeypatch.setattr(settings, "demo_execution_bridge_enabled", True)
+    monkeypatch.setattr(settings, "live_trading_enabled", False)
+    current = overview()
+    current.broker.observed_positions = 1
+
+    with pytest.raises(ValueError, match="broker already has open positions"):
+        submit_selected_demo_order(
+            files_dir=tmp_path,
+            overview=current,
+            macro=clear_macro(),
+            proposal=proposal(),
+            now=NOW,
+        )
+
+
+def test_demo_submit_refuses_when_daily_loss_budget_is_exhausted(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "execution_mode", ExecutionMode.DEMO)
+    monkeypatch.setattr(settings, "demo_execution_bridge_enabled", True)
+    monkeypatch.setattr(settings, "live_trading_enabled", False)
+    current = overview()
+    current.risk.remaining_daily_loss_budget_eur = 0
+
+    with pytest.raises(ValueError, match="daily loss budget is exhausted"):
+        submit_selected_demo_order(
+            files_dir=tmp_path,
+            overview=current,
+            macro=clear_macro(),
+            proposal=proposal(),
+            now=NOW,
+        )

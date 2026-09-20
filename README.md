@@ -141,3 +141,24 @@ already listening.
 split and persists the admission registry. The split boundaries do not roll
 forward automatically, which prevents the historical holdout from silently
 changing over time.
+
+
+## Multi-market MT4 bridge
+
+`TradingMarketExporter.mq4` is a read-only Expert Advisor. When attached to one
+MT4 chart it exports `trading_symbol_specs.csv` every few seconds with sanitized
+quotes and broker specifications for the configured symbol list.
+
+The backend consumes that single file for:
+
+- live BID/ASK display;
+- symbol specification discovery;
+- spread history;
+- paper-readiness of additional markets.
+
+Unavailable aliases are skipped instead of emitting zero prices. The EA never
+creates, modifies or closes orders.
+
+`TradingDemoExecutionBridge.mq4` is separate and remains disabled unless
+`AllowDemoExecution=true` is explicitly configured in MT4 and all backend
+qualification guards pass.

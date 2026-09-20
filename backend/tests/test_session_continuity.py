@@ -3,7 +3,6 @@ from datetime import UTC, datetime, timedelta
 from app.domain.market import MarketBar, Timeframe
 from app.services.session_continuity import reopen_warmup_remaining
 
-
 START = datetime(2026, 9, 18, 20, 0, tzinfo=UTC)
 
 

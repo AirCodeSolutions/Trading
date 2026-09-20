@@ -31,6 +31,7 @@ worker_healthy() {
 
   pid_alive "$pid_file" || return 1
   [ -f "$heartbeat" ] || return 1
+  grep -q '"ok": true' "$heartbeat" || return 1
 
   local now mtime age
   now="$(date +%s)"

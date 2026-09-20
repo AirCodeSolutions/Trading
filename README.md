@@ -163,3 +163,29 @@ creates, modifies or closes orders.
 `TradingDemoExecutionBridge.mq4` is separate and remains disabled unless
 `AllowDemoExecution=true` is explicitly configured in MT4 and all backend
 qualification guards pass.
+
+
+## Session preflight
+
+The runtime exposes `/api/v1/session/preflight` for market-reopen readiness.
+
+It combines:
+
+- SHADOW worker heartbeat freshness;
+- broker quote freshness;
+- M5/M15 history availability;
+- broker symbol specification availability;
+- paper readiness;
+- macro blackout state;
+- Portfolio Manager action;
+- DEMO execution guard.
+
+The UI classifies the runtime as:
+
+- `READY`: at least one watched non-BTC market is paper-ready and the worker is healthy;
+- `WAITING_MARKET`: infrastructure is healthy but non-BTC quotes are not live yet;
+- `DEGRADED`: an open-market quote is live while required history/specs are incomplete;
+- `BLOCKED`: the worker heartbeat is missing, failed or older than 180 seconds.
+
+The watchdog runs every minute. A stale worker heartbeat causes only the SHADOW
+worker to restart; backend, frontend and MT4 are left untouched.

@@ -629,3 +629,72 @@ h1 {
 .gate-result strong {
   color: #d7e2ee;
 }
+
+
+.preflight-panel {
+  margin-top: 38px;
+  padding: 26px 30px;
+  border: 1px solid #27394b;
+  border-radius: 18px;
+  background: rgba(13, 24, 35, 0.94);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.24);
+}
+
+.preflight-ready {
+  border-color: rgba(120, 216, 199, 0.58);
+  background:
+    linear-gradient(135deg, rgba(120, 216, 199, 0.09), transparent 42%),
+    rgba(13, 24, 35, 0.94);
+}
+
+.preflight-waiting_market {
+  border-color: rgba(244, 190, 90, 0.48);
+  background:
+    linear-gradient(135deg, rgba(244, 190, 90, 0.07), transparent 42%),
+    rgba(13, 24, 35, 0.94);
+}
+
+.preflight-degraded,
+.preflight-blocked {
+  border-color: rgba(240, 140, 140, 0.58);
+  background:
+    linear-gradient(135deg, rgba(240, 140, 140, 0.08), transparent 42%),
+    rgba(13, 24, 35, 0.94);
+}
+
+.preflight-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.preflight-metrics > div {
+  min-height: 82px;
+  padding: 14px;
+  border: 1px solid #1c2b3a;
+  border-radius: 12px;
+  background: rgba(4, 12, 19, 0.4);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.preflight-metrics span {
+  color: #718297;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.preflight-metrics strong {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.preflight-reason {
+  margin: 14px 0 0;
+  color: #9cabbc;
+  line-height: 1.55;
+}

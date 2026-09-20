@@ -36,6 +36,15 @@ def main() -> None:
             paper_ready_symbols = sorted(
                 {item.diagnostic.symbol for item in results}
             )
+            warming_up_symbols = sorted(
+                {
+                    item.diagnostic.symbol
+                    for item in results
+                    if item.diagnostic.reason.startswith(
+                        "session reopen warmup:"
+                    )
+                }
+            )
             heartbeat = ShadowWorkerHeartbeat(
                 at=now,
                 ok=True,
@@ -43,6 +52,7 @@ def main() -> None:
                 shadow_scans=len(results),
                 signals=signals,
                 paper_ready_symbols=paper_ready_symbols,
+                warming_up_symbols=warming_up_symbols,
             )
             _write_heartbeat(heartbeat_path, heartbeat)
             print(heartbeat.model_dump_json(), flush=True)
@@ -54,6 +64,7 @@ def main() -> None:
                 shadow_scans=0,
                 signals=0,
                 paper_ready_symbols=[],
+                warming_up_symbols=[],
                 error=repr(exc),
             )
             _write_heartbeat(heartbeat_path, heartbeat)

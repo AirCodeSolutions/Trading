@@ -25,6 +25,8 @@ class DemoExecutionGuard(BaseModel):
     broker_is_demo: bool
     portfolio_action: PortfolioAction
     macro_blocked: bool
+    broker_observed_positions: int = Field(default=0, ge=0)
+    remaining_daily_loss_budget_eur: float = Field(default=0.0, ge=0)
     reasons: list[str]
 
 

@@ -26,6 +26,7 @@ def advance_shadow_paper_book(
     state_path: Path,
     trades_path: Path,
     evaluated_at: datetime,
+    allow_new_entries: bool = True,
 ) -> ShadowPaperSummary:
     state = load_shadow_paper_state(state_path)
 
@@ -39,7 +40,8 @@ def advance_shadow_paper_book(
 
     signal_at = diagnostic.latest_closed_m5_at + timedelta(minutes=5)
     if (
-        state.open_trade is None
+        allow_new_entries
+        and state.open_trade is None
         and diagnostic.state == ShadowSignalState.SIGNAL_EXECUTABLE
         and diagnostic.side is not None
         and diagnostic.structural_stop is not None

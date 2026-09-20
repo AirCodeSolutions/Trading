@@ -51,6 +51,8 @@ class PaperStrategyRuntime(BaseModel):
     mechanism: OpportunityMechanism
     summary: ShadowPaperSummary
     qualification: ProspectiveQualification
+    daily_pnl_eur: float = 0.0
+    daily_r: float = 0.0
 
 
 class PortfolioAction(StrEnum):
@@ -70,10 +72,14 @@ class PortfolioDecision(BaseModel):
 
 class PortfolioRiskSnapshot(BaseModel):
     reference_capital_eur: float = Field(gt=0)
-    paper_closed_pnl_eur: float
-    paper_total_r: float
-    paper_open_risk_eur: float = Field(ge=0)
-    paper_open_positions: int = Field(ge=0)
+    research_paper_closed_pnl_eur: float
+    research_paper_total_r: float
+    research_paper_open_risk_eur: float = Field(ge=0)
+    research_paper_open_positions: int = Field(ge=0)
+    selected_daily_pnl_eur: float
+    selected_daily_r: float
+    selected_open_risk_eur: float = Field(ge=0)
+    selected_open_positions: int = Field(ge=0)
     max_daily_loss_eur: float = Field(gt=0)
     remaining_daily_loss_budget_eur: float = Field(ge=0)
 

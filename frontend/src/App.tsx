@@ -106,10 +106,14 @@ type TradingOverview = {
   } | null;
   risk: {
     reference_capital_eur: number;
-    paper_closed_pnl_eur: number;
-    paper_total_r: number;
-    paper_open_risk_eur: number;
-    paper_open_positions: number;
+    research_paper_closed_pnl_eur: number;
+    research_paper_total_r: number;
+    research_paper_open_risk_eur: number;
+    research_paper_open_positions: number;
+    selected_daily_pnl_eur: number;
+    selected_daily_r: number;
+    selected_open_risk_eur: number;
+    selected_open_positions: number;
     max_daily_loss_eur: number;
     remaining_daily_loss_budget_eur: number;
   };
@@ -434,10 +438,10 @@ export default function App() {
           <strong>{config ? `${config.reference_capital_eur.toFixed(0)} €` : "—"}</strong>
         </article>
         <article className="card">
-          <span className="label">PnL paper</span>
+          <span className="label">PnL recherche SHADOW</span>
           <strong>
             {overview
-              ? `${overview.risk.paper_closed_pnl_eur >= 0 ? "+" : ""}${overview.risk.paper_closed_pnl_eur.toFixed(2)} €`
+              ? `${overview.risk.research_paper_closed_pnl_eur >= 0 ? "+" : ""}${overview.risk.research_paper_closed_pnl_eur.toFixed(2)} €`
               : "—"}
           </strong>
         </article>
@@ -519,23 +523,27 @@ export default function App() {
 
         <div className="metric-grid">
           <div className="metric">
-            <span>PnL paper clôturé</span>
+            <span>PnL recherche SHADOW</span>
             <strong>
               {overview
-                ? `${overview.risk.paper_closed_pnl_eur >= 0 ? "+" : ""}${overview.risk.paper_closed_pnl_eur.toFixed(2)} €`
+                ? `${overview.risk.research_paper_closed_pnl_eur >= 0 ? "+" : ""}${overview.risk.research_paper_closed_pnl_eur.toFixed(2)} €`
                 : "—"}
             </strong>
           </div>
           <div className="metric">
-            <span>Total R</span>
-            <strong>{overview ? `${overview.risk.paper_total_r.toFixed(2)} R` : "—"}</strong>
+            <span>Total R recherche</span>
+            <strong>{overview ? `${overview.risk.research_paper_total_r.toFixed(2)} R` : "—"}</strong>
           </div>
           <div className="metric">
-            <span>Risque paper ouvert</span>
-            <strong>{overview ? `${overview.risk.paper_open_risk_eur.toFixed(2)} €` : "—"}</strong>
+            <span>Risque SHADOW ouvert</span>
+            <strong>{overview ? `${overview.risk.research_paper_open_risk_eur.toFixed(2)} €` : "—"}</strong>
           </div>
           <div className="metric">
-            <span>Budget perte journalier</span>
+            <span>PnL sélection aujourd'hui</span>
+            <strong>{overview ? `${overview.risk.selected_daily_pnl_eur >= 0 ? "+" : ""}${overview.risk.selected_daily_pnl_eur.toFixed(2)} €` : "—"}</strong>
+          </div>
+          <div className="metric">
+            <span>Budget perte journalier sélection</span>
             <strong>{overview ? `${overview.risk.remaining_daily_loss_budget_eur.toFixed(2)} €` : "—"}</strong>
           </div>
           <div className="metric">

@@ -1,12 +1,14 @@
 from datetime import datetime
 from pathlib import Path
 
+from app.domain.admission import AdmissionState
 from app.domain.market import Timeframe
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.shadow import ShadowCollectionResult
 from app.services.market_universe import build_market_universe
 from app.services.mt4_market_data import load_closed_market_bars
 from app.services.mt4_specs import get_mt4_symbol_spec
+from app.services.runtime_admission_registry import load_research_admissions
 from app.services.shadow_ledger import append_shadow_observation
 from app.services.shadow_paper import advance_shadow_paper_book
 from app.services.shadow_scanner import scan_shadow_opportunity
@@ -24,6 +26,7 @@ def collect_all_shadow_once(
     evaluated_at: datetime,
 ) -> list[ShadowCollectionResult]:
     results: list[ShadowCollectionResult] = []
+    admissions = load_research_admissions(runtime_dir / "strategy_admissions.json")
     assets = [
         asset
         for asset in build_market_universe(files_dir, evaluated_at)
@@ -61,6 +64,11 @@ def collect_all_shadow_once(
             prefix = f"{asset.symbol}_{slug}"
             ledger_path = runtime_dir / f"{prefix}.jsonl"
             appended = append_shadow_observation(ledger_path, diagnostic)
+            strategy_id = f"{asset.symbol}:{mechanism.value}"
+            admission = admissions.get(strategy_id)
+            allow_new_entries = not (
+                admission is not None and admission.state == AdmissionState.REJECTED
+            )
             paper = advance_shadow_paper_book(
                 diagnostic=diagnostic,
                 spec=spec,
@@ -68,6 +76,7 @@ def collect_all_shadow_once(
                 state_path=runtime_dir / f"{prefix}_paper_state.json",
                 trades_path=runtime_dir / f"{prefix}_paper_trades.jsonl",
                 evaluated_at=evaluated_at,
+                allow_new_entries=allow_new_entries,
             )
             results.append(
                 ShadowCollectionResult(

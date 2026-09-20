@@ -29,6 +29,8 @@ def build_demo_guard(
 ) -> DemoExecutionGuard:
     reasons: list[str] = []
     broker_is_demo = bool(overview.broker and overview.broker.is_demo)
+    broker_positions = overview.broker.observed_positions if overview.broker else 0
+    remaining_daily_loss = overview.risk.remaining_daily_loss_budget_eur
 
     if settings.execution_mode != ExecutionMode.DEMO:
         reasons.append("execution mode is not demo")
@@ -40,6 +42,12 @@ def build_demo_guard(
         reasons.append("broker account is not confirmed as demo")
     if overview.portfolio.action != PortfolioAction.DEMO_ELIGIBLE:
         reasons.append("portfolio is not demo eligible")
+    if broker_positions > 0:
+        reasons.append("broker already has open positions")
+    if remaining_daily_loss <= 0:
+        reasons.append("daily loss budget is exhausted")
+    if overview.risk.selected_open_risk_eur > remaining_daily_loss:
+        reasons.append("selected trade risk exceeds remaining daily loss budget")
     if macro.blocked:
         reasons.append(macro.reason)
 
@@ -52,6 +60,8 @@ def build_demo_guard(
         broker_is_demo=broker_is_demo,
         portfolio_action=overview.portfolio.action,
         macro_blocked=macro.blocked,
+        broker_observed_positions=broker_positions,
+        remaining_daily_loss_budget_eur=remaining_daily_loss,
         reasons=reasons,
     )
 

@@ -194,18 +194,19 @@ type DemoExecutionStatus = {
 
 type SessionPreflight = {
   at: string;
-  status: "ready" | "waiting_market" | "degraded" | "blocked";
+  status: "ready" | "warming_up" | "waiting_market" | "degraded" | "blocked";
   worker_ok: boolean;
   worker_age_seconds: number | null;
   macro_blocked: boolean;
   portfolio_action: string;
   demo_execution_ready: boolean;
   ready_symbols: string[];
+  warming_symbols: string[];
   waiting_symbols: string[];
   degraded_symbols: string[];
   assets: {
     symbol: string;
-    state: "ready" | "waiting_quote" | "missing_spec" | "missing_history";
+    state: "ready" | "warming_up" | "waiting_quote" | "missing_spec" | "missing_history";
     quote_live: boolean;
     paper_ready: boolean;
     broker_spec_ready: boolean;
@@ -469,6 +470,10 @@ export default function App() {
           <div>
             <span>READY</span>
             <strong>{preflight?.ready_symbols.join(", ") || "—"}</strong>
+          </div>
+          <div>
+            <span>WARMING UP</span>
+            <strong>{preflight?.warming_symbols.join(", ") || "—"}</strong>
           </div>
           <div>
             <span>EN ATTENTE MARCHÉ</span>

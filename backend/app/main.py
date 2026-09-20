@@ -14,7 +14,9 @@ from app.domain.broker import (
     PositionSizeRequest,
     PositionSizeResult,
 )
+from app.domain.demo_execution import DemoExecutionStatus, DemoOrderCommand
 from app.domain.live_market import LiveMarketQuote
+from app.domain.macro import MacroGateStatus
 from app.domain.market import MarketBar, Timeframe
 from app.domain.opportunity import (
     Mt4OpportunityBacktestRequest,
@@ -31,7 +33,9 @@ from app.services.admission import assess_strategy
 from app.services.approval_gate import ApprovalGate
 from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
 from app.services.capital_risk import size_position
+from app.services.demo_execution import build_demo_status, submit_selected_demo_order
 from app.services.execution_cost_history import summarize_execution_costs
+from app.services.macro_gate import macro_gate_status
 from app.services.market_quality import assess_market
 from app.services.market_store import MarketStore
 from app.services.market_universe import build_market_universe
@@ -69,6 +73,17 @@ def _normalized_symbol(symbol: str) -> str:
 @app.get(f"{settings.api_prefix}/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": settings.app_name}
+
+
+@app.get(
+    f"{settings.api_prefix}/macro/status",
+    response_model=MacroGateStatus,
+)
+def macro_status() -> MacroGateStatus:
+    return macro_gate_status(
+        settings.macro_events_path,
+        datetime.now(tz=_server_timezone()),
+    )
 
 
 @app.get(f"{settings.api_prefix}/config")
@@ -269,6 +284,54 @@ def research_regime(bars: list[MarketBar]) -> RegimeSnapshot:
 @app.post(f"{settings.api_prefix}/research/admission", response_model=AdmissionDecision)
 def research_admission(evidence: StrategyEvidence) -> AdmissionDecision:
     return assess_strategy(evidence)
+
+
+@app.get(
+    f"{settings.api_prefix}/execution/demo/status",
+    response_model=DemoExecutionStatus,
+)
+def demo_execution_status() -> DemoExecutionStatus:
+    now = datetime.now(tz=_server_timezone())
+    overview = build_trading_overview(
+        _mt4_files_dir(),
+        settings.shadow_ledger_dir,
+        now,
+    )
+    macro = macro_gate_status(settings.macro_events_path, now)
+    return build_demo_status(
+        files_dir=_mt4_files_dir(),
+        overview=overview,
+        macro=macro,
+        now=now,
+    )
+
+
+@app.post(
+    f"{settings.api_prefix}/execution/demo/submit-selected/{{proposal_id}}",
+    response_model=DemoOrderCommand,
+)
+def submit_selected_demo_execution(proposal_id: str) -> DemoOrderCommand:
+    proposal = approval_gate.get(proposal_id)
+    if proposal is None:
+        raise HTTPException(status_code=404, detail="proposal not found")
+
+    now = datetime.now(tz=_server_timezone())
+    overview = build_trading_overview(
+        _mt4_files_dir(),
+        settings.shadow_ledger_dir,
+        now,
+    )
+    macro = macro_gate_status(settings.macro_events_path, now)
+    try:
+        return submit_selected_demo_order(
+            files_dir=_mt4_files_dir(),
+            overview=overview,
+            macro=macro,
+            proposal=proposal,
+            now=now,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.post(f"{settings.api_prefix}/execution/proposals", response_model=ExecutionProposal)

@@ -15,9 +15,11 @@ Construire une application de trading M5/M15 testable, observable et indépendan
 7. **Portfolio Matrix** — compare marché × mécanisme et ne qualifie que les couples ACTIVE.
 8. **Capital Risk Engine** — sizing depuis 200 EUR, jamais depuis le gros solde démo.
 9. **Approval Gate** — mode AUTO ou CONFIRM.
-10. **MT4 Execution Adapter** — future couche d'envoi et rapprochement broker.
-11. **Ledger / Analytics** — décisions, rejets, fills, PnL, coûts et drawdown.
-12. **React UI** — portefeuille, régimes, opportunités et contrôle humain.
+10. **Macro Gate** — bloque les nouvelles entrées autour des événements USD à fort impact.
+11. **MT4 DEMO Execution Adapter** — bridge isolé, désactivé par défaut, avec rapprochement commandes/résultats/positions.
+12. **Ledger / Analytics** — décisions, rejets, paper trades, PnL, coûts et drawdown.
+13. **React UI** — univers marché, portefeuille, macro, SHADOW/paper et état DEMO.
+14. **Ops watchdog** — autostart/recovery via cron lorsque systemd utilisateur n'est pas disponible.
 
 ## Regime Engine
 
@@ -134,3 +136,36 @@ Avant le live, ces preuves doivent être reproduites avec coûts et comportement
 - persister le ledger de recherche et les opportunités ;
 - enrichir le dashboard portefeuille ;
 - connecter ensuite l'exécution MT4 en démo.
+
+
+## Portfolio Manager runtime
+
+Le runtime découvre les ledgers paper de chaque couple marché × mécanisme. Une
+stratégie ne devient `DEMO_ELIGIBLE` que si deux preuves indépendantes convergent :
+
+1. admission historique `ACTIVE` issue de la matrice gelée ;
+2. qualification prospective paper suffisante.
+
+Sinon l'action reste `NO_TRADE` ou `PAPER_ONLY`.
+
+## Macro Gate
+
+Le calendrier USD combine une base vérifiée Fed/BLS/BEA et une synchronisation
+BLS best-effort. En cas d'échec réseau, la base locale n'est jamais effacée.
+
+Les événements HIGH appliquent une fenêtre de blackout avant/après la
+publication. Ce gate intervient aussi dans la garde DEMO.
+
+## DEMO bridge
+
+`TradingDemoExecutionBridge.mq4` refuse une commande si :
+
+- `AllowDemoExecution=false` ;
+- le compte MT4 n'est pas DEMO ;
+- le magic number ne correspond pas ;
+- la proposition n'est pas `authorized` ;
+- une position du bridge est déjà ouverte ;
+- le lot ou la géométrie SL/TP est invalide.
+
+Le backend ajoute ses propres gardes avant même de créer le fichier de commande.
+Le bridge n'est pas une voie d'accès au live réel.

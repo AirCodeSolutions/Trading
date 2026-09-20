@@ -49,8 +49,8 @@ from app.services.opportunity_backtester import run_opportunity_backtest
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.portfolio_overview import build_trading_overview
 from app.services.regime import classify_regime
-from app.services.session_preflight import build_session_preflight
 from app.services.runtime_admission_registry import save_research_admissions
+from app.services.session_preflight import build_session_preflight
 from app.services.shadow_collector import collect_btc_break_retest_once
 from app.services.shadow_paper import load_shadow_paper_summary
 

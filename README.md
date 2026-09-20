@@ -106,3 +106,38 @@ npm run dev
 UI : `http://localhost:5173`.
 
 Voir `docs/ARCHITECTURE.md` et les fichiers `docs/RESEARCH_*.md`.
+
+
+## Runtime portfolio and safety layers
+
+The deployed runtime now includes:
+
+- multi-market inventory for MT4 history, broker quotes and symbol specifications;
+- prospective SHADOW/paper ledgers per market × mechanism;
+- persistent historical admission registry;
+- Portfolio Manager with `NO_TRADE`, `PAPER_ONLY` and `DEMO_ELIGIBLE`;
+- consolidated paper PnL, open risk and drawdown;
+- observed spread history;
+- USD macro blackout gate using verified Fed/BLS/BEA dates;
+- MT4 DEMO execution bridge guarded by account type, portfolio qualification,
+  macro blackout, approval status and live-trading lock;
+- cron-based restart/watchdog because user-level systemd is unavailable.
+
+The DEMO bridge is disabled by default. Real-money execution remains locked.
+
+### Deployed ports
+
+The operational deployment uses configurable ports; the current Bot-IA deployment reserves:
+
+- frontend: `5180`;
+- backend: `8020`.
+
+`ops/start_trading.sh` refuses to start a duplicate service when those ports are
+already listening.
+
+### Historical admission refresh
+
+`backend/scripts/refresh_research_admissions.py` reproduces the frozen research
+split and persists the admission registry. The split boundaries do not roll
+forward automatically, which prevents the historical holdout from silently
+changing over time.

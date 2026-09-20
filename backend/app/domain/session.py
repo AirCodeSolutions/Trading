@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 class SessionReadinessStatus(StrEnum):
     READY = "ready"
+    WARMING_UP = "warming_up"
     WAITING_MARKET = "waiting_market"
     DEGRADED = "degraded"
     BLOCKED = "blocked"
@@ -13,6 +14,7 @@ class SessionReadinessStatus(StrEnum):
 
 class SessionAssetState(StrEnum):
     READY = "ready"
+    WARMING_UP = "warming_up"
     WAITING_QUOTE = "waiting_quote"
     MISSING_SPEC = "missing_spec"
     MISSING_HISTORY = "missing_history"
@@ -38,6 +40,7 @@ class ShadowWorkerHeartbeat(BaseModel):
     shadow_scans: int = Field(ge=0)
     signals: int = Field(ge=0)
     paper_ready_symbols: list[str]
+    warming_up_symbols: list[str] = Field(default_factory=list)
     error: str | None = None
 
 
@@ -50,6 +53,7 @@ class SessionPreflight(BaseModel):
     portfolio_action: str
     demo_execution_ready: bool
     ready_symbols: list[str]
+    warming_symbols: list[str]
     waiting_symbols: list[str]
     degraded_symbols: list[str]
     assets: list[SessionAssetStatus]

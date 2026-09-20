@@ -5,6 +5,15 @@ BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNTIME="${TRADING_RUNTIME_DIR:-${HOME}/trading/Trading-runtime}"
 BACKEND_PORT="${TRADING_BACKEND_PORT:-8020}"
 FRONTEND_PORT="${TRADING_FRONTEND_PORT:-5180}"
+NODE_BIN="${TRADING_NODE_BIN:-${HOME}/.hermes/node/bin/node}"
+
+if [ ! -x "$NODE_BIN" ]; then
+  NODE_BIN="$(command -v node || true)"
+fi
+if [ -z "$NODE_BIN" ] || [ ! -x "$NODE_BIN" ]; then
+  echo "Node runtime not found for frontend" >&2
+  exit 1
+fi
 
 mkdir -p "$RUNTIME/logs" "$RUNTIME/pids" "$RUNTIME/shadow"
 exec 9>"$RUNTIME/start.lock"
@@ -63,7 +72,7 @@ fi
 if ! port_listening "$FRONTEND_PORT"; then
   (
     cd "$BASE/frontend"
-    nohup node ./node_modules/vite/bin/vite.js \
+    nohup "$NODE_BIN" ./node_modules/vite/bin/vite.js \
       --host 0.0.0.0 \
       --port "$FRONTEND_PORT" \
       >>"$RUNTIME/logs/frontend.log" 2>&1 &

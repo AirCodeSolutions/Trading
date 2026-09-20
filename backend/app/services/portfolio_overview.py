@@ -4,6 +4,7 @@ from pathlib import Path
 from app.core.config import settings
 from app.domain.admission import AdmissionState
 from app.domain.portfolio import (
+    PaperStrategyRuntime,
     PortfolioAction,
     PortfolioDecision,
     PortfolioRiskSnapshot,
@@ -20,14 +21,14 @@ def build_trading_overview(
     runtime_dir: Path,
     now: datetime,
 ) -> TradingOverview:
-    paper_rows = load_paper_registry(runtime_dir)
+    paper_rows = load_paper_registry(runtime_dir, now)
     admissions = load_research_admissions(runtime_dir / "strategy_admissions.json")
 
     qualifications = [row.qualification for row in paper_rows]
     open_rows = [row for row in paper_rows if row.summary.open_trade is not None]
-    total_pnl = sum(row.summary.total_pnl_eur for row in paper_rows)
-    total_r = sum(row.summary.total_r for row in paper_rows)
-    open_risk = sum(
+    research_pnl = sum(row.summary.total_pnl_eur for row in paper_rows)
+    research_r = sum(row.summary.total_r for row in paper_rows)
+    research_open_risk = sum(
         row.summary.open_trade.risk_eur
         for row in open_rows
         if row.summary.open_trade is not None
@@ -41,8 +42,9 @@ def build_trading_overview(
         and row.qualification.state == ProspectiveQualificationState.SUPPORTS_DEMO
     ]
 
+    selected_row: PaperStrategyRuntime | None = None
     if eligible:
-        winner = max(
+        selected_row = max(
             eligible,
             key=lambda row: (
                 row.qualification.expectancy_r,
@@ -51,7 +53,7 @@ def build_trading_overview(
             ),
         )
         action = PortfolioAction.DEMO_ELIGIBLE
-        selected = winner.strategy_id
+        selected = selected_row.strategy_id
         historical_active = True
         prospective_supports_demo = True
         reason = (
@@ -59,15 +61,15 @@ def build_trading_overview(
             "support demo evaluation"
         )
     elif open_rows:
-        winner = open_rows[0]
+        selected_row = open_rows[0]
         action = PortfolioAction.PAPER_ONLY
-        selected = winner.strategy_id
+        selected = selected_row.strategy_id
         historical_active = (
-            admissions.get(winner.strategy_id) is not None
-            and admissions[winner.strategy_id].state == AdmissionState.ACTIVE
+            admissions.get(selected_row.strategy_id) is not None
+            and admissions[selected_row.strategy_id].state == AdmissionState.ACTIVE
         )
         prospective_supports_demo = (
-            winner.qualification.state
+            selected_row.qualification.state
             == ProspectiveQualificationState.SUPPORTS_DEMO
         )
         reason = "paper position is open; broker execution remains locked"
@@ -88,20 +90,37 @@ def build_trading_overview(
             "prospective paper qualification"
         )
 
+    selected_daily_pnl = selected_row.daily_pnl_eur if selected_row else 0.0
+    selected_daily_r = selected_row.daily_r if selected_row else 0.0
+    selected_open_risk = (
+        selected_row.summary.open_trade.risk_eur
+        if selected_row is not None and selected_row.summary.open_trade is not None
+        else 0.0
+    )
+    selected_open_positions = (
+        1
+        if selected_row is not None and selected_row.summary.open_trade is not None
+        else 0
+    )
+
     max_daily_loss = (
         settings.reference_capital_eur * settings.max_daily_loss_fraction
     )
-    remaining = max(0.0, max_daily_loss + min(0.0, total_pnl))
+    remaining = max(0.0, max_daily_loss + min(0.0, selected_daily_pnl))
 
     return TradingOverview(
         at=now,
         broker=read_broker_demo_snapshot(files_dir),
         risk=PortfolioRiskSnapshot(
             reference_capital_eur=settings.reference_capital_eur,
-            paper_closed_pnl_eur=total_pnl,
-            paper_total_r=total_r,
-            paper_open_risk_eur=open_risk,
-            paper_open_positions=len(open_rows),
+            research_paper_closed_pnl_eur=research_pnl,
+            research_paper_total_r=research_r,
+            research_paper_open_risk_eur=research_open_risk,
+            research_paper_open_positions=len(open_rows),
+            selected_daily_pnl_eur=selected_daily_pnl,
+            selected_daily_r=selected_daily_r,
+            selected_open_risk_eur=selected_open_risk,
+            selected_open_positions=selected_open_positions,
             max_daily_loss_eur=max_daily_loss,
             remaining_daily_loss_budget_eur=remaining,
         ),

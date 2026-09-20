@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from app.domain.macro import MacroGateStatus
@@ -11,8 +11,10 @@ from app.domain.session import (
     ShadowWorkerHeartbeat,
 )
 from app.services.market_universe import build_market_universe
+from app.services.mt4_live_quotes import LiveMarketQuote, read_live_market_quotes
 
 WORKER_STALE_SECONDS = 180
+M5_SYNC_MAX_AGE = timedelta(minutes=10)
 
 
 def load_worker_heartbeat(path: Path) -> ShadowWorkerHeartbeat | None:
@@ -38,6 +40,10 @@ def build_session_preflight(
 ) -> SessionPreflight:
     universe = build_market_universe(files_dir, now)
     by_symbol = {item.symbol.upper(): item for item in universe}
+    quotes = {
+        quote.symbol.upper(): quote
+        for quote in read_live_market_quotes(files_dir, now)
+    }
     heartbeat = load_worker_heartbeat(runtime_dir / "worker_heartbeat.json")
     worker_age = (
         max(0.0, (now - heartbeat.at).total_seconds())
@@ -63,10 +69,30 @@ def build_session_preflight(
         asset = by_symbol.get(normalized)
         if asset is None:
             continue
+        quote = quotes.get(normalized)
+        waiting_for_closed_m5 = (
+            asset.quote_live
+            and _waiting_for_fresh_closed_m5(quote, now)
+        )
+        warming_up = (
+            normalized in warming_from_worker
+            or waiting_for_closed_m5
+        )
         state = _asset_state(
             asset,
-            warming_up=normalized in warming_from_worker,
+            warming_up=warming_up,
         )
+        if waiting_for_closed_m5:
+            asset_reason = (
+                "live broker quote received; waiting for a fresh closed M5 bar"
+            )
+        elif normalized in warming_from_worker:
+            asset_reason = (
+                "session reopen warmup: waiting for three complete M5 bars"
+            )
+        else:
+            asset_reason = asset.reason
+
         assets.append(
             SessionAssetStatus(
                 symbol=normalized,
@@ -78,7 +104,7 @@ def build_session_preflight(
                 has_m15=asset.has_m15,
                 price=asset.price,
                 as_of=asset.as_of,
-                reason=asset.reason,
+                reason=asset_reason,
             )
         )
 
@@ -174,3 +200,13 @@ def _asset_state(
     if warming_up:
         return SessionAssetState.WARMING_UP
     return SessionAssetState.READY
+
+
+def _waiting_for_fresh_closed_m5(
+    quote: LiveMarketQuote | None,
+    now: datetime,
+) -> bool:
+    if quote is None or quote.last_closed_m5_at is None:
+        return True
+    last_close_at = quote.last_closed_m5_at + timedelta(minutes=5)
+    return now - last_close_at > M5_SYNC_MAX_AGE

@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE="$(cd "$(dirname "\${BASH_SOURCE[0]}")/.." && pwd)"
-RUNTIME="\${TRADING_RUNTIME_DIR:-\${HOME}/trading/Trading-runtime}"
-BACKEND_PORT="\${TRADING_BACKEND_PORT:-8020}"
-FRONTEND_PORT="\${TRADING_FRONTEND_PORT:-5180}"
+BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RUNTIME="${TRADING_RUNTIME_DIR:-${HOME}/trading/Trading-runtime}"
+BACKEND_PORT="${TRADING_BACKEND_PORT:-8020}"
+FRONTEND_PORT="${TRADING_FRONTEND_PORT:-5180}"
 
 mkdir -p "$RUNTIME/logs" "$RUNTIME/pids" "$RUNTIME/shadow"
 exec 9>"$RUNTIME/start.lock"
 flock -n 9 || exit 0
 
-export TRADING_SHADOW_LEDGER_DIR="\${TRADING_SHADOW_LEDGER_DIR:-$RUNTIME/shadow}"
-export TRADING_MACRO_EVENTS_PATH="\${TRADING_MACRO_EVENTS_PATH:-$RUNTIME/macro_events.json}"
+export TRADING_SHADOW_LEDGER_DIR="${TRADING_SHADOW_LEDGER_DIR:-$RUNTIME/shadow}"
+export TRADING_MACRO_EVENTS_PATH="${TRADING_MACRO_EVENTS_PATH:-$RUNTIME/macro_events.json}"
 
 port_listening() {
   ss -ltn "( sport = :$1 )" | grep -q LISTEN

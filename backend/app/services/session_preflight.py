@@ -12,7 +12,6 @@ from app.domain.session import (
 )
 from app.services.market_universe import build_market_universe
 
-
 WORKER_STALE_SECONDS = 180
 
 

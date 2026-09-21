@@ -155,10 +155,19 @@ already listening.
 
 ### Historical admission refresh
 
-`backend/scripts/refresh_research_admissions.py` reproduces the frozen research
-split and persists the admission registry. The split boundaries do not roll
-forward automatically, which prevents the historical holdout from silently
-changing over time.
+`backend/scripts/refresh_research_admissions.py` reproduces a versioned historical
+contract and persists the admission registry.
+
+The admission replay is frozen on two axes:
+
+- historical data ends at `2026-09-20T12:53:56+03:00`, the paper-evidence
+  cutover;
+- broker research specs come from
+  `config/research_broker_specs_2026-09-21.json`, using versioned contract
+  values and the median spread observed by runtime telemetry.
+
+New market bars and current broker spread therefore cannot silently change an
+historical admission. Runtime execution still uses live MT4 quotes/specs.
 
 
 ## Multi-market MT4 bridge
@@ -253,8 +262,8 @@ uses only trades opened from `2026-09-20T12:53:56+03:00` onward.
 Older trades remain visible as legacy evidence and are never deleted. At the
 2026-09-21 status checkpoint the ledger contains:
 
-- post-cutover: 0 closed trades / 0R / 0 EUR;
-- legacy: 7 trades / -7R / -10.8621 EUR.
+- post-cutover: 1 closed GBPUSD trade / +1.5R / +2.7329 EUR;
+- legacy: 7 BTC trades / -7R / -10.8621 EUR.
 
 See `docs/PROJECT_STATUS.md` and `docs/EVOLUTIONS.md` for the current source of
 truth.

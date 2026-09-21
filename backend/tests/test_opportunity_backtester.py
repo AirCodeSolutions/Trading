@@ -205,3 +205,27 @@ def test_candidate_outside_macro_blackout_keeps_original_outcome() -> None:
 
     assert result.executed == 1
     assert result.rejection_reasons == {}
+
+
+
+def test_holdout_end_excludes_bars_that_close_after_cutover() -> None:
+    start = datetime(2026, 1, 1, tzinfo=UTC)
+    config = _config().model_copy(
+        update={
+            "split": ResearchSplit(
+                train_end=start + timedelta(hours=10),
+                validation_end=start + timedelta(hours=14),
+                holdout_end=start + timedelta(hours=15, minutes=18),
+            )
+        }
+    )
+
+    result = run_opportunity_backtest(
+        _m5_with_post_shock_confirmation(),
+        _m15_with_information_shock(),
+        config,
+    )
+
+    assert result.candidates == 0
+    assert result.executed == 0
+    assert result.holdout.trades == 0

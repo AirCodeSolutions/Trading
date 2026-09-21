@@ -181,9 +181,9 @@ Status: **MERGED + DEPLOYED / SHADOW + PAPER collection**.
 - no DEMO authority, risk, lot, spread, macro or capital-policy change.
 
 
-## In-flight — five-asset runtime hardening + dashboard truth
+## PR #40 — five-asset runtime hardening + dashboard truth
 
-Branch: `fix/runtime-five-asset-watchdog`.
+Status: **MERGED + DEPLOYED** at `c314a9a`.
 
 - constrain runtime quote/universe discovery to the five active markets;
 - eliminate the >15s abandoned-symbol universe scan observed after PR #38;
@@ -196,6 +196,30 @@ Branch: `fix/runtime-five-asset-watchdog`.
 - add a ROAD TO BROKER DEMO panel with market readiness, scanner count, PAPER
   candidates, prospective progress and remaining execution locks.
 
-Validation: 125 backend tests passed before the dashboard additions; targeted
-runtime reads on real MT4 files returned the five active symbols in about
-0.02 seconds. No risk or trading admission threshold is relaxed by this PR.
+Validation after deployment: 126 backend tests, Ruff and frontend build passed;
+targeted runtime reads on real MT4 files returned the five active symbols in
+about 0.02 seconds. No risk or trading admission threshold was relaxed.
+
+
+## In-flight — isolated broker DEMO collection
+
+Branch: `feature/demo-collection-execution`.
+
+- new portfolio action `DEMO_COLLECTION` only for an open PAPER trade whose
+  historical admission has `paper_collection_candidate=true`;
+- external MT4 positions no longer block collection because the bridge owns and
+  exports only MagicNumber `560619` positions;
+- still allow only one Trading-New bridge position at a time until aggregate
+  multi-position exposure is modeled explicitly;
+- worker auto-executor mirrors the selected PAPER trade once and persists its
+  lifecycle across restarts;
+- explicit MT4 close command added so STOP/TARGET/TIMEOUT PAPER resolution can
+  never leave a broker DEMO position unmanaged;
+- bridge validates DEMO account, MagicNumber and authorized entry geometry;
+- dashboard reports auto-collection state, bridge ticket, pending open/close and
+  separates Trading-New positions from external broker positions;
+- live trading remains disabled.
+
+Local validation before PR: 133 backend tests passed, Ruff passed, frontend
+build passed and MetaEditor compiled `TradingDemoExecutionBridge.mq4` with
+0 errors / 0 warnings.

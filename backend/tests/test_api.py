@@ -18,6 +18,8 @@ def test_runtime_is_safe_by_default() -> None:
     assert payload["execution_mode"] == "paper"
     assert payload["decision_mode"] == "confirm"
     assert payload["live_trading_enabled"] is False
+    assert payload["demo_collection_enabled"] is False
+    assert payload["demo_execution_bridge_enabled"] is False
     assert payload["allowed_timeframes"] == ["M5", "M15"]
     assert payload["reference_capital_eur"] == 200.0
     assert payload["risk_per_trade_fraction"] == 0.01

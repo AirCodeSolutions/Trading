@@ -41,16 +41,30 @@ def _record_identity(record: dict[str, object]) -> tuple[str, str, str] | None:
         return None
 
 
-def _last_json_record(path: Path) -> dict[str, object] | None:
-    last_non_empty = ""
-    with path.open(encoding="utf-8") as handle:
-        for line in handle:
-            if line.strip():
-                last_non_empty = line
-    if not last_non_empty:
+def load_latest_shadow_observation(
+    path: Path,
+) -> ShadowOpportunityDiagnostic | None:
+    record = _last_json_record(path)
+    if record is None:
         return None
     try:
-        value = json.loads(last_non_empty)
-    except json.JSONDecodeError:
+        return ShadowOpportunityDiagnostic.model_validate(record)
+    except ValueError:
         return None
-    return value if isinstance(value, dict) else None
+
+
+def _last_json_record(path: Path) -> dict[str, object] | None:
+    if not path.is_file():
+        return None
+    with path.open(encoding="utf-8") as handle:
+        lines = handle.readlines()
+    for line in reversed(lines):
+        if not line.strip():
+            continue
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            return value
+    return None

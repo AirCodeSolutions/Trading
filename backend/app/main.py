@@ -52,6 +52,7 @@ from app.services.regime import classify_regime
 from app.services.runtime_admission_registry import save_research_admissions
 from app.services.session_preflight import build_session_preflight
 from app.services.shadow_collector import collect_btc_break_retest_once
+from app.services.shadow_overview import load_shadow_overview
 from app.services.shadow_paper import load_shadow_paper_summary
 
 app = FastAPI(title=settings.app_name, version="0.4.0")
@@ -188,6 +189,17 @@ def portfolio_overview() -> TradingOverview:
 def mt4_symbol_specs() -> list[BrokerSymbolSpec]:
     specs = list_mt4_symbol_specs(_mt4_files_dir())
     return [specs[key] for key in sorted(specs)]
+
+
+@app.get(
+    f"{settings.api_prefix}/shadow/overview",
+    response_model=list[ShadowOpportunityDiagnostic],
+)
+def shadow_overview() -> list[ShadowOpportunityDiagnostic]:
+    return load_shadow_overview(
+        settings.shadow_ledger_dir,
+        symbols=settings.session_watch_symbols,
+    )
 
 
 @app.get(

@@ -1,7 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
-from app.domain.admission import AdmissionState
+from app.domain.admission import AdmissionDecision, AdmissionState
 from app.domain.market import Timeframe
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.shadow import ShadowCollectionResult
@@ -67,9 +67,7 @@ def collect_all_shadow_once(
             appended = append_shadow_observation(ledger_path, diagnostic)
             strategy_id = f"{asset.symbol}:{mechanism.value}"
             admission = admissions.get(strategy_id)
-            allow_new_entries = not (
-                admission is not None and admission.state == AdmissionState.REJECTED
-            )
+            allow_new_entries = paper_entry_allowed(admission)
             paper = advance_shadow_paper_book(
                 diagnostic=diagnostic,
                 spec=spec,
@@ -90,3 +88,12 @@ def collect_all_shadow_once(
 
     return results
 
+
+
+def paper_entry_allowed(
+    admission: AdmissionDecision | None,
+) -> bool:
+    return (
+        admission is not None
+        and admission.state != AdmissionState.REJECTED
+    )

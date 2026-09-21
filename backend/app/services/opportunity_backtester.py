@@ -15,6 +15,7 @@ from app.domain.opportunity import (
 from app.domain.trading import Side
 from app.services.admission import assess_strategy
 from app.services.capital_risk import size_position
+from app.services.macro_gate import active_macro_blackouts
 from app.services.opportunity_strategies import generate_candidates
 
 
@@ -32,6 +33,10 @@ def run_opportunity_backtest(
     for candidate in candidates:
         if candidate.entry_index <= busy_until:
             rejections.append("overlapping_position")
+            continue
+
+        if active_macro_blackouts(config.macro_events, candidate.entry_at):
+            rejections.append("macro_blackout")
             continue
 
         outcome, exit_index, rejection = _simulate_candidate(

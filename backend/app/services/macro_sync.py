@@ -37,10 +37,7 @@ def sync_bls_calendar(
         return 0
 
     bls_events = parse_bls_ics(text)
-    merged = sorted(
-        [*base_events, *bls_events],
-        key=lambda event: event.start_at,
-    )
+    merged = _merge_events(base_events, bls_events)
     _write_events(output_path, merged)
     return len(bls_events)
 
@@ -129,3 +126,33 @@ def _write_events(path: Path, events: list[MacroEvent]) -> None:
         encoding="utf-8",
     )
     temporary.replace(path)
+
+
+
+def _merge_events(
+    base_events: list[MacroEvent],
+    synced_events: list[MacroEvent],
+) -> list[MacroEvent]:
+    merged = list(base_events)
+    seen = {_dedupe_key(event) for event in base_events}
+    for event in synced_events:
+        key = _dedupe_key(event)
+        if key in seen:
+            continue
+        merged.append(event)
+        seen.add(key)
+    return sorted(merged, key=lambda event: event.start_at)
+
+
+def _dedupe_key(event: MacroEvent) -> tuple[object, str]:
+    name = event.name.lower()
+    event_id = event.event_id.lower()
+    if "employment situation" in name or "nfp" in event_id:
+        family = "employment_situation"
+    elif "consumer price index" in name or "cpi" in event_id:
+        family = "consumer_price_index"
+    elif "producer price index" in name or "ppi" in event_id:
+        family = "producer_price_index"
+    else:
+        family = event_id
+    return event.start_at, family

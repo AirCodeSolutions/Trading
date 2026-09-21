@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 from app.domain.broker import BrokerSymbolSpec
+from app.domain.macro import MacroEvent, MacroImpact
 from app.domain.market import MarketBar, Timeframe
 from app.domain.opportunity import (
     OpportunityBacktestConfig,
@@ -143,3 +144,64 @@ def test_candidate_is_rejected_when_minimum_lot_breaks_200_eur_risk_budget() -> 
     assert result.rejection_reasons == {
         "minimum broker lot exceeds the risk budget": 1
     }
+
+
+
+def test_candidate_is_rejected_inside_shared_macro_blackout() -> None:
+    config = _config().model_copy(
+        update={
+            "macro_events": [
+                MacroEvent(
+                    event_id="test-fomc",
+                    name="FOMC decision-day safety window",
+                    start_at=datetime(2026, 1, 1, 15, 0, tzinfo=UTC),
+                    end_at=datetime(2026, 1, 1, 16, 0, tzinfo=UTC),
+                    impact=MacroImpact.HIGH,
+                    currencies=["USD"],
+                    pre_block_minutes=0,
+                    post_block_minutes=0,
+                    source="test",
+                )
+            ]
+        }
+    )
+
+    result = run_opportunity_backtest(
+        _m5_with_post_shock_confirmation(),
+        _m15_with_information_shock(),
+        config,
+    )
+
+    assert result.candidates == 1
+    assert result.executed == 0
+    assert result.rejected == 1
+    assert result.rejection_reasons == {"macro_blackout": 1}
+
+
+def test_candidate_outside_macro_blackout_keeps_original_outcome() -> None:
+    config = _config().model_copy(
+        update={
+            "macro_events": [
+                MacroEvent(
+                    event_id="past-cpi",
+                    name="CPI",
+                    start_at=datetime(2026, 1, 1, 12, 0, tzinfo=UTC),
+                    end_at=datetime(2026, 1, 1, 12, 0, tzinfo=UTC),
+                    impact=MacroImpact.HIGH,
+                    currencies=["USD"],
+                    pre_block_minutes=30,
+                    post_block_minutes=45,
+                    source="test",
+                )
+            ]
+        }
+    )
+
+    result = run_opportunity_backtest(
+        _m5_with_post_shock_confirmation(),
+        _m15_with_information_shock(),
+        config,
+    )
+
+    assert result.executed == 1
+    assert result.rejection_reasons == {}

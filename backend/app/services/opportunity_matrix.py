@@ -8,6 +8,7 @@ from app.domain.opportunity import (
     PortfolioResearchRequest,
     PortfolioResearchResult,
 )
+from app.services.macro_gate import load_macro_events
 from app.services.mt4_csv import read_mt4_csv
 from app.services.mt4_history import resolve_mt4_history_path
 from app.services.mt4_specs import list_mt4_symbol_specs
@@ -17,8 +18,15 @@ from app.services.opportunity_backtester import run_opportunity_backtest
 def run_mt4_portfolio_research(
     files_dir: Path,
     request: PortfolioResearchRequest,
+    *,
+    macro_events_path: Path | None = None,
 ) -> PortfolioResearchResult:
     specs = list_mt4_symbol_specs(files_dir)
+    macro_events = (
+        load_macro_events(macro_events_path)
+        if macro_events_path is not None
+        else []
+    )
     requested_symbols = (
         sorted(specs)
         if request.symbols is None
@@ -57,6 +65,7 @@ def run_mt4_portfolio_research(
                 split=request.split,
                 requested_risk_fraction=request.requested_risk_fraction,
                 slippage_spread_fraction=request.slippage_spread_fraction,
+                macro_events=macro_events,
             )
             results.append(run_opportunity_backtest(bars_m5, bars_m15, config))
 

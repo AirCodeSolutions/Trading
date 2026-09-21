@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from datetime import timedelta
+from datetime import datetime, timedelta
 from itertools import pairwise
 
 from app.domain.admission import EvidenceWindow, StrategyEvidence
@@ -110,7 +110,7 @@ def run_opportunity_backtest(
 
 def _bars_before_holdout_end(
     bars: Sequence[MarketBar],
-    holdout_end,
+    holdout_end: datetime | None,
     *,
     minutes: int,
 ) -> list[MarketBar]:

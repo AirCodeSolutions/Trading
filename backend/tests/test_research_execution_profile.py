@@ -1,4 +1,6 @@
 import json
+
+import pytest
 from pathlib import Path
 
 from app.domain.broker import BrokerSymbolSpec
@@ -62,7 +64,7 @@ def test_research_profile_ignores_transient_live_spread(tmp_path: Path) -> None:
     )
 
     assert narrow.spread == wide.spread
-    assert narrow.spread == 0.00011
+    assert narrow.spread == pytest.approx(0.00011)
     assert narrow.tick_value == wide.tick_value == 0.87114085
     assert narrow.margin_required == wide.margin_required == 116.59
 
@@ -77,4 +79,4 @@ def test_research_profile_preserves_live_mid_reference_only(tmp_path: Path) -> N
 
     assert frozen.bid == 1.4000
     assert frozen.ask == 1.40011
-    assert frozen.spread == 0.00011
+    assert frozen.spread == pytest.approx(0.00011)

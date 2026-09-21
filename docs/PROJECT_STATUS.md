@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `347e1b8` (PR #29).
+Current deployed main commit: `1d4552a` (PR #31).
 
 Operational services:
 
@@ -40,12 +40,12 @@ Operational services:
 - MT4 DEMO bridge: present but locked
 - live trading: locked
 
-Latest runtime checkpoint after PR #29 deployment:
+Latest runtime checkpoint:
 
-- Portfolio Manager: **PAPER_ONLY**;
-- one post-cutover paper position is open:
-  `GBPUSD:failed_auction_reversal`, BUY, 0.03 lot, risk ≈ 1.82 EUR;
-- MT4 DEMO bridge: 0 bridge positions, 0 pending commands, still locked.
+- first clean post-cutover PAPER trade completed: GBPUSD failed-auction BUY, +1.5R / +2.73 EUR;
+- no MT4 bridge position and no pending broker command;
+- 21 SHADOW scanners remain active;
+- new PAPER entries require positive historical SHADOW expectancy or ACTIVE admission.
 
 No strategy currently satisfies both:
 
@@ -156,10 +156,22 @@ restricted to:
 
 All scanners and blocked-probe ledgers continue to collect regardless.
 
-At the 2026-09-21 checkpoint, the positive-SHADOW pairs are:
-
-- GBPUSD:directional_pullback_resumption;
-- XAUUSD:failed_auction_reversal, subject to its frequent capital-granularity
-  blocks.
+Under the stable observed-median research cost profile, the only positive-SHADOW
+pair is currently XAUUSD:failed_auction_reversal, with an extremely small sample
+and frequent capital-granularity blocks. GBPUSD:directional_pullback_resumption
+remains a SHADOW scanner but is not PAPER-eligible because its holdout is negative
+at the observed-median GBP spread.
 
 Existing paper trades are not force-closed by this policy.
+
+
+## Stable historical execution assumptions
+
+Historical MT4 files do not contain usable spread history. Admissions therefore
+use the versioned profile `research_execution_profile_2026-09-21.json`.
+
+The profile freezes observed-median spreads plus contract/tick/margin fields for
+research only. Live SHADOW/PAPER execution continues to use current broker quotes
+and current execution guards.
+
+Interactive research endpoints do not write the runtime admission registry.

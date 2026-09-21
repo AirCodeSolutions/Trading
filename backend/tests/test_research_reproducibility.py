@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+
 from app.domain.admission import AdmissionDecision, AdmissionState
 from app.domain.market import MarketBar, Timeframe
 from app.domain.opportunity import (
@@ -73,7 +75,7 @@ def test_research_spec_profile_is_versioned_and_loadable(tmp_path: Path) -> None
 
     specs = load_research_broker_specs(path)
 
-    assert specs["GBPUSD"].spread == 0.00011
+    assert specs["GBPUSD"].spread == pytest.approx(0.00011)
 
 
 def test_portfolio_research_uses_frozen_spec_not_live_snapshot(
@@ -165,4 +167,4 @@ def test_portfolio_research_uses_frozen_spec_not_live_snapshot(
         research_broker_specs_path=profile,
     )
 
-    assert captured["spread"] == 0.00011
+    assert captured["spread"] == pytest.approx(0.00011)

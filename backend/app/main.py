@@ -133,6 +133,7 @@ def runtime_config() -> dict[str, object]:
         "risk_per_trade_fraction": settings.risk_per_trade_fraction,
         "absolute_max_risk_fraction": settings.absolute_max_risk_fraction,
         "max_daily_loss_fraction": settings.max_daily_loss_fraction,
+        "paper_evidence_cutover_at": settings.paper_evidence_cutover_at,
         "max_spread_to_stop": settings.max_spread_to_stop,
     }
 
@@ -260,7 +261,11 @@ def btc_break_retest_shadow() -> ShadowOpportunityDiagnostic:
 def btc_break_retest_paper_summary() -> ShadowPaperSummary:
     state_path = settings.shadow_ledger_dir / "BTCUSD_break_retest_paper_state.json"
     trades_path = settings.shadow_ledger_dir / "BTCUSD_break_retest_paper_trades.jsonl"
-    return load_shadow_paper_summary(state_path, trades_path)
+    return load_shadow_paper_summary(
+        state_path,
+        trades_path,
+        evidence_cutover_at=settings.paper_evidence_cutover_at,
+    )
 
 
 @app.post(

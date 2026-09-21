@@ -52,6 +52,10 @@ from app.services.opportunity_backtester import run_opportunity_backtest
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.portfolio_overview import build_trading_overview
 from app.services.regime import classify_regime
+from app.services.research_execution_profile import (
+    apply_research_execution_profile,
+    load_research_execution_profile,
+)
 from app.services.runtime_admission_registry import save_research_admissions
 from app.services.session_preflight import build_session_preflight
 from app.services.shadow_collector import collect_btc_break_retest_once
@@ -298,6 +302,10 @@ def mt4_opportunity_backtest(
     spec = get_mt4_symbol_spec(files_dir, symbol)
     if spec is None:
         raise HTTPException(status_code=404, detail="MT4 broker symbol spec not found")
+    spec = apply_research_execution_profile(
+        spec,
+        load_research_execution_profile(settings.research_execution_profile_path),
+    )
 
     m5_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M5)
     m15_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M15)
@@ -332,6 +340,7 @@ def mt4_portfolio_research(
             _mt4_files_dir(),
             request,
             macro_events_path=settings.macro_events_path,
+            research_execution_profile_path=settings.research_execution_profile_path,
         )
         save_research_admissions(
             settings.shadow_ledger_dir / "strategy_admissions.json",

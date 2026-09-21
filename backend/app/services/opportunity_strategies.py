@@ -126,10 +126,82 @@ def generate_candidates(
                 regime,
             )
 
+        elif mechanism == OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION:
+            if regime.regime != MarketRegime.DIRECTIONAL or regime.direction == 0:
+                continue
+            candidate = _directional_pullback_resumption_candidate(
+                bars_m5,
+                atr_m5,
+                index,
+                regime,
+            )
+
         if candidate is not None:
             candidates.append(candidate)
 
     return candidates
+
+
+def _directional_pullback_resumption_candidate(
+    bars: Sequence[MarketBar],
+    atr: Sequence[float],
+    index: int,
+    regime: RegimeSnapshot,
+) -> OpportunityCandidate | None:
+    if index < 2 or index + 1 >= len(bars):
+        return None
+    if regime.regime != MarketRegime.DIRECTIONAL or regime.direction == 0:
+        return None
+
+    value = atr[index]
+    if value <= 0:
+        return None
+
+    first_pullback = bars[index - 2]
+    second_pullback = bars[index - 1]
+    confirmation = bars[index]
+    entry = bars[index + 1]
+    side = Side.BUY if regime.direction > 0 else Side.SELL
+
+    if side == Side.BUY:
+        if not (
+            first_pullback.close < first_pullback.open
+            and second_pullback.close < second_pullback.open
+            and confirmation.close > confirmation.open
+            and confirmation.close > second_pullback.high
+        ):
+            return None
+        swing = min(first_pullback.low, second_pullback.low)
+        stop = swing - 0.10 * value
+    else:
+        if not (
+            first_pullback.close > first_pullback.open
+            and second_pullback.close > second_pullback.open
+            and confirmation.close < confirmation.open
+            and confirmation.close < second_pullback.low
+        ):
+            return None
+        swing = max(first_pullback.high, second_pullback.high)
+        stop = swing + 0.10 * value
+
+    if stop <= 0:
+        return None
+
+    return OpportunityCandidate(
+        symbol=confirmation.symbol,
+        mechanism=OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
+        side=side,
+        signal_at=confirmation.timestamp + timedelta(minutes=5),
+        entry_at=entry.timestamp,
+        signal_index=index,
+        entry_index=index + 1,
+        structural_stop=stop,
+        target_r=2.0,
+        max_holding_bars=12,
+        reason=(
+            "directional M15 with two-bar M5 pullback and local-swing resumption"
+        ),
+    )
 
 
 def _directional_transition_candidate(

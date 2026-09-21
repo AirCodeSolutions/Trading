@@ -115,9 +115,9 @@ Status: **MERGED + DEPLOYED**.
 - risk, lot, stop, target and broker execution guards are unchanged.
 
 
-## PR #32 — reproducible research execution costs
+## PR #34 — reproducible research execution costs
 
-Status: **IN DEVELOPMENT**.
+Status: **OPEN / CI pending**.
 
 - historical admission spread is being frozen per active symbol from observed
   median broker spreads;

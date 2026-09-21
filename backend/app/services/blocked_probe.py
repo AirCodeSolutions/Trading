@@ -2,6 +2,7 @@ from collections.abc import Sequence
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from app.core.config import settings
 from app.domain.blocked_probe import (
     BlockedOpportunityProbe,
     BlockedProbeState,
@@ -12,6 +13,7 @@ from app.domain.market import MarketBar
 from app.domain.shadow import ShadowOpportunityDiagnostic, ShadowSignalState
 from app.domain.shadow_paper import PaperTradeStatus
 from app.domain.trading import Side
+from app.services.capital_risk import monetary_loss_per_lot
 
 DEFAULT_TARGET_R = 1.8
 DEFAULT_MAX_HOLDING_BARS = 18
@@ -30,6 +32,10 @@ def advance_blocked_probe_book(
     state = load_blocked_probe_state(state_path)
 
     if state.open_probe is not None:
+        state.open_probe = _with_capital_feasibility(
+            state.open_probe,
+            spec,
+        )
         resolved = resolve_open_probe(state.open_probe, bars_m5)
         if resolved.status != PaperTradeStatus.OPEN:
             append_closed_probe(probes_path, resolved)
@@ -92,7 +98,7 @@ def create_blocked_probe(
     )
     signal_at = diagnostic.latest_closed_m5_at + timedelta(minutes=5)
 
-    return BlockedOpportunityProbe(
+    probe = BlockedOpportunityProbe(
         probe_id=(
             f"{diagnostic.symbol}-{diagnostic.mechanism.value}-"
             f"blocked-{signal_at.isoformat()}"
@@ -119,6 +125,36 @@ def create_blocked_probe(
             if diagnostic.max_risk is not None
             else None
         ),
+    )
+    return _with_capital_feasibility(probe, spec)
+
+
+def _with_capital_feasibility(
+    probe: BlockedOpportunityProbe,
+    spec: BrokerSymbolSpec,
+) -> BlockedOpportunityProbe:
+    min_lot_loss = (
+        monetary_loss_per_lot(spec, probe.risk_distance) * spec.min_lot
+    )
+    reference_capital = settings.reference_capital_eur
+    base_risk = settings.risk_per_trade_fraction
+    max_risk = settings.absolute_max_risk_fraction
+    minimum_fraction = (
+        min_lot_loss / reference_capital if reference_capital > 0 else 0.0
+    )
+    required_base = min_lot_loss / base_risk if base_risk > 0 else 0.0
+    required_max = min_lot_loss / max_risk if max_risk > 0 else 0.0
+
+    return probe.model_copy(
+        update={
+            "min_lot_loss_eur": min_lot_loss,
+            "required_capital_base_risk_eur": required_base,
+            "required_capital_max_risk_eur": required_max,
+            "minimum_feasible_risk_fraction": minimum_fraction,
+            "capital_granularity_feasible_under_max_risk": (
+                minimum_fraction <= max_risk
+            ),
+        }
     )
 
 

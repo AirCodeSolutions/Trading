@@ -80,11 +80,11 @@ Les rejets d'exécution sont comptabilisés séparément des résultats de tradi
 
 ## Limite de coût historique
 
-Les historiques actuels ne contiennent pas encore une série complète de spread tick-par-tick.
-
-Le backtest applique donc le spread du snapshot broker sur l'historique, plus un slippage modèle. Il s'agit d'une approximation conservatrice, mais pas d'une reconstruction parfaite des coûts historiques.
-
-La collecte d'un historique de spread fait partie des améliorations suivantes.
+Les fichiers HST v401 locaux ont été inspectés : le champ spread existe dans le
+format mais vaut zéro sur les historiques disponibles BTC/EUR/GBP/XAU/XAG.
+Le backtest utilise donc le spread broker disponible au replay plus le slippage
+modèle. Cette limite est explicite et ne doit pas être décrite comme une
+reconstruction historique exacte.
 
 ## Replay causal
 
@@ -135,14 +135,30 @@ Avant le mode démo automatisé :
 
 Avant le live, ces preuves doivent être reproduites avec coûts et comportement broker observés.
 
+## Active universe
+
+The architecture is currently constrained to five markets:
+
+- BTCUSD
+- EURUSD
+- GBPUSD
+- XAUUSD
+- XAGUSD
+
+US500Cash, USA500IDXUSD, USATECHIDXUSD, Volatility and VOLIDXUSD are explicitly
+outside the active project scope.
+
 ## Prochains incréments
 
-- analyser les sous-régimes du candidat BTC break/retest récent ;
-- collecter le spread dans le temps ;
-- ajouter le scanner runtime SHADOW ;
-- persister le ledger de recherche et les opportunités ;
-- enrichir le dashboard portefeuille ;
-- connecter ensuite l'exécution MT4 en démo.
+Runtime infrastructure is considered sufficient for the current phase. The next
+increments must improve trading evidence rather than add more plumbing:
+
+- one new causal, execution-feasible hypothesis for EURUSD/GBPUSD;
+- tighter but genuinely structural opportunity definitions for XAUUSD/XAGUSD;
+- continued BTC prospective collection under unchanged risk/cost guards;
+- historical/runtime equivalence tests for every new mechanism;
+- SHADOW first, DEMO only after historical ACTIVE plus prospective
+  SUPPORTS_DEMO.
 
 
 ## Portfolio Manager runtime
@@ -176,3 +192,16 @@ publication. Ce gate intervient aussi dans la garde DEMO.
 
 Le backend ajoute ses propres gardes avant même de créer le fichier de commande.
 Le bridge n'est pas une voie d'accès au live réel.
+
+
+## Prospective evidence versioning
+
+PR #13 fixed paper entry-bar causality. Evidence used by prospective admission is
+versioned from `2026-09-20T12:53:56+03:00`.
+
+PR #27 separates:
+
+- post-cutover evidence used for qualification;
+- legacy pre-cutover trades retained for audit.
+
+No trade ledger is deleted or rewritten by this separation.

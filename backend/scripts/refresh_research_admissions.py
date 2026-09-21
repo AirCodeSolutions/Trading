@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 
 from app.domain.opportunity import PortfolioResearchRequest, ResearchSplit
 from app.services.opportunity_matrix import run_mt4_portfolio_research
+from app.services.research_execution_profile import load_research_execution_profile
 from app.services.runtime_admission_registry import save_research_admissions
 
 
@@ -37,6 +38,7 @@ def main() -> None:
             tzinfo=timezone
         ),
     )
+    profile = load_research_execution_profile(args.execution_profile)
     result = run_mt4_portfolio_research(
         args.files_dir,
         PortfolioResearchRequest(split=split),
@@ -47,7 +49,8 @@ def main() -> None:
     save_research_admissions(path, result)
     print(
         f"saved {len(result.results)} research admissions to {path}; "
-        f"qualified={result.qualified_strategy_id}"
+        f"qualified={result.qualified_strategy_id}; "
+        f"execution_profile={profile.version}"
     )
 
 

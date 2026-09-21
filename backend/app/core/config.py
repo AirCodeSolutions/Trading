@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     )
 
     demo_execution_bridge_enabled: bool = False
+    demo_collection_enabled: bool = False
     demo_magic_number: int = 560619
     demo_max_slippage_points: int = 100
 

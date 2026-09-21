@@ -62,6 +62,14 @@ def build_trading_overview(
         and row.qualification.state == ProspectiveQualificationState.SUPPORTS_DEMO
     ]
 
+    collection_rows = [
+        row
+        for row in open_rows
+        if admissions.get(row.strategy_id) is not None
+        and admissions[row.strategy_id].state == AdmissionState.SHADOW
+        and admissions[row.strategy_id].paper_collection_candidate
+    ]
+
     selected_row: PaperStrategyRuntime | None = None
     if eligible:
         selected_row = max(
@@ -79,6 +87,28 @@ def build_trading_overview(
         reason = (
             "historical ACTIVE admission and prospective paper evidence "
             "support demo evaluation"
+        )
+    elif collection_rows:
+        selected_row = max(
+            collection_rows,
+            key=lambda row: (
+                admissions[row.strategy_id].weakest_expectancy_r,
+                row.qualification.expectancy_r,
+                -row.summary.open_trade.risk_eur
+                if row.summary.open_trade is not None
+                else 0.0,
+            ),
+        )
+        action = PortfolioAction.DEMO_COLLECTION
+        selected = selected_row.strategy_id
+        historical_active = False
+        prospective_supports_demo = (
+            selected_row.qualification.state
+            == ProspectiveQualificationState.SUPPORTS_DEMO
+        )
+        reason = (
+            "paper-collection candidate has an executable paper trade; "
+            "eligible for isolated broker DEMO collection"
         )
     elif open_rows:
         selected_row = open_rows[0]

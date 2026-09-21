@@ -9,6 +9,7 @@ from app.domain.demo_execution import (
     DemoBridgeCommandStatus,
     DemoBridgePosition,
     DemoBridgeResult,
+    DemoCloseCommand,
     DemoExecutionGuard,
     DemoExecutionStatus,
     DemoOrderCommand,
@@ -18,6 +19,7 @@ from app.domain.portfolio import PortfolioAction, TradingOverview
 from app.domain.trading import Side
 
 COMMAND_FILE = "trading_demo_command.csv"
+CLOSE_COMMAND_FILE = "trading_demo_close_command.csv"
 RESULT_FILE = "trading_demo_result.csv"
 POSITIONS_FILE = "trading_demo_positions.csv"
 
@@ -26,10 +28,13 @@ def build_demo_guard(
     overview: TradingOverview,
     macro: MacroGateStatus,
     now: datetime,
+    *,
+    bridge_positions: list[DemoBridgePosition] | None = None,
 ) -> DemoExecutionGuard:
     reasons: list[str] = []
     broker_is_demo = bool(overview.broker and overview.broker.is_demo)
     broker_positions = overview.broker.observed_positions if overview.broker else 0
+    bridge_position_count = len(bridge_positions or [])
     remaining_daily_loss = overview.risk.remaining_daily_loss_budget_eur
 
     if settings.execution_mode != ExecutionMode.DEMO:
@@ -40,10 +45,18 @@ def build_demo_guard(
         reasons.append("live trading flag must remain disabled for demo execution")
     if not broker_is_demo:
         reasons.append("broker account is not confirmed as demo")
-    if overview.portfolio.action != PortfolioAction.DEMO_ELIGIBLE:
+    if overview.portfolio.action not in {
+        PortfolioAction.DEMO_COLLECTION,
+        PortfolioAction.DEMO_ELIGIBLE,
+    }:
         reasons.append("portfolio is not demo eligible")
-    if broker_positions > 0:
-        reasons.append("broker already has open positions")
+    if (
+        overview.portfolio.action == PortfolioAction.DEMO_COLLECTION
+        and not settings.demo_collection_enabled
+    ):
+        reasons.append("demo collection is disabled")
+    if bridge_position_count > 0:
+        reasons.append("Trading-New bridge already has open position")
     if remaining_daily_loss <= 0:
         reasons.append("daily loss budget is exhausted")
     if overview.risk.selected_open_risk_eur > remaining_daily_loss:
@@ -61,6 +74,7 @@ def build_demo_guard(
         portfolio_action=overview.portfolio.action,
         macro_blocked=macro.blocked,
         broker_observed_positions=broker_positions,
+        bridge_open_positions=bridge_position_count,
         remaining_daily_loss_budget_eur=remaining_daily_loss,
         reasons=reasons,
     )
@@ -74,7 +88,13 @@ def submit_selected_demo_order(
     proposal: ExecutionProposal,
     now: datetime,
 ) -> DemoOrderCommand:
-    guard = build_demo_guard(overview, macro, now)
+    bridge_positions = read_demo_positions(files_dir / POSITIONS_FILE)
+    guard = build_demo_guard(
+        overview,
+        macro,
+        now,
+        bridge_positions=bridge_positions,
+    )
     if not guard.ready:
         raise ValueError("; ".join(guard.reasons))
     if proposal.status != ProposalStatus.AUTHORIZED:
@@ -130,12 +150,60 @@ def build_demo_status(
     macro: MacroGateStatus,
     now: datetime,
 ) -> DemoExecutionStatus:
+    bridge_positions = read_demo_positions(files_dir / POSITIONS_FILE)
     return DemoExecutionStatus(
-        guard=build_demo_guard(overview, macro, now),
+        guard=build_demo_guard(
+            overview,
+            macro,
+            now,
+            bridge_positions=bridge_positions,
+        ),
         pending_command=read_pending_command(files_dir / COMMAND_FILE),
+        pending_close_command=read_pending_close_command(
+            files_dir / CLOSE_COMMAND_FILE
+        ),
         latest_result=read_demo_result(files_dir / RESULT_FILE),
-        bridge_positions=read_demo_positions(files_dir / POSITIONS_FILE),
+        bridge_positions=bridge_positions,
     )
+
+
+def submit_demo_close_order(
+    *,
+    files_dir: Path,
+    overview: TradingOverview,
+    ticket: int,
+    strategy_id: str,
+    now: datetime,
+) -> DemoCloseCommand:
+    if settings.live_trading_enabled:
+        raise ValueError("live trading flag must remain disabled for demo execution")
+    if not settings.demo_execution_bridge_enabled:
+        raise ValueError("demo execution bridge is disabled")
+    if overview.broker is None or not overview.broker.is_demo:
+        raise ValueError("broker account is not confirmed as demo")
+    if (files_dir / COMMAND_FILE).is_file():
+        raise ValueError("a demo open command is still pending")
+
+    positions = read_demo_positions(files_dir / POSITIONS_FILE)
+    if not any(position.ticket == ticket for position in positions):
+        raise ValueError("Trading-New bridge ticket is not open")
+
+    close_path = files_dir / CLOSE_COMMAND_FILE
+    if close_path.is_file():
+        pending = read_pending_close_command(close_path)
+        if pending is not None:
+            raise ValueError("a demo close command is already pending")
+
+    command = DemoCloseCommand(
+        command_id=uuid4().hex,
+        ticket=ticket,
+        strategy_id=strategy_id,
+        issued_at=now,
+        magic_number=settings.demo_magic_number,
+        slippage_points=settings.demo_max_slippage_points,
+    )
+    _write_close_command(close_path, command)
+    return command
 
 
 def read_pending_command(path: Path) -> DemoOrderCommand | None:
@@ -156,6 +224,24 @@ def read_pending_command(path: Path) -> DemoOrderCommand | None:
             magic_number=int(row[8]),
             slippage_points=int(row[9]),
             proposal_status=row[10],
+        )
+    except (IndexError, OSError, StopIteration, TypeError, ValueError):
+        return None
+
+
+def read_pending_close_command(path: Path) -> DemoCloseCommand | None:
+    if not path.is_file():
+        return None
+    try:
+        with path.open(newline="", encoding="utf-8") as handle:
+            row = next(csv.reader(handle))
+        return DemoCloseCommand(
+            command_id=row[0],
+            ticket=int(row[1]),
+            strategy_id=row[2],
+            issued_at=datetime.fromisoformat(row[3]),
+            magic_number=int(row[4]),
+            slippage_points=int(row[5]),
         )
     except (IndexError, OSError, StopIteration, TypeError, ValueError):
         return None
@@ -225,6 +311,23 @@ def _write_command(path: Path, command: DemoOrderCommand) -> None:
                 command.magic_number,
                 command.slippage_points,
                 command.proposal_status.value,
+            ]
+        )
+    temporary.replace(path)
+
+
+def _write_close_command(path: Path, command: DemoCloseCommand) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with temporary.open("w", newline="", encoding="utf-8") as handle:
+        csv.writer(handle).writerow(
+            [
+                command.command_id,
+                command.ticket,
+                command.strategy_id,
+                command.issued_at.isoformat(),
+                command.magic_number,
+                command.slippage_points,
             ]
         )
     temporary.replace(path)

@@ -258,3 +258,30 @@ This is a policy deadlock, not a risk problem. The next admission-policy change
 should allow a `paper_collection_candidate` SHADOW to become DEMO-eligible only
 after it independently satisfies the full prospective 20-trade qualification.
 Risk, spread/stop, macro, margin and live-trading locks remain unchanged.
+
+
+## Broker DEMO collection implementation — 2026-09-21
+
+Current deployed `main` before this change remains `c314a9a` (PR #40). Branch
+`feature/demo-collection-execution` implements the six-step path from PAPER to
+isolated broker DEMO collection without changing any economic risk limit.
+
+The intended runtime contract is:
+
+- a SHADOW strategy must already have `paper_collection_candidate=true`;
+- a real executable PAPER trade must be open before any DEMO entry can exist;
+- the exact PAPER lot, stop and target are mirrored to MT4;
+- one MagicNumber `560619` position maximum for Trading-New while aggregate
+  multi-position exposure is not yet modeled;
+- positions from other MT4 systems are observed but never selected, modified or
+  closed by this bridge;
+- an idempotent worker state prevents re-sending the same PAPER trade;
+- explicit close commands handle PAPER STOP/TARGET/TIMEOUT resolution;
+- broker account must report DEMO and the EA independently refuses non-DEMO
+  accounts;
+- live trading remains disabled.
+
+Validation on the development branch: 133 backend tests, Ruff, frontend build
+and MetaEditor compilation are green; the EA compiles with 0 errors / 0 warnings.
+The dashboard now exposes the collection lifecycle and Magic-scoped position
+count separately from unrelated broker positions.

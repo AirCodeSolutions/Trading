@@ -5,6 +5,7 @@ input int MagicNumber = 560619;
 input int PollEverySeconds = 1;
 
 string COMMAND_FILE = "trading_demo_command.csv";
+string CLOSE_COMMAND_FILE = "trading_demo_close_command.csv";
 string RESULT_FILE = "trading_demo_result.csv";
 string POSITIONS_FILE = "trading_demo_positions.csv";
 
@@ -22,8 +23,110 @@ void OnDeinit(const int reason)
 
 void OnTimer()
 {
+   ProcessCloseCommand();
    ProcessCommand();
    ExportPositions();
+}
+
+void ProcessCloseCommand()
+{
+   if(!FileIsExist(CLOSE_COMMAND_FILE))
+      return;
+
+   int handle = FileOpen(CLOSE_COMMAND_FILE, FILE_READ|FILE_CSV|FILE_ANSI, ',');
+   if(handle == INVALID_HANDLE)
+      return;
+
+   string commandId = FileReadString(handle);
+   int ticket = (int)FileReadNumber(handle);
+   string strategyId = FileReadString(handle);
+   string issuedAt = FileReadString(handle);
+   int commandMagic = (int)FileReadNumber(handle);
+   int slippagePoints = (int)FileReadNumber(handle);
+   FileClose(handle);
+
+   if(commandId == "")
+   {
+      FileDelete(CLOSE_COMMAND_FILE);
+      return;
+   }
+
+   if(!AllowDemoExecution)
+   {
+      WriteResult(commandId, "REFUSED", ticket, 9201, 0, 0, 0);
+      FileDelete(CLOSE_COMMAND_FILE);
+      return;
+   }
+
+   if(AccountInfoInteger(ACCOUNT_TRADE_MODE) != ACCOUNT_TRADE_MODE_DEMO)
+   {
+      WriteResult(commandId, "REFUSED", ticket, 9202, 0, 0, 0);
+      FileDelete(CLOSE_COMMAND_FILE);
+      return;
+   }
+
+   if(commandMagic != MagicNumber)
+   {
+      WriteResult(commandId, "REFUSED", ticket, 9203, 0, 0, 0);
+      FileDelete(CLOSE_COMMAND_FILE);
+      return;
+   }
+
+   if(!OrderSelect(ticket, SELECT_BY_TICKET))
+   {
+      WriteResult(commandId, "REFUSED", ticket, 9204, 0, 0, 0);
+      FileDelete(CLOSE_COMMAND_FILE);
+      return;
+   }
+
+   if(OrderMagicNumber() != MagicNumber)
+   {
+      WriteResult(commandId, "REFUSED", ticket, 9205, 0, 0, 0);
+      FileDelete(CLOSE_COMMAND_FILE);
+      return;
+   }
+
+   if(OrderCloseTime() > 0)
+   {
+      WriteResult(commandId, "FILLED", ticket, 0, OrderClosePrice(), 0, 0);
+      FileDelete(CLOSE_COMMAND_FILE);
+      return;
+   }
+
+   int orderType = OrderType();
+   if(orderType != OP_BUY && orderType != OP_SELL)
+   {
+      WriteResult(commandId, "REFUSED", ticket, 9206, 0, 0, 0);
+      FileDelete(CLOSE_COMMAND_FILE);
+      return;
+   }
+
+   string symbol = OrderSymbol();
+   int digits = (int)MarketInfo(symbol, MODE_DIGITS);
+   RefreshRates();
+   double closePrice = orderType == OP_BUY
+      ? MarketInfo(symbol, MODE_BID)
+      : MarketInfo(symbol, MODE_ASK);
+   closePrice = NormalizeDouble(closePrice, digits);
+
+   ResetLastError();
+   bool closed = OrderClose(
+      ticket,
+      OrderLots(),
+      closePrice,
+      MathMax(0, slippagePoints),
+      clrNONE
+   );
+   if(!closed)
+   {
+      int errorCode = GetLastError();
+      WriteResult(commandId, "ERROR", ticket, errorCode, 0, 0, 0);
+      FileDelete(CLOSE_COMMAND_FILE);
+      return;
+   }
+
+   WriteResult(commandId, "FILLED", ticket, 0, closePrice, 0, 0);
+   FileDelete(CLOSE_COMMAND_FILE);
 }
 
 void ProcessCommand()

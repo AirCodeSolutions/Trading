@@ -4,6 +4,7 @@ from enum import StrEnum
 from pydantic import BaseModel, Field
 
 from app.domain.approval import ProposalStatus
+from app.domain.demo_collection import DemoCollectionState
 from app.domain.portfolio import PortfolioAction
 from app.domain.trading import Side
 
@@ -16,6 +17,15 @@ class DemoBridgeCommandStatus(StrEnum):
     ERROR = "error"
 
 
+class DemoCloseCommand(BaseModel):
+    command_id: str
+    ticket: int = Field(gt=0)
+    strategy_id: str
+    issued_at: datetime
+    magic_number: int
+    slippage_points: int = Field(ge=0)
+
+
 class DemoExecutionGuard(BaseModel):
     at: datetime
     ready: bool
@@ -26,6 +36,7 @@ class DemoExecutionGuard(BaseModel):
     portfolio_action: PortfolioAction
     macro_blocked: bool
     broker_observed_positions: int = Field(default=0, ge=0)
+    bridge_open_positions: int = Field(default=0, ge=0)
     remaining_daily_loss_budget_eur: float = Field(default=0.0, ge=0)
     reasons: list[str]
 
@@ -70,6 +81,8 @@ class DemoBridgePosition(BaseModel):
 
 class DemoExecutionStatus(BaseModel):
     guard: DemoExecutionGuard
+    collection_state: DemoCollectionState | None = None
     pending_command: DemoOrderCommand | None = None
+    pending_close_command: DemoCloseCommand | None = None
     latest_result: DemoBridgeResult | None = None
     bridge_positions: list[DemoBridgePosition] = Field(default_factory=list)

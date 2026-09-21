@@ -4,6 +4,8 @@ type RuntimeConfig = {
   execution_mode: string;
   decision_mode: string;
   live_trading_enabled: boolean;
+  demo_collection_enabled: boolean;
+  demo_execution_bridge_enabled: boolean;
   allowed_timeframes: string[];
   reference_capital_eur: number;
   risk_per_trade_fraction: number;
@@ -147,7 +149,7 @@ type TradingOverview = {
     remaining_daily_loss_budget_eur: number;
   };
   portfolio: {
-    action: "no_trade" | "paper_only" | "demo_eligible";
+    action: "no_trade" | "paper_only" | "demo_collection" | "demo_eligible";
     selected_strategy_id: string | null;
     reason: string;
     historical_active: boolean;
@@ -193,15 +195,31 @@ type DemoExecutionStatus = {
     bridge_enabled: boolean;
     live_trading_enabled: boolean;
     broker_is_demo: boolean;
-    portfolio_action: "no_trade" | "paper_only" | "demo_eligible";
+    portfolio_action: "no_trade" | "paper_only" | "demo_collection" | "demo_eligible";
     macro_blocked: boolean;
+    broker_observed_positions: number;
+    bridge_open_positions: number;
     reasons: string[];
   };
+  collection_state: {
+    paper_trade_id: string | null;
+    strategy_id: string | null;
+    open_command_id: string | null;
+    ticket: number | null;
+    close_command_id: string | null;
+    last_completed_trade_id: string | null;
+    last_error: string | null;
+  } | null;
   pending_command: {
     command_id: string;
     symbol: string;
     side: "buy" | "sell";
     lots: number;
+    strategy_id: string;
+  } | null;
+  pending_close_command: {
+    command_id: string;
+    ticket: number;
     strategy_id: string;
   } | null;
   latest_result: {
@@ -730,9 +748,22 @@ export default function App() {
             <p>Politique actuelle : ≥{config?.historical_validation_min_trades ?? 40} validation + ≥{config?.historical_holdout_min_trades ?? 20} holdout.</p>
           </div>
           <div className="gate-card">
-            <span className="label">Bridge broker DEMO</span>
-            <strong>{demo?.guard.bridge_enabled ? "ENABLED" : "DISABLED"}</strong>
-            <p>{demo?.guard.reasons.join(" · ") || "Tous les verrous DEMO sont satisfaits."}</p>
+            <span className="label">Auto DEMO collection</span>
+            <strong>{config?.demo_collection_enabled ? "ENABLED" : "DISABLED"}</strong>
+            <p>
+              {demo?.collection_state?.paper_trade_id
+                ? `${demo.collection_state.strategy_id ?? "—"} · ticket ${demo.collection_state.ticket ?? "en attente"}`
+                : demo?.collection_state?.last_error || "Aucun trade Trading-New en cours."}
+            </p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Isolation MT4</span>
+            <strong>{demo ? `${demo.guard.bridge_open_positions} Trading-New` : "—"}</strong>
+            <p>
+              {demo
+                ? `${demo.guard.broker_observed_positions} position(s) broker totale(s) · les positions externes ne sont jamais modifiées`
+                : "Statut indisponible."}
+            </p>
           </div>
         </div>
       </section>
@@ -974,7 +1005,11 @@ export default function App() {
             <strong>{demo?.guard.bridge_enabled ? "ENABLED" : "DISABLED"}</strong>
             <p>
               {demo?.bridge_positions.length ?? 0} position(s) du bridge ·{" "}
-              {demo?.pending_command ? "commande en attente" : "aucune commande"}
+              {demo?.pending_command
+                ? "ouverture en attente"
+                : demo?.pending_close_command
+                  ? "fermeture en attente"
+                  : "aucune commande"}
             </p>
           </div>
         </div>

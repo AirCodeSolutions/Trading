@@ -61,6 +61,7 @@ class PaperStrategyRuntime(BaseModel):
 class PortfolioAction(StrEnum):
     NO_TRADE = "no_trade"
     PAPER_ONLY = "paper_only"
+    DEMO_COLLECTION = "demo_collection"
     DEMO_ELIGIBLE = "demo_eligible"
 
 

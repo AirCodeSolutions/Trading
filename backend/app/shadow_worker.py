@@ -5,9 +5,12 @@ from pathlib import Path
 
 from app.core.config import settings
 from app.domain.session import ShadowWorkerHeartbeat
+from app.services.demo_collection import advance_demo_collection
 from app.services.execution_cost_history import collect_execution_cost_snapshot
+from app.services.macro_gate import macro_gate_status
 from app.services.mt4_csv import _server_timezone
 from app.services.multi_shadow_collector import collect_all_shadow_once
+from app.services.portfolio_overview import build_trading_overview
 
 
 def main() -> None:
@@ -30,6 +33,19 @@ def main() -> None:
                 settings.shadow_ledger_dir,
                 now,
             )
+            if settings.demo_collection_enabled:
+                overview = build_trading_overview(
+                    settings.mt4_files_dir,
+                    settings.shadow_ledger_dir,
+                    now,
+                )
+                advance_demo_collection(
+                    settings.mt4_files_dir,
+                    settings.shadow_ledger_dir,
+                    overview,
+                    macro_gate_status(settings.macro_events_path, now),
+                    now,
+                )
             signals = sum(
                 item.diagnostic.state != "no_signal"
                 for item in results

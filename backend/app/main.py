@@ -40,6 +40,7 @@ from app.services.approval_gate import ApprovalGate
 from app.services.blocked_probe_registry import load_blocked_probe_registry
 from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
 from app.services.capital_risk import size_position
+from app.services.demo_collection import load_demo_collection_state
 from app.services.demo_execution import build_demo_status, submit_selected_demo_order
 from app.services.execution_cost_history import summarize_execution_costs
 from app.services.live_market_quality import build_live_market_quality
@@ -137,6 +138,8 @@ def runtime_config() -> dict[str, object]:
         "execution_mode": settings.execution_mode,
         "decision_mode": settings.decision_mode,
         "live_trading_enabled": settings.live_trading_enabled,
+        "demo_collection_enabled": settings.demo_collection_enabled,
+        "demo_execution_bridge_enabled": settings.demo_execution_bridge_enabled,
         "allowed_timeframes": settings.allowed_timeframes,
         "reference_capital_eur": settings.reference_capital_eur,
         "risk_per_trade_fraction": settings.risk_per_trade_fraction,
@@ -394,11 +397,18 @@ def demo_execution_status() -> DemoExecutionStatus:
         now,
     )
     macro = macro_gate_status(settings.macro_events_path, now)
-    return build_demo_status(
+    status = build_demo_status(
         files_dir=_mt4_files_dir(),
         overview=overview,
         macro=macro,
         now=now,
+    )
+    return status.model_copy(
+        update={
+            "collection_state": load_demo_collection_state(
+                settings.shadow_ledger_dir / "demo_collection_state.json"
+            )
+        }
     )
 
 

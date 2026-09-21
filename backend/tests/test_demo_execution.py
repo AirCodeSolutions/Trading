@@ -188,7 +188,7 @@ def test_demo_submit_writes_command_only_when_all_guards_pass(
     assert parsed.take_profit == 81360
 
 
-def test_demo_submit_refuses_when_broker_already_has_position(
+def test_demo_submit_ignores_positions_owned_by_other_mt4_systems(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -198,14 +198,15 @@ def test_demo_submit_refuses_when_broker_already_has_position(
     current = overview()
     current.broker.observed_positions = 1
 
-    with pytest.raises(ValueError, match="broker already has open positions"):
-        submit_selected_demo_order(
-            files_dir=tmp_path,
-            overview=current,
-            macro=clear_macro(),
-            proposal=proposal(),
-            now=NOW,
-        )
+    command = submit_selected_demo_order(
+        files_dir=tmp_path,
+        overview=current,
+        macro=clear_macro(),
+        proposal=proposal(),
+        now=NOW,
+    )
+
+    assert command.strategy_id == STRATEGY
 
 
 def test_demo_submit_refuses_when_daily_loss_budget_is_exhausted(
@@ -219,6 +220,56 @@ def test_demo_submit_refuses_when_daily_loss_budget_is_exhausted(
     current.risk.remaining_daily_loss_budget_eur = 0
 
     with pytest.raises(ValueError, match="daily loss budget is exhausted"):
+        submit_selected_demo_order(
+            files_dir=tmp_path,
+            overview=current,
+            macro=clear_macro(),
+            proposal=proposal(),
+            now=NOW,
+        )
+
+
+def test_external_broker_positions_do_not_block_magic_scoped_demo_entry(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "execution_mode", ExecutionMode.DEMO)
+    monkeypatch.setattr(settings, "demo_execution_bridge_enabled", True)
+    monkeypatch.setattr(settings, "demo_collection_enabled", True)
+    monkeypatch.setattr(settings, "live_trading_enabled", False)
+    current = overview()
+    current.portfolio.action = PortfolioAction.DEMO_COLLECTION
+    current.portfolio.historical_active = False
+    current.broker.observed_positions = 2
+
+    command = submit_selected_demo_order(
+        files_dir=tmp_path,
+        overview=current,
+        macro=clear_macro(),
+        proposal=proposal(),
+        now=NOW,
+    )
+
+    assert command.strategy_id == STRATEGY
+
+
+def test_magic_scoped_bridge_position_blocks_second_demo_entry(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "execution_mode", ExecutionMode.DEMO)
+    monkeypatch.setattr(settings, "demo_execution_bridge_enabled", True)
+    monkeypatch.setattr(settings, "demo_collection_enabled", True)
+    monkeypatch.setattr(settings, "live_trading_enabled", False)
+    current = overview()
+    current.portfolio.action = PortfolioAction.DEMO_COLLECTION
+    (tmp_path / "trading_demo_positions.csv").write_text(
+        "ticket,symbol,side,lots,open_price,stop_loss,take_profit,profit,open_time,comment\n"
+        "123,BTCUSD,BUY,0.01,81000,80800,81360,0,2026.09.19 18:30,TradingNew:test\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="Trading-New bridge already has open position"):
         submit_selected_demo_order(
             files_dir=tmp_path,
             overview=current,

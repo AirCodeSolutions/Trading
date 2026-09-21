@@ -16,8 +16,29 @@ class SessionAssetState(StrEnum):
     READY = "ready"
     WARMING_UP = "warming_up"
     WAITING_QUOTE = "waiting_quote"
+    M5_STALLED = "m5_stalled"
     MISSING_SPEC = "missing_spec"
     MISSING_HISTORY = "missing_history"
+
+
+class SessionAssetTimeline(BaseModel):
+    symbol: str
+    quote_live_since: datetime | None = None
+    first_fresh_m5_at: datetime | None = None
+    ready_at: datetime | None = None
+    m5_stalled_at: datetime | None = None
+    last_closed_m5_at: datetime | None = None
+
+
+class SessionRuntimeSymbolState(BaseModel):
+    quote_live_since: datetime | None = None
+    first_fresh_m5_at: datetime | None = None
+    ready_at: datetime | None = None
+    m5_stalled_at: datetime | None = None
+
+
+class SessionRuntimeState(BaseModel):
+    symbols: dict[str, SessionRuntimeSymbolState] = Field(default_factory=dict)
 
 
 class SessionAssetStatus(BaseModel):
@@ -57,4 +78,5 @@ class SessionPreflight(BaseModel):
     waiting_symbols: list[str]
     degraded_symbols: list[str]
     assets: list[SessionAssetStatus]
+    timeline: list[SessionAssetTimeline] = Field(default_factory=list)
     reason: str

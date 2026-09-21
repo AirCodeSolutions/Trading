@@ -111,7 +111,10 @@ def paper_entry_allowed(
         return False
     if admission.state == AdmissionState.ACTIVE:
         return True
-    return admission.weakest_expectancy_r > 0
+    return (
+        admission.weakest_expectancy_r > 0
+        or admission.paper_collection_candidate
+    )
 
 
 

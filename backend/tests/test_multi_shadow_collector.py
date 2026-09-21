@@ -10,6 +10,7 @@ def decision(
     state: AdmissionState,
     *,
     weakest_expectancy_r: float = 0.1,
+    paper_collection_candidate: bool = False,
 ) -> AdmissionDecision:
     return AdmissionDecision(
         strategy_id="EURUSD:test",
@@ -17,6 +18,7 @@ def decision(
         reason="test",
         weakest_expectancy_r=weakest_expectancy_r,
         worst_drawdown_r=1.0,
+        paper_collection_candidate=paper_collection_candidate,
     )
 
 
@@ -82,3 +84,30 @@ def test_existing_mechanisms_remain_enabled_for_all_watched_symbols() -> None:
         "EURUSD",
         OpportunityMechanism.FAILED_AUCTION_REVERSAL,
     ) is True
+
+
+
+def test_promising_shadow_can_collect_paper_despite_sparse_negative_holdout() -> None:
+    assert (
+        paper_entry_allowed(
+            decision(
+                AdmissionState.SHADOW,
+                weakest_expectancy_r=-0.24,
+                paper_collection_candidate=True,
+            )
+        )
+        is True
+    )
+
+
+def test_rejected_strategy_never_collects_paper_even_if_candidate_flag_is_true() -> None:
+    assert (
+        paper_entry_allowed(
+            decision(
+                AdmissionState.REJECTED,
+                weakest_expectancy_r=0.2,
+                paper_collection_candidate=True,
+            )
+        )
+        is False
+    )

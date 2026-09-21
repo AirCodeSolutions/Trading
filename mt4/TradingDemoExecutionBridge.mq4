@@ -1,6 +1,6 @@
 #property strict
 
-input bool AllowDemoExecution = false;
+input bool AllowDemoExecution = true;
 input int MagicNumber = 560619;
 input int PollEverySeconds = 1;
 

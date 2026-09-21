@@ -1,0 +1,57 @@
+{
+  "version": "2026-09-21-observed-median-v1",
+  "observed_through": "2026-09-21T12:59:53+03:00",
+  "source": "Observed spread medians from runtime SHADOW execution_costs.jsonl; contract fields frozen from IronFX DEMO exporter snapshot.",
+  "symbols": {
+    "BTCUSD": {
+      "spread": 24.5,
+      "tick_size": 0.01,
+      "tick_value": 0.00871141,
+      "min_lot": 0.01,
+      "max_lot": 1000,
+      "lot_step": 0.01,
+      "margin_required": 147.26,
+      "spread_observations": 4558
+    },
+    "EURUSD": {
+      "spread": 0.0001,
+      "tick_size": 0.00001,
+      "tick_value": 0.87114085,
+      "min_lot": 0.01,
+      "max_lot": 10000,
+      "lot_step": 0.01,
+      "margin_required": 100,
+      "spread_observations": 1364
+    },
+    "GBPUSD": {
+      "spread": 0.00011,
+      "tick_size": 0.00001,
+      "tick_value": 0.87114085,
+      "min_lot": 0.01,
+      "max_lot": 10000,
+      "lot_step": 0.01,
+      "margin_required": 116.59,
+      "spread_observations": 1379
+    },
+    "XAUUSD": {
+      "spread": 0.28,
+      "tick_size": 0.01,
+      "tick_value": 1,
+      "min_lot": 0.01,
+      "max_lot": 10000,
+      "lot_step": 0.01,
+      "margin_required": 379.01,
+      "spread_observations": 1296
+    },
+    "XAGUSD": {
+      "spread": 0.07,
+      "tick_size": 0.01,
+      "tick_value": 50,
+      "min_lot": 0.01,
+      "max_lot": 10000,
+      "lot_step": 0.01,
+      "margin_required": 2887.77,
+      "spread_observations": 1280
+    }
+  }
+}

@@ -15,10 +15,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timezone", default="Europe/Athens")
     parser.add_argument("--train-end", default="2026-07-01T00:00:00")
     parser.add_argument("--validation-end", default="2026-09-01T00:00:00")
+    parser.add_argument("--holdout-end", default="2026-09-20T12:53:56")
     parser.add_argument(
         "--macro-events",
         type=Path,
         default=Path("config/macro_events_2026.json"),
+    )
+    parser.add_argument(
+        "--research-broker-specs",
+        type=Path,
+        default=Path("config/research_broker_specs_2026-09-21.json"),
     )
     return parser.parse_args()
 
@@ -31,11 +37,15 @@ def main() -> None:
         validation_end=datetime.fromisoformat(args.validation_end).replace(
             tzinfo=timezone
         ),
+        holdout_end=datetime.fromisoformat(args.holdout_end).replace(
+            tzinfo=timezone
+        ),
     )
     result = run_mt4_portfolio_research(
         args.files_dir,
         PortfolioResearchRequest(split=split),
         macro_events_path=args.macro_events,
+        research_broker_specs_path=args.research_broker_specs,
     )
     path = args.runtime_dir / "strategy_admissions.json"
     save_research_admissions(path, result)

@@ -85,3 +85,13 @@ Scope:
 - sample still insufficient for ACTIVE/DEMO;
 - deployed admission: SHADOW, weakest independent expectancy +0.0958R;
 - runtime collection is GBPUSD-only.
+
+
+## PR #30 — five-market exporter scope
+
+Status: **OPEN / scope cleanup**.
+
+- MT4 exporter defaults restricted to BTCUSD, EURUSD, GBPUSD, XAUUSD, XAGUSD;
+- abandoned index/volatility aliases removed from source;
+- backend and exporter scope locked by automated tests;
+- no trading/risk behavior change.

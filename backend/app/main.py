@@ -38,6 +38,7 @@ from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
 from app.services.capital_risk import size_position
 from app.services.demo_execution import build_demo_status, submit_selected_demo_order
 from app.services.execution_cost_history import summarize_execution_costs
+from app.services.live_market_quality import build_live_market_quality
 from app.services.macro_gate import macro_gate_status
 from app.services.market_quality import assess_market
 from app.services.market_store import MarketStore
@@ -165,6 +166,18 @@ def mt4_live_market_quotes() -> list[LiveMarketQuote]:
     return read_live_market_quotes(
         _mt4_files_dir(),
         datetime.now(tz=_server_timezone()),
+    )
+
+
+@app.get(
+    f"{settings.api_prefix}/market/mt4/quality",
+    response_model=list[MarketQualityResult],
+)
+def mt4_live_market_quality() -> list[MarketQualityResult]:
+    return build_live_market_quality(
+        _mt4_files_dir(),
+        datetime.now(tz=_server_timezone()),
+        settings.session_watch_symbols,
     )
 
 

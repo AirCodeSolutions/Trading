@@ -80,6 +80,21 @@ type MarketUniverseAsset = {
   reason: string;
 };
 
+type MarketQualitySnapshot = {
+  symbol: string;
+  spread_atr_m5: number;
+  spread_atr_m15: number;
+  min_lot_loss_atr_m15_eur: number;
+  required_capital_base_risk_eur: number;
+  required_capital_max_risk_eur: number;
+  minimum_feasible_risk_fraction: number;
+  default_risk_feasible: boolean;
+  absolute_risk_feasible: boolean;
+  execution_quality_score: number;
+  eligible_for_m15_research: boolean;
+  reasons: string[];
+};
+
 type ProspectiveQualification = {
   strategy_id: string;
   state: "collecting" | "failed" | "supports_demo";
@@ -391,6 +406,7 @@ export default function App() {
   const [paper, setPaper] = useState<PaperSummary | null>(null);
   const [quotes, setQuotes] = useState<MarketQuote[]>([]);
   const [universe, setUniverse] = useState<MarketUniverseAsset[]>([]);
+  const [marketQuality, setMarketQuality] = useState<MarketQualitySnapshot[]>([]);
   const [overview, setOverview] = useState<TradingOverview | null>(null);
   const [costs, setCosts] = useState<CostSummary>({});
   const [macro, setMacro] = useState<MacroStatus | null>(null);
@@ -409,6 +425,7 @@ export default function App() {
           shadowResponse,
           paperResponse,
           universeResponse,
+          qualityResponse,
           overviewResponse,
           costsResponse,
           macroResponse,
@@ -422,6 +439,7 @@ export default function App() {
           fetch("/api/v1/shadow/mt4/btc/break-retest"),
           fetch("/api/v1/shadow/mt4/btc/break-retest/paper"),
           fetch("/api/v1/market/mt4/universe"),
+          fetch("/api/v1/market/mt4/quality"),
           fetch("/api/v1/portfolio/overview"),
           fetch("/api/v1/market/mt4/costs"),
           fetch("/api/v1/macro/status"),
@@ -439,6 +457,7 @@ export default function App() {
         const shadowPayload = shadowResponse.ok ? await shadowResponse.json() : null;
         const paperPayload = paperResponse.ok ? await paperResponse.json() : null;
         const universePayload = universeResponse.ok ? await universeResponse.json() : [];
+        const qualityPayload = qualityResponse.ok ? await qualityResponse.json() : [];
         const overviewPayload = overviewResponse.ok ? await overviewResponse.json() : null;
         const costsPayload = costsResponse.ok ? await costsResponse.json() : {};
         const macroPayload = macroResponse.ok ? await macroResponse.json() : null;
@@ -459,6 +478,7 @@ export default function App() {
         setShadow(shadowPayload);
         setPaper(paperPayload);
         setUniverse(universePayload);
+        setMarketQuality(qualityPayload);
         setOverview(overviewPayload);
         setCosts(costsPayload);
         setMacro(macroPayload);
@@ -674,6 +694,56 @@ export default function App() {
                 {asset.paper_ready ? "READY" : "LOCK"}
               </span>
               <span className="universe-reason">{asset.reason}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="quality-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">CAPITAL / EXECUTION FEASIBILITY · 1 ATR M15</p>
+            <h2>Quels marchés sont réellement tradables avec 200 € ?</h2>
+          </div>
+          <p>
+            Référence structurelle, pas un signal : stop = 1 ATR M15 courant,
+            granularité broker et spread observé.
+          </p>
+        </div>
+
+        <div className="quality-table">
+          <div className="quality-row quality-head">
+            <span>Actif</span>
+            <span>Score</span>
+            <span>Spread / ATR</span>
+            <span>Perte lot min</span>
+            <span>Capital @1 %</span>
+            <span>Capital @2 %</span>
+            <span>Risque min / 200 €</span>
+            <span>1 %</span>
+            <span>2 %</span>
+            <span>Research</span>
+            <span>Diagnostic</span>
+          </div>
+          {marketQuality.map((row) => (
+            <div className="quality-row" key={row.symbol}>
+              <strong>{row.symbol}</strong>
+              <span>{row.execution_quality_score.toFixed(0)}</span>
+              <span>{(row.spread_atr_m15 * 100).toFixed(1)} %</span>
+              <span>{row.min_lot_loss_atr_m15_eur.toFixed(2)} €</span>
+              <span>{row.required_capital_base_risk_eur.toFixed(0)} €</span>
+              <span>{row.required_capital_max_risk_eur.toFixed(0)} €</span>
+              <span>{(row.minimum_feasible_risk_fraction * 100).toFixed(2)} %</span>
+              <span className={row.default_risk_feasible ? "positive-text" : "negative-text"}>
+                {row.default_risk_feasible ? "OK" : "NON"}
+              </span>
+              <span className={row.absolute_risk_feasible ? "positive-text" : "negative-text"}>
+                {row.absolute_risk_feasible ? "OK" : "NON"}
+              </span>
+              <span className={row.eligible_for_m15_research ? "positive-text" : "negative-text"}>
+                {row.eligible_for_m15_research ? "ELIGIBLE" : "LOCK"}
+              </span>
+              <span className="opportunity-reason">{row.reasons.join(" · ")}</span>
             </div>
           ))}
         </div>

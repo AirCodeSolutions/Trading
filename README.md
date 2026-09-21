@@ -35,6 +35,20 @@ Politique initiale :
 
 Ces valeurs sont des garde-fous d'exécution, pas une preuve d'edge.
 
+## Active market scope
+
+The active development/runtime scope is deliberately limited to:
+
+- BTCUSD
+- EURUSD
+- GBPUSD
+- XAUUSD
+- XAGUSD
+
+US500Cash, USA500IDXUSD, USATECHIDXUSD, Volatility and VOLIDXUSD are out of
+scope and must not be reintroduced into the active watchlist without an explicit
+scope decision.
+
 ## Opportunity Engine
 
 Le contexte est déterminé en M15. Les déclencheurs sont recherchés en M5.
@@ -226,3 +240,18 @@ The runtime state is stored atomically in
 The watchdog uses `worker_healthy`, not only the worker PID: a live process with
 an error heartbeat or a heartbeat older than 180 seconds is terminated and only
 the SHADOW worker is restarted. Backend, frontend and MT4 remain untouched.
+
+
+## Evidence cutover
+
+Paper entry-bar causality was corrected in PR #13. Prospective qualification now
+uses only trades opened from `2026-09-20T12:53:56+03:00` onward.
+
+Older trades remain visible as legacy evidence and are never deleted. At the
+2026-09-21 status checkpoint the ledger contains:
+
+- post-cutover: 0 closed trades / 0R / 0 EUR;
+- legacy: 7 trades / -7R / -10.8621 EUR.
+
+See `docs/PROJECT_STATUS.md` and `docs/EVOLUTIONS.md` for the current source of
+truth.

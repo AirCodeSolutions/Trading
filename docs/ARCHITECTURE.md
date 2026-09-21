@@ -97,9 +97,13 @@ Les rejets d'exécution sont comptabilisés séparément des résultats de tradi
 
 Les fichiers HST v401 locaux ont été inspectés : le champ spread existe dans le
 format mais vaut zéro sur les historiques disponibles BTC/EUR/GBP/XAU/XAG.
-Le backtest utilise donc le spread broker disponible au replay plus le slippage
-modèle. Cette limite est explicite et ne doit pas être décrite comme une
-reconstruction historique exacte.
+Le backtest utilise donc un profil d'exécution de recherche versionné : spreads
+médians observés, tick value, granularité de lot et marge figés pour la
+reproductibilité, plus le slippage modèle. Le runtime live continue d'utiliser les
+quotes broker courantes.
+
+Cette limite reste explicite : il s'agit d'un proxy stable, pas d'une
+reconstruction historique tick-accurate.
 
 ## Replay causal
 

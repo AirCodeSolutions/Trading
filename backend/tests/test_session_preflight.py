@@ -258,3 +258,104 @@ def test_preflight_waits_for_first_fresh_closed_m5_after_quote_returns(
     assert result.status == "warming_up"
     assert result.warming_symbols == ["EURUSD"]
     assert "fresh closed M5" in result.assets[0].reason
+
+
+def test_preflight_persists_quote_to_ready_timeline(
+    tmp_path: Path,
+) -> None:
+    files_dir = tmp_path / "mt4"
+    runtime_dir = tmp_path / "runtime"
+    files_dir.mkdir()
+
+    write_market(
+        files_dir,
+        timestamp=1789838948,
+        m5_time="16:00:00",
+    )
+    write_heartbeat(runtime_dir)
+
+    first = build_session_preflight(
+        files_dir=files_dir,
+        runtime_dir=runtime_dir,
+        now=NOW,
+        macro=macro(),
+        overview=overview(),
+        demo_execution_ready=False,
+        watch_symbols=("EURUSD",),
+    )
+
+    assert first.status == "warming_up"
+    assert first.timeline[0].quote_live_since == NOW
+    assert first.timeline[0].first_fresh_m5_at is None
+
+    fresh_now = NOW + timedelta(minutes=6)
+    write_market(
+        files_dir,
+        timestamp=1789839308,
+        m5_time="17:25:00",
+    )
+    write_heartbeat(runtime_dir, at=fresh_now)
+
+    second = build_session_preflight(
+        files_dir=files_dir,
+        runtime_dir=runtime_dir,
+        now=fresh_now,
+        macro=macro(),
+        overview=overview(),
+        demo_execution_ready=False,
+        watch_symbols=("EURUSD",),
+    )
+
+    assert second.status == "ready"
+    assert second.timeline[0].quote_live_since == NOW
+    assert second.timeline[0].first_fresh_m5_at == fresh_now
+    assert second.timeline[0].ready_at == fresh_now
+
+
+def test_preflight_degrades_when_live_quote_outlives_stalled_m5(
+    tmp_path: Path,
+) -> None:
+    files_dir = tmp_path / "mt4"
+    runtime_dir = tmp_path / "runtime"
+    files_dir.mkdir()
+
+    write_market(
+        files_dir,
+        timestamp=1789838948,
+        m5_time="16:00:00",
+    )
+    write_heartbeat(runtime_dir)
+
+    first = build_session_preflight(
+        files_dir=files_dir,
+        runtime_dir=runtime_dir,
+        now=NOW,
+        macro=macro(),
+        overview=overview(),
+        demo_execution_ready=False,
+        watch_symbols=("EURUSD",),
+    )
+    assert first.status == "warming_up"
+
+    stalled_now = NOW + timedelta(minutes=21)
+    write_market(
+        files_dir,
+        timestamp=1789840208,
+        m5_time="16:00:00",
+    )
+    write_heartbeat(runtime_dir, at=stalled_now)
+
+    stalled = build_session_preflight(
+        files_dir=files_dir,
+        runtime_dir=runtime_dir,
+        now=stalled_now,
+        macro=macro(),
+        overview=overview(),
+        demo_execution_ready=False,
+        watch_symbols=("EURUSD",),
+    )
+
+    assert stalled.status == "degraded"
+    assert stalled.assets[0].state == "m5_stalled"
+    assert stalled.degraded_symbols == ["EURUSD"]
+    assert stalled.timeline[0].m5_stalled_at == stalled_now

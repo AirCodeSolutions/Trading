@@ -206,13 +206,21 @@ type SessionPreflight = {
   degraded_symbols: string[];
   assets: {
     symbol: string;
-    state: "ready" | "warming_up" | "waiting_quote" | "missing_spec" | "missing_history";
+    state: "ready" | "warming_up" | "waiting_quote" | "m5_stalled" | "missing_spec" | "missing_history";
     quote_live: boolean;
     paper_ready: boolean;
     broker_spec_ready: boolean;
     has_m5: boolean;
     has_m15: boolean;
     reason: string;
+  }[];
+  timeline: {
+    symbol: string;
+    quote_live_since: string | null;
+    first_fresh_m5_at: string | null;
+    ready_at: string | null;
+    m5_stalled_at: string | null;
+    last_closed_m5_at: string | null;
   }[];
   reason: string;
 };
@@ -500,6 +508,31 @@ export default function App() {
         <p className="preflight-reason">
           {preflight?.reason ?? "Vérification de la session en cours…"}
         </p>
+
+        {preflight?.timeline.length ? (
+          <div className="session-timeline">
+            <div className="timeline-row timeline-head">
+              <span>Actif</span>
+              <span>Quote LIVE</span>
+              <span>1re M5 fraîche</span>
+              <span>Dernière M5</span>
+              <span>READY</span>
+              <span>Stall</span>
+            </div>
+            {preflight.timeline.map((item) => (
+              <div className="timeline-row" key={item.symbol}>
+                <strong>{item.symbol}</strong>
+                <span>{item.quote_live_since ? new Date(item.quote_live_since).toLocaleTimeString("fr-FR") : "—"}</span>
+                <span>{item.first_fresh_m5_at ? new Date(item.first_fresh_m5_at).toLocaleTimeString("fr-FR") : "—"}</span>
+                <span>{item.last_closed_m5_at ? new Date(item.last_closed_m5_at).toLocaleTimeString("fr-FR") : "—"}</span>
+                <span>{item.ready_at ? new Date(item.ready_at).toLocaleTimeString("fr-FR") : "—"}</span>
+                <span className={item.m5_stalled_at ? "negative-text" : ""}>
+                  {item.m5_stalled_at ? new Date(item.m5_stalled_at).toLocaleTimeString("fr-FR") : "—"}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="grid">

@@ -699,3 +699,40 @@ h1 {
   color: #9cabbc;
   line-height: 1.55;
 }
+
+
+.session-timeline {
+  margin-top: 16px;
+  overflow-x: auto;
+  border: 1px solid #1c2b3a;
+  border-radius: 12px;
+}
+
+.timeline-row {
+  min-width: 860px;
+  display: grid;
+  grid-template-columns: 0.9fr repeat(5, 1fr);
+  gap: 12px;
+  padding: 11px 14px;
+  border-top: 1px solid #182736;
+  align-items: center;
+  color: #c5d0dc;
+  font-size: 11px;
+}
+
+.timeline-row:first-child {
+  border-top: 0;
+}
+
+.timeline-head {
+  color: #718297;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.timeline-row strong {
+  color: #e2e9f1;
+  font-size: 12px;
+}

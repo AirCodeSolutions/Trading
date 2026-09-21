@@ -15,6 +15,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timezone", default="Europe/Athens")
     parser.add_argument("--train-end", default="2026-07-01T00:00:00")
     parser.add_argument("--validation-end", default="2026-09-01T00:00:00")
+    parser.add_argument(
+        "--macro-events",
+        type=Path,
+        default=Path("config/macro_events_2026.json"),
+    )
     return parser.parse_args()
 
 
@@ -30,6 +35,7 @@ def main() -> None:
     result = run_mt4_portfolio_research(
         args.files_dir,
         PortfolioResearchRequest(split=split),
+        macro_events_path=args.macro_events,
     )
     path = args.runtime_dir / "strategy_admissions.json"
     save_research_admissions(path, result)

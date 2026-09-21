@@ -53,5 +53,8 @@ class ShadowPaperSummary(BaseModel):
     profit_factor: float = Field(ge=0)
     max_drawdown_r: float = Field(default=0.0, ge=0)
     total_pnl_eur: float
+    legacy_trades: int = Field(default=0, ge=0)
+    legacy_total_r: float = 0.0
+    legacy_pnl_eur: float = 0.0
     open_trade: ShadowPaperTrade | None = None
     recent_trades: list[ShadowPaperTrade] = Field(default_factory=list)

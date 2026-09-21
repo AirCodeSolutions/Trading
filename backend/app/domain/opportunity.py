@@ -25,13 +25,18 @@ def all_mechanisms() -> list[OpportunityMechanism]:
 class ResearchSplit(BaseModel):
     train_end: datetime
     validation_end: datetime
+    holdout_end: datetime | None = None
 
     @model_validator(mode="after")
     def validate_order(self) -> "ResearchSplit":
         if self.train_end.utcoffset() is None or self.validation_end.utcoffset() is None:
             raise ValueError("research split datetimes must be timezone-aware")
+        if self.holdout_end is not None and self.holdout_end.utcoffset() is None:
+            raise ValueError("holdout_end must be timezone-aware")
         if self.validation_end <= self.train_end:
             raise ValueError("validation_end must be after train_end")
+        if self.holdout_end is not None and self.holdout_end <= self.validation_end:
+            raise ValueError("holdout_end must be after validation_end")
         return self
 
 

@@ -35,6 +35,7 @@ Last updated: 2026-09-21.
 | #29 | `347e1b8` | GBP directional pullback resumption SHADOW |
 | #30 | `d138a3a` | MT4 exporter locked to five active markets |
 | #31 | `1d4552a` | Paper entries focused on positive historical SHADOW evidence |
+| #34 | `5ca52a9` | Frozen reproducible research execution costs |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
@@ -42,14 +43,13 @@ was incorporated by the later merged main-branch work.
 ## Current state
 
 - PR #29 is merged and deployed: GBPUSD `directional_pullback_resumption`, SHADOW-only;
-- current deployed main: `1d4552a`;
+- current deployed main: `5ca52a9`;
 - runtime: 21 SHADOW scanners = 20 existing + 1 GBP directional pullback;
 - current Portfolio Manager: `NO_TRADE`;
 - first clean post-cutover paper result: GBP failed-auction **+1.5R / +2.7329 EUR**;
 - DEMO bridge: locked;
 - live trading: locked;
-- post-cutover prospective evidence: zero closed trades at the time of this
-  status update.
+- post-cutover prospective evidence: 1 closed GBP trade at +1.5R / +2.7329 EUR.
 
 ## Scope decision — 2026-09-21
 
@@ -117,7 +117,7 @@ Status: **MERGED + DEPLOYED**.
 
 ## PR #34 — reproducible research execution costs
 
-Status: **OPEN / CI pending**.
+Status: **MERGED + DEPLOYED**.
 
 - historical admission spread is being frozen per active symbol from observed
   median broker spreads;

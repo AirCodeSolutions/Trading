@@ -60,7 +60,11 @@ if ! port_listening "$BACKEND_PORT"; then
   )
 fi
 
-if ! pid_alive "$RUNTIME/pids/shadow-worker.pid"; then
+if ! worker_healthy; then
+  if pid_alive "$RUNTIME/pids/shadow-worker.pid"; then
+    kill "$(cat "$RUNTIME/pids/shadow-worker.pid")" 2>/dev/null || true
+    sleep 1
+  fi
   (
     cd "$BASE/backend"
     nohup .venv/bin/python -m app.shadow_worker \

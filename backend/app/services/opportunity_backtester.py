@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from datetime import timedelta
 from itertools import pairwise
 
 from app.domain.admission import EvidenceWindow, StrategyEvidence
@@ -24,6 +25,16 @@ def run_opportunity_backtest(
     bars_m15: Sequence[MarketBar],
     config: OpportunityBacktestConfig,
 ) -> OpportunityBacktestResult:
+    bars_m5 = _bars_before_holdout_end(
+        bars_m5,
+        config.split.holdout_end,
+        minutes=5,
+    )
+    bars_m15 = _bars_before_holdout_end(
+        bars_m15,
+        config.split.holdout_end,
+        minutes=15,
+    )
     _validate_inputs(bars_m5, bars_m15, config)
     candidates = generate_candidates(bars_m5, bars_m15, config.mechanism)
     outcomes: list[TradeOutcome] = []
@@ -65,7 +76,15 @@ def run_opportunity_backtest(
         ]
     )
     holdout = _summary(
-        [item for item in outcomes if item.signal_at >= config.split.validation_end]
+        [
+            item
+            for item in outcomes
+            if item.signal_at >= config.split.validation_end
+            and (
+                config.split.holdout_end is None
+                or item.signal_at < config.split.holdout_end
+            )
+        ]
     )
 
     evidence = StrategyEvidence(
@@ -87,6 +106,21 @@ def run_opportunity_backtest(
         holdout=holdout,
         admission=assess_strategy(evidence),
     )
+
+
+def _bars_before_holdout_end(
+    bars: Sequence[MarketBar],
+    holdout_end,
+    *,
+    minutes: int,
+) -> list[MarketBar]:
+    if holdout_end is None:
+        return list(bars)
+    return [
+        bar
+        for bar in bars
+        if bar.timestamp + timedelta(minutes=minutes) <= holdout_end
+    ]
 
 
 def _validate_inputs(

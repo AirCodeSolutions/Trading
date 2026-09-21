@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `347e1b8` (PR #29).
+Current deployed main commit: `1d4552a` (PR #31).
 
 Operational services:
 
@@ -40,11 +40,12 @@ Operational services:
 - MT4 DEMO bridge: present but locked
 - live trading: locked
 
-Latest runtime checkpoint after PR #29 deployment:
+Latest runtime checkpoint after PR #31 deployment:
 
-- Portfolio Manager: **PAPER_ONLY**;
-- one post-cutover paper position is open:
-  `GBPUSD:failed_auction_reversal`, BUY, 0.03 lot, risk ≈ 1.82 EUR;
+- Portfolio Manager: **NO_TRADE**;
+- first clean post-cutover paper trade is closed:
+  `GBPUSD:failed_auction_reversal`, +1.5R / +2.7329 EUR;
+- no paper position is currently open;
 - MT4 DEMO bridge: 0 bridge positions, 0 pending commands, still locked.
 
 No strategy currently satisfies both:
@@ -84,8 +85,8 @@ qualification metrics.
 
 Current ledger separation at the checkpoint:
 
-- post-cutover: 0 closed trades / 0R / 0 EUR, plus 1 open GBPUSD paper trade;
-- legacy pre-cutover: 7 trades / -7R / -10.8621 EUR.
+- post-cutover: 1 closed GBPUSD trade / +1.5R / +2.7329 EUR;
+- legacy pre-cutover: 7 BTC trades / -7R / -10.8621 EUR.
 
 The legacy losses remain visible and are never deleted.
 
@@ -124,8 +125,10 @@ MT4 HST v401 files expose a spread field, but IronFX stores it as zero across th
 available BTC/EUR/GBP/XAU/XAG M5 histories. Therefore historical replay cannot
 recover true historical spread from the local HST files.
 
-Replay continues to use the available broker spread snapshot plus modeled
-slippage and must not be described as tick-accurate historical execution.
+True historical spread remains unavailable. Historical admission therefore uses
+a **versioned research broker profile** built from observed runtime telemetry,
+with median spread plus the existing 25% slippage model. This is reproducible,
+but still must not be described as tick-accurate historical execution.
 
 ## Immediate development priority
 
@@ -156,10 +159,32 @@ restricted to:
 
 All scanners and blocked-probe ledgers continue to collect regardless.
 
-At the 2026-09-21 checkpoint, the positive-SHADOW pairs are:
+Under the reproducible historical contract, the only positive-SHADOW pair is:
 
-- GBPUSD:directional_pullback_resumption;
-- XAUUSD:failed_auction_reversal, subject to its frequent capital-granularity
-  blocks.
+- XAUUSD:failed_auction_reversal, with only 1 train / 2 validation / 1 holdout
+  trade and frequent capital-granularity blocks.
+
+GBPUSD:directional_pullback_resumption remains SHADOW for diagnostics but its
+frozen holdout expectancy is negative, so PR #31 correctly prevents new PAPER
+entries for that mechanism.
 
 Existing paper trades are not force-closed by this policy.
+
+
+## Reproducible historical admission
+
+Historical admission is now versioned independently from live market conditions:
+
+- train end: 2026-07-01;
+- validation end: 2026-09-01;
+- historical holdout end: 2026-09-20T12:53:56+03:00;
+- broker research profile:
+  `backend/config/research_broker_specs_2026-09-21.json`;
+- spread statistic: median of observed runtime spread telemetry;
+- slippage model remains +25% of spread.
+
+Two consecutive complete matrix replays produced the same SHA-256 result:
+`efdb35d4936d887d3f36cf3f88beb2ab413e72783bb94da427778d44665885a1`.
+
+This supersedes earlier admission figures that depended on the current live
+spread at refresh time.

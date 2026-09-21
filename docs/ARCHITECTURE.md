@@ -93,13 +93,28 @@ Le modèle d'exécution :
 
 Les rejets d'exécution sont comptabilisés séparément des résultats de trading.
 
-## Limite de coût historique
+## Coût historique reproductible
 
 Les fichiers HST v401 locaux ont été inspectés : le champ spread existe dans le
 format mais vaut zéro sur les historiques disponibles BTC/EUR/GBP/XAU/XAG.
-Le backtest utilise donc le spread broker disponible au replay plus le slippage
-modèle. Cette limite est explicite et ne doit pas être décrite comme une
-reconstruction historique exacte.
+
+Pour éviter qu'une admission historique change simplement parce que le spread
+live a bougé, le replay d'admission utilise un profil broker versionné :
+
+`config/research_broker_specs_2026-09-21.json`
+
+Ce profil fige les spécifications de sizing et le spread médian observé par la
+télémétrie runtime. Le slippage modèle reste à +25% du spread.
+
+Le dataset historique utilisé pour l'admission se termine au cutover PAPER
+`2026-09-20T12:53:56+03:00`. Les nouvelles bougies appartiennent à la preuve
+prospective, pas au holdout historique.
+
+Le runtime n'utilise jamais ce profil figé pour décider une exécution : sizing,
+spread/stop et garde broker restent fondés sur les quotes/specs MT4 live.
+
+Cette approche rend le replay reproductible mais ne constitue pas une
+reconstruction tick-accurate des coûts historiques.
 
 ## Replay causal
 

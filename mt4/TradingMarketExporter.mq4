@@ -1,6 +1,6 @@
 #property strict
 
-input string SymbolsCsv = "EURUSD,GBPUSD,XAUUSD,XAGUSD,BTCUSD,US500Cash,USA500IDXUSD,USATECHIDXUSD,Volatility,VOLIDXUSD";
+input string SymbolsCsv = "BTCUSD,EURUSD,GBPUSD,XAUUSD,XAGUSD";
 input int ExportEverySeconds = 5;
 
 string symbols[];

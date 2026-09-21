@@ -1,0 +1,86 @@
+{
+  "as_of": "2026-09-21T13:55:00+03:00",
+  "holdout_end": "2026-09-20T12:53:56+03:00",
+  "spread_statistic": "median_observed_runtime_spread",
+  "slippage_spread_fraction": 0.25,
+  "notes": "Versioned research-only broker specs. Runtime continues to use live MT4 specs and spread.",
+  "observations": {
+    "BTCUSD": {
+      "count": 4656,
+      "median_spread": 24.5
+    },
+    "EURUSD": {
+      "count": 1462,
+      "median_spread": 0.0001
+    },
+    "GBPUSD": {
+      "count": 1476,
+      "median_spread": 0.00011
+    },
+    "XAUUSD": {
+      "count": 1394,
+      "median_spread": 0.28
+    },
+    "XAGUSD": {
+      "count": 1377,
+      "median_spread": 0.07
+    }
+  },
+  "specs": [
+    {
+      "symbol": "BTCUSD",
+      "bid": 84497.53,
+      "ask": 84522.03,
+      "tick_size": 0.01,
+      "tick_value": 0.00871065,
+      "min_lot": 0.01,
+      "max_lot": 1000,
+      "lot_step": 0.01,
+      "margin_required": 147.24
+    },
+    {
+      "symbol": "EURUSD",
+      "bid": 1.14802,
+      "ask": 1.14812,
+      "tick_size": 0.00001,
+      "tick_value": 0.87106496,
+      "min_lot": 0.01,
+      "max_lot": 10000,
+      "lot_step": 0.01,
+      "margin_required": 100
+    },
+    {
+      "symbol": "GBPUSD",
+      "bid": 1.33815,
+      "ask": 1.33826,
+      "tick_size": 0.00001,
+      "tick_value": 0.87106496,
+      "min_lot": 0.01,
+      "max_lot": 10000,
+      "lot_step": 0.01,
+      "margin_required": 116.56
+    },
+    {
+      "symbol": "XAUUSD",
+      "bid": 4344.25,
+      "ask": 4344.53,
+      "tick_size": 0.01,
+      "tick_value": 1,
+      "min_lot": 0.01,
+      "max_lot": 10000,
+      "lot_step": 0.01,
+      "margin_required": 378.42
+    },
+    {
+      "symbol": "XAGUSD",
+      "bid": 65.81,
+      "ask": 65.88,
+      "tick_size": 0.01,
+      "tick_value": 50,
+      "min_lot": 0.01,
+      "max_lot": 10000,
+      "lot_step": 0.01,
+      "margin_required": 2872.66
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "version": "observed_median_v1",
+  "as_of": "2026-09-21T14:29:00+03:00",
+  "method": "median of observed live broker spreads; frozen for reproducible historical research; runtime execution still uses live spread",
+  "symbols": {
+    "BTCUSD": {
+      "spread": 24.5,
+      "samples": 4709
+    },
+    "EURUSD": {
+      "spread": 0.0001,
+      "samples": 1514
+    },
+    "GBPUSD": {
+      "spread": 0.00011,
+      "samples": 1528
+    },
+    "XAUUSD": {
+      "spread": 0.28,
+      "samples": 1447
+    },
+    "XAGUSD": {
+      "spread": 0.07,
+      "samples": 1430
+    }
+  }
+}

@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException
 from app.core.config import settings
 from app.domain.admission import AdmissionDecision, StrategyEvidence
 from app.domain.approval import ExecutionProposal, ExecutionProposalRequest
+from app.domain.blocked_probe import BlockedProbeRuntime
 from app.domain.broker import (
     BrokerSymbolSpec,
     MarketQualityRequest,
@@ -33,6 +34,7 @@ from app.domain.shadow_paper import ShadowPaperSummary
 from app.services.admission import assess_strategy
 from app.services.approval_gate import ApprovalGate
 from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
+from app.services.blocked_probe_registry import load_blocked_probe_registry
 from app.services.capital_risk import size_position
 from app.services.demo_execution import build_demo_status, submit_selected_demo_order
 from app.services.execution_cost_history import summarize_execution_costs
@@ -189,6 +191,14 @@ def portfolio_overview() -> TradingOverview:
 def mt4_symbol_specs() -> list[BrokerSymbolSpec]:
     specs = list_mt4_symbol_specs(_mt4_files_dir())
     return [specs[key] for key in sorted(specs)]
+
+
+@app.get(
+    f"{settings.api_prefix}/shadow/blocked-probes",
+    response_model=list[BlockedProbeRuntime],
+)
+def blocked_probe_overview() -> list[BlockedProbeRuntime]:
+    return load_blocked_probe_registry(settings.shadow_ledger_dir)
 
 
 @app.get(

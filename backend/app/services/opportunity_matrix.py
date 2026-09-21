@@ -13,6 +13,10 @@ from app.services.mt4_csv import read_mt4_csv
 from app.services.mt4_history import resolve_mt4_history_path
 from app.services.mt4_specs import list_mt4_symbol_specs
 from app.services.opportunity_backtester import run_opportunity_backtest
+from app.services.research_execution_model import (
+    apply_research_execution_model,
+    load_research_execution_model,
+)
 
 
 def run_mt4_portfolio_research(
@@ -20,8 +24,14 @@ def run_mt4_portfolio_research(
     request: PortfolioResearchRequest,
     *,
     macro_events_path: Path | None = None,
+    research_execution_model_path: Path | None = None,
 ) -> PortfolioResearchResult:
     specs = list_mt4_symbol_specs(files_dir)
+    research_execution_model = (
+        load_research_execution_model(research_execution_model_path)
+        if research_execution_model_path is not None
+        else None
+    )
     macro_events = (
         load_macro_events(macro_events_path)
         if macro_events_path is not None
@@ -45,6 +55,15 @@ def run_mt4_portfolio_research(
         if spec is None:
             skipped_symbols[symbol] = "broker symbol spec not found"
             continue
+        if research_execution_model is not None:
+            try:
+                spec = apply_research_execution_model(
+                    spec,
+                    research_execution_model,
+                )
+            except ValueError as exc:
+                skipped_symbols[symbol] = str(exc)
+                continue
 
         m5_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M5)
         m15_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M15)

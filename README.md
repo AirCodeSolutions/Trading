@@ -18,6 +18,8 @@ Application de trading intraday conçue autour des timeframes **M5** et **M15**.
 - décisions causales et rejouables ;
 - entrée historique sur la bougie suivante, jamais sur la bougie qui crée le signal ;
 - performance mesurée avec spread, slippage et contraintes de lot ;
+- admissions historiques basées sur un modèle de spread gelé et versionné,
+  jamais sur le spread live instantané du refresh ;
 - aucun trade si lot minimum, spread ou marge rendent le risque incompatible avec le capital ;
 - aucune stratégie expérimentale ne peut atteindre l'exécution avant admission `ACTIVE`.
 
@@ -157,8 +159,13 @@ already listening.
 
 `backend/scripts/refresh_research_admissions.py` reproduces the frozen research
 split and persists the admission registry. The split boundaries do not roll
-forward automatically, which prevents the historical holdout from silently
-changing over time.
+forward automatically.
+
+Historical spread is also frozen through
+`backend/config/research_execution_model.json`, calibrated from observed median
+broker spreads. Runtime execution still uses the current live spread. This
+prevents admissions from changing merely because the refresh ran at a different
+time of day.
 
 
 ## Multi-market MT4 bridge
@@ -253,8 +260,8 @@ uses only trades opened from `2026-09-20T12:53:56+03:00` onward.
 Older trades remain visible as legacy evidence and are never deleted. At the
 2026-09-21 status checkpoint the ledger contains:
 
-- post-cutover: 0 closed trades / 0R / 0 EUR;
-- legacy: 7 trades / -7R / -10.8621 EUR.
+- post-cutover: 1 closed GBPUSD trade / +1.5R / +2.7329 EUR;
+- legacy: 7 BTC trades / -7R / -10.8621 EUR.
 
 See `docs/PROJECT_STATUS.md` and `docs/EVOLUTIONS.md` for the current source of
 truth.

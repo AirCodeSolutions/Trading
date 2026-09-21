@@ -20,6 +20,11 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("config/macro_events_2026.json"),
     )
+    parser.add_argument(
+        "--research-execution-model",
+        type=Path,
+        default=Path("config/research_execution_model.json"),
+    )
     return parser.parse_args()
 
 
@@ -36,6 +41,7 @@ def main() -> None:
         args.files_dir,
         PortfolioResearchRequest(split=split),
         macro_events_path=args.macro_events,
+        research_execution_model_path=args.research_execution_model,
     )
     path = args.runtime_dir / "strategy_admissions.json"
     save_research_admissions(path, result)

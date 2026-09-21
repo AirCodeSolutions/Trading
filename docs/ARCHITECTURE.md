@@ -85,7 +85,7 @@ Le modèle d'exécution :
 
 - BUY : entrée Ask, sorties sur Bid ;
 - SELL : entrée Bid, sorties sur Ask ;
-- spread issu du snapshot broker ;
+- spread de recherche issu d'un modèle gelé/versionné ;
 - slippage par défaut : 0.25 spread ;
 - si stop et target sont tous les deux touchés dans la même bougie, le stop gagne ;
 - un seul trade simultané par couple marché × mécanisme ;
@@ -97,9 +97,13 @@ Les rejets d'exécution sont comptabilisés séparément des résultats de tradi
 
 Les fichiers HST v401 locaux ont été inspectés : le champ spread existe dans le
 format mais vaut zéro sur les historiques disponibles BTC/EUR/GBP/XAU/XAG.
-Le backtest utilise donc le spread broker disponible au replay plus le slippage
-modèle. Cette limite est explicite et ne doit pas être décrite comme une
-reconstruction historique exacte.
+
+La recherche utilise donc un spread proxy **gelé et versionné**, calibré sur la
+médiane des spreads broker réellement observés, plus le slippage modèle. Le
+runtime, lui, continue d'utiliser le spread live réel et le veto spread/stop.
+
+Cette approche rend les admissions reproductibles sans prétendre reconstruire
+le spread historique tick par tick.
 
 ## Replay causal
 

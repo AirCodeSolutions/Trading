@@ -52,6 +52,10 @@ from app.services.opportunity_backtester import run_opportunity_backtest
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.portfolio_overview import build_trading_overview
 from app.services.regime import classify_regime
+from app.services.research_execution_model import (
+    apply_research_execution_model,
+    load_research_execution_model,
+)
 from app.services.runtime_admission_registry import save_research_admissions
 from app.services.session_preflight import build_session_preflight
 from app.services.shadow_collector import collect_btc_break_retest_once
@@ -306,6 +310,10 @@ def mt4_opportunity_backtest(
 
     bars_m5 = read_mt4_csv(m5_path, symbol, Timeframe.M5)
     bars_m15 = read_mt4_csv(m15_path, symbol, Timeframe.M15)
+    spec = apply_research_execution_model(
+        spec,
+        load_research_execution_model(settings.research_execution_model_path),
+    )
     config = OpportunityBacktestConfig(
         spec=spec,
         mechanism=request.mechanism,
@@ -332,6 +340,7 @@ def mt4_portfolio_research(
             _mt4_files_dir(),
             request,
             macro_events_path=settings.macro_events_path,
+            research_execution_model_path=settings.research_execution_model_path,
         )
         save_research_admissions(
             settings.shadow_ledger_dir / "strategy_admissions.json",

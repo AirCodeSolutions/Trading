@@ -1,7 +1,7 @@
 import json
+from pathlib import Path
 
 import pytest
-from pathlib import Path
 
 from app.domain.broker import BrokerSymbolSpec
 from app.services.research_execution_profile import (

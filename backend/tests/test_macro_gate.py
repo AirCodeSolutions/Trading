@@ -3,7 +3,8 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from app.services.macro_gate import macro_gate_status
+from app.domain.macro import MacroEvent, MacroImpact
+from app.services.macro_gate import active_macro_blackouts, macro_gate_status
 
 TZ = ZoneInfo("America/New_York")
 
@@ -65,3 +66,26 @@ def test_macro_gate_reports_next_event_without_blocking(tmp_path: Path) -> None:
     assert result.blocked is False
     assert result.next_event is not None
     assert result.next_event.event_id == "cpi"
+
+
+
+def test_shared_blackout_logic_compares_timezone_aware_instants() -> None:
+    event = MacroEvent(
+        event_id="nfp",
+        name="NFP",
+        start_at=datetime(2026, 7, 2, 8, 30, tzinfo=ZoneInfo("America/New_York")),
+        end_at=datetime(2026, 7, 2, 8, 30, tzinfo=ZoneInfo("America/New_York")),
+        impact=MacroImpact.HIGH,
+        currencies=["USD"],
+        pre_block_minutes=30,
+        post_block_minutes=45,
+        source="test",
+    )
+    athens = ZoneInfo("Europe/Athens")
+
+    active = active_macro_blackouts(
+        [event],
+        datetime(2026, 7, 2, 15, 15, tzinfo=athens),
+    )
+
+    assert [item.event_id for item in active] == ["nfp"]

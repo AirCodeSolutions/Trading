@@ -5,6 +5,7 @@ from app.domain.admission import AdmissionDecision, AdmissionState
 from app.domain.market import Timeframe
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.shadow import ShadowCollectionResult
+from app.services.blocked_probe import advance_blocked_probe_book
 from app.services.market_universe import build_market_universe
 from app.services.mt4_market_data import load_closed_market_bars
 from app.services.mt4_specs import get_mt4_symbol_spec
@@ -76,6 +77,14 @@ def collect_all_shadow_once(
                 trades_path=runtime_dir / f"{prefix}_paper_trades.jsonl",
                 evaluated_at=evaluated_at,
                 allow_new_entries=allow_new_entries,
+            )
+            advance_blocked_probe_book(
+                diagnostic=diagnostic,
+                spec=spec,
+                bars_m5=bars_m5,
+                state_path=runtime_dir / f"{prefix}_blocked_probe_state.json",
+                probes_path=runtime_dir / f"{prefix}_blocked_probes.jsonl",
+                evaluated_at=evaluated_at,
             )
             results.append(
                 ShadowCollectionResult(

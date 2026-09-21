@@ -204,3 +204,25 @@ warmup-only:
 
 This prevents weekend gaps or feed interruptions from becoming artificial
 `post_shock`, breakout or transition opportunities.
+
+
+## Session recovery timeline and stalled-feed detection
+
+Session Preflight persists a small runtime state per watched market:
+
+- first broker quote observed LIVE;
+- first fresh closed M5 after reopening;
+- end of warmup / READY timestamp;
+- first M5 stall detection timestamp;
+- latest closed M5 timestamp.
+
+A market with a LIVE broker quote but no fresh closed M5 remains WARMING_UP.
+If that condition lasts more than 20 minutes after the quote returned, it becomes
+M5_STALLED and the global preflight becomes DEGRADED.
+
+The runtime state is stored atomically in
+`runtime/shadow/session_state.json`.
+
+The watchdog uses `worker_healthy`, not only the worker PID: a live process with
+an error heartbeat or a heartbeat older than 180 seconds is terminated and only
+the SHADOW worker is restarted. Backend, frontend and MT4 remain untouched.

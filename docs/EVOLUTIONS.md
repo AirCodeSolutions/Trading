@@ -1,0 +1,71 @@
+# Evolutions and PR tracking
+
+Last updated: 2026-09-21.
+
+## Merged evolution history
+
+| PR | Commit | Evolution |
+|---|---|---|
+| #1 | `da3d367` | Bootstrap Python/FastAPI + React M5/M15 platform |
+| #2 | `d2e2cb3` | MT4 market selector and 200 EUR capital risk engine |
+| #3 | `28127ae` | Regime-first replay and REJECTED/SHADOW/ACTIVE admission |
+| #4 | `69ad0d1` | Causal opportunity engine and MT4-aware backtester |
+| #5 | `0386eba` | Prospective BTC SHADOW scanner and control panel |
+| #6 | `c14718d` | Live MT4 market board with broker prices |
+| #7 | `3ea7699` | Live dashboard M5 freshness fix |
+| #8 | `ee45283` | Prospective SHADOW paper lifecycle |
+| #9 | `be90345` | Multi-market portfolio core, qualification and cost telemetry |
+| #10 | `a338b67` | DEMO execution guards, macro gate and resilient operations |
+| #11 | `e91e4d7` | Separation of SHADOW research PnL from portfolio risk |
+| #12 | `d6cccad` | Read-only multi-market MT4 quote bridge |
+| #13 | `1366a23` | Paper entry-bar causality fix |
+| #14 | `d9cfb7d` | Directional transition SHADOW mechanism |
+| #15 | `44efa28` | Session preflight and self-healing worker |
+| #16 | `e315ad2` | Node 22 frontend autostart fix |
+| #17 | `1c3d6ea` | Session reopen M5-gap warmup guard |
+| #18 | `8a418d0` | Preflight waits for fresh M5 resynchronization |
+| #19 | `01dd91a` | Session timeline and stalled-M5 detection |
+| #21 | `1b52231` | Live multi-market opportunity board + explicit paper admission gate |
+| #23 | `731ecdf` | Blocked-opportunity prospective probes |
+| #24 | `c1dcb7d` | Capital feasibility for blocked opportunities |
+| #25 | `71b4bd4` | Live capital/execution feasibility matrix |
+| #26 | `634d2b4` | Historical/runtime macro policy parity |
+| #27 | `910da36` | Legacy vs post-cutover paper evidence separation |
+
+PR #20 was closed as superseded after its Live Opportunity Board functionality
+was incorporated by the later merged main-branch work.
+
+## Current state
+
+- no open feature is required to operate the current 5-market SHADOW runtime;
+- current deployed main: `910da36`;
+- current Portfolio Manager: `NO_TRADE`;
+- DEMO bridge: locked;
+- live trading: locked;
+- post-cutover prospective evidence: zero closed trades at the time of this
+  status update.
+
+## Scope decision — 2026-09-21
+
+Development is intentionally limited to:
+
+`BTCUSD, EURUSD, GBPUSD, XAUUSD, XAGUSD`
+
+Explicitly abandoned from the active program:
+
+`US500Cash, USA500IDXUSD, USATECHIDXUSD, Volatility, VOLIDXUSD`
+
+This is a scope reduction, not an exporter-data investigation backlog. Do not
+reintroduce these symbols unless the project scope is explicitly changed later.
+
+## Next PR policy
+
+The next trading PR should contain one measurable trading hypothesis for the
+five retained assets, with:
+
+- causal signal definition;
+- unchanged risk policy;
+- train / validation / holdout evidence;
+- execution feasibility under 200 EUR;
+- SHADOW-only activation first;
+- no DEMO activation unless both historical and prospective contracts pass.

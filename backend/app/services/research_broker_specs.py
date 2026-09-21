@@ -18,7 +18,7 @@ def load_research_broker_specs(
         raise ValueError("invalid research broker spec payload") from exc
 
     if not isinstance(rows, list):
-        raise ValueError("research broker specs must be a list")
+        raise TypeError("research broker specs must be a list")
 
     specs: dict[str, BrokerSymbolSpec] = {}
     for row in rows:

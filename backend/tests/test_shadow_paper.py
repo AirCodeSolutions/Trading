@@ -178,6 +178,37 @@ def test_advance_deduplicates_same_signal_and_persists_summary(
     assert summary.open_trade is not None
 
 
+def test_existing_open_trade_continues_when_new_entries_are_disabled(
+    tmp_path: Path,
+) -> None:
+    state_path = tmp_path / "state.json"
+    trades_path = tmp_path / "trades.jsonl"
+    diag = diagnostic()
+
+    first = advance_shadow_paper_book(
+        diagnostic=diag,
+        spec=spec(),
+        bars_m5=[],
+        state_path=state_path,
+        trades_path=trades_path,
+        evaluated_at=diag.evaluated_at,
+    )
+    assert first.open_trade is not None
+
+    second = advance_shadow_paper_book(
+        diagnostic=diag,
+        spec=spec(),
+        bars_m5=[],
+        state_path=state_path,
+        trades_path=trades_path,
+        evaluated_at=diag.evaluated_at + timedelta(seconds=30),
+        allow_new_entries=False,
+    )
+
+    assert second.open_trade is not None
+    assert second.open_trade.trade_id == first.open_trade.trade_id
+
+
 def test_rejected_strategy_does_not_open_new_paper_trade(tmp_path: Path) -> None:
     state_path = tmp_path / "state.json"
     trades_path = tmp_path / "trades.jsonl"

@@ -107,10 +107,11 @@ def collect_all_shadow_once(
 def paper_entry_allowed(
     admission: AdmissionDecision | None,
 ) -> bool:
-    return (
-        admission is not None
-        and admission.state != AdmissionState.REJECTED
-    )
+    if admission is None or admission.state == AdmissionState.REJECTED:
+        return False
+    if admission.state == AdmissionState.ACTIVE:
+        return True
+    return admission.weakest_expectancy_r > 0
 
 
 

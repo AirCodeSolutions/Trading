@@ -36,6 +36,7 @@ Operational services:
 - backend: port 8020
 - SHADOW worker: self-healing heartbeat/watchdog
 - 21 active SHADOW scanners: 5 markets × 4 baseline mechanisms + 1 GBPUSD-only directional pullback
+- new PAPER entries are being narrowed to historically positive SHADOW evidence only
 - MT4 DEMO bridge: present but locked
 - live trading: locked
 
@@ -141,3 +142,24 @@ add infrastructure:
    setup fits the 200 EUR capital policy;
 5. preserve macro, spread, capital and causality gates;
 6. move SHADOW -> DEMO only after historical ACTIVE + prospective SUPPORTS_DEMO.
+
+
+## Prospective PAPER focus
+
+The SHADOW state can mean either promising but under-sampled evidence or simply
+insufficient sample despite negative independent expectancy. To avoid spending
+prospective paper capacity on already-negative evidence, new paper entries are
+restricted to:
+
+- ACTIVE admissions; or
+- SHADOW admissions with `weakest_expectancy_r > 0`.
+
+All scanners and blocked-probe ledgers continue to collect regardless.
+
+At the 2026-09-21 checkpoint, the positive-SHADOW pairs are:
+
+- GBPUSD:directional_pullback_resumption;
+- XAUUSD:failed_auction_reversal, subject to its frequent capital-granularity
+  blocks.
+
+Existing paper trades are not force-closed by this policy.

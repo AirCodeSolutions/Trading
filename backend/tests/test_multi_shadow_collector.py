@@ -6,12 +6,16 @@ from app.services.multi_shadow_collector import (
 )
 
 
-def decision(state: AdmissionState) -> AdmissionDecision:
+def decision(
+    state: AdmissionState,
+    *,
+    weakest_expectancy_r: float = 0.1,
+) -> AdmissionDecision:
     return AdmissionDecision(
         strategy_id="EURUSD:test",
         state=state,
         reason="test",
-        weakest_expectancy_r=0.1,
+        weakest_expectancy_r=weakest_expectancy_r,
         worst_drawdown_r=1.0,
     )
 
@@ -24,8 +28,44 @@ def test_rejected_admission_cannot_open_new_paper_trade() -> None:
     assert paper_entry_allowed(decision(AdmissionState.REJECTED)) is False
 
 
-def test_shadow_admission_can_open_new_paper_trade() -> None:
+def test_positive_shadow_admission_can_open_new_paper_trade() -> None:
     assert paper_entry_allowed(decision(AdmissionState.SHADOW)) is True
+
+
+def test_negative_shadow_admission_cannot_open_new_paper_trade() -> None:
+    assert (
+        paper_entry_allowed(
+            decision(
+                AdmissionState.SHADOW,
+                weakest_expectancy_r=-0.01,
+            )
+        )
+        is False
+    )
+
+
+def test_zero_expectancy_shadow_admission_cannot_open_new_paper_trade() -> None:
+    assert (
+        paper_entry_allowed(
+            decision(
+                AdmissionState.SHADOW,
+                weakest_expectancy_r=0.0,
+            )
+        )
+        is False
+    )
+
+
+def test_active_admission_remains_paper_eligible() -> None:
+    assert (
+        paper_entry_allowed(
+            decision(
+                AdmissionState.ACTIVE,
+                weakest_expectancy_r=0.2,
+            )
+        )
+        is True
+    )
 
 
 

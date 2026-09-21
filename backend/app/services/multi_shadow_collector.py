@@ -20,6 +20,7 @@ _MECHANISM_SLUG = {
     OpportunityMechanism.FAILED_AUCTION_REVERSAL: "failed_auction",
     OpportunityMechanism.POST_SHOCK_CONTINUATION: "post_shock",
     OpportunityMechanism.DIRECTIONAL_TRANSITION: "directional_transition",
+    OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION: "directional_pullback",
 }
 
 

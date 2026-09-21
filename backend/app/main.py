@@ -39,7 +39,7 @@ from app.services.capital_risk import size_position
 from app.services.demo_execution import build_demo_status, submit_selected_demo_order
 from app.services.execution_cost_history import summarize_execution_costs
 from app.services.live_market_quality import build_live_market_quality
-from app.services.macro_gate import macro_gate_status
+from app.services.macro_gate import load_macro_events, macro_gate_status
 from app.services.market_quality import assess_market
 from app.services.market_store import MarketStore
 from app.services.market_universe import build_market_universe
@@ -307,6 +307,7 @@ def mt4_opportunity_backtest(
         split=request.split,
         requested_risk_fraction=request.requested_risk_fraction,
         slippage_spread_fraction=request.slippage_spread_fraction,
+        macro_events=load_macro_events(settings.macro_events_path),
     )
     try:
         return run_opportunity_backtest(bars_m5, bars_m15, config)
@@ -322,7 +323,11 @@ def mt4_portfolio_research(
     request: PortfolioResearchRequest,
 ) -> PortfolioResearchResult:
     try:
-        result = run_mt4_portfolio_research(_mt4_files_dir(), request)
+        result = run_mt4_portfolio_research(
+            _mt4_files_dir(),
+            request,
+            macro_events_path=settings.macro_events_path,
+        )
         save_research_admissions(
             settings.shadow_ledger_dir / "strategy_admissions.json",
             result,

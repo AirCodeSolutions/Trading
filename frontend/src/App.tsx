@@ -240,6 +240,11 @@ type BlockedProbe = {
   block_reason: string;
   max_risk_approved: boolean;
   max_risk_reason: string | null;
+  min_lot_loss_eur: number;
+  required_capital_base_risk_eur: number;
+  required_capital_max_risk_eur: number;
+  minimum_feasible_risk_fraction: number;
+  capital_granularity_feasible_under_max_risk: boolean;
   status: "open" | "stop" | "target" | "timeout";
   result_r: number | null;
 };
@@ -902,7 +907,11 @@ export default function App() {
               <span>Expectancy</span>
               <span>PF</span>
               <span>Ouvert</span>
-              <span>Viable 2 %</span>
+              <span>Perte lot min</span>
+              <span>Capital @1 %</span>
+              <span>Capital @2 %</span>
+              <span>Risque min</span>
+              <span>Faisable ≤2 %</span>
               <span>Blocage</span>
             </div>
             {blockedProbes
@@ -923,8 +932,12 @@ export default function App() {
                     </span>
                     <span>{row.summary.closed_probes ? row.summary.profit_factor.toFixed(2) : "—"}</span>
                     <span>{row.summary.open_probe ? row.summary.open_probe.side.toUpperCase() : "—"}</span>
-                    <span className={latest?.max_risk_approved ? "positive-text" : "negative-text"}>
-                      {latest ? (latest.max_risk_approved ? "OUI" : "NON") : "—"}
+                    <span>{latest ? `${latest.min_lot_loss_eur.toFixed(2)} €` : "—"}</span>
+                    <span>{latest ? `${latest.required_capital_base_risk_eur.toFixed(0)} €` : "—"}</span>
+                    <span>{latest ? `${latest.required_capital_max_risk_eur.toFixed(0)} €` : "—"}</span>
+                    <span>{latest ? `${(latest.minimum_feasible_risk_fraction * 100).toFixed(2)} %` : "—"}</span>
+                    <span className={latest?.capital_granularity_feasible_under_max_risk ? "positive-text" : "negative-text"}>
+                      {latest ? (latest.capital_granularity_feasible_under_max_risk ? "OUI" : "NON") : "—"}
                     </span>
                     <span className="opportunity-reason">{latest?.block_reason ?? "—"}</span>
                   </div>

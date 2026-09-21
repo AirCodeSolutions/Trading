@@ -1,6 +1,7 @@
 from bisect import bisect_right
 from collections.abc import Sequence
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from app.domain.market import MarketBar
 from app.domain.opportunity import OpportunityCandidate, OpportunityMechanism
@@ -8,6 +9,12 @@ from app.domain.regime import MarketRegime, RegimeSnapshot
 from app.domain.trading import Side
 from app.services.replay import RegimeReplay
 from app.services.session_continuity import reopen_warmup_remaining
+
+ATHENS = ZoneInfo("Europe/Athens")
+ASIA_RANGE_START_HOUR = 2
+ASIA_RANGE_END_HOUR = 10
+LONDON_OBSERVATION_END_HOUR = 13
+ASIA_RANGE_MIN_M5_BARS = 60
 
 
 def _true_ranges(bars: Sequence[MarketBar]) -> list[float]:
@@ -73,6 +80,17 @@ def generate_candidates(
 
         bar = bars_m5[index]
         signal_close = bar.timestamp + timedelta(minutes=5)
+
+        if mechanism == OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL:
+            candidate = _asia_range_sweep_candidate(
+                bars_m5,
+                atr_m5,
+                index,
+            )
+            if candidate is not None:
+                candidates.append(candidate)
+            continue
+
         regime_index = bisect_right(close_times, signal_close) - 1
         regime = regimes[regime_index] if regime_index >= 0 else None
         if regime is None or regime.regime == MarketRegime.WARMUP:
@@ -140,6 +158,152 @@ def generate_candidates(
             candidates.append(candidate)
 
     return candidates
+
+
+def _asia_range_sweep_match(
+    signal: MarketBar,
+    atr_value: float,
+    asia_high: float,
+    asia_low: float,
+) -> tuple[Side, float, float, float, float] | None:
+    bar_range = signal.high - signal.low
+    if atr_value <= 0 or bar_range <= 0:
+        return None
+
+    upper_wick = signal.high - max(signal.open, signal.close)
+    lower_wick = min(signal.open, signal.close) - signal.low
+    close_location = (signal.close - signal.low) / bar_range
+
+    if (
+        signal.high > asia_high + 0.10 * atr_value
+        and signal.close < asia_high - 0.02 * atr_value
+        and upper_wick / bar_range >= 0.35
+        and close_location <= 0.50
+    ):
+        return (
+            Side.SELL,
+            signal.high + 0.15 * atr_value,
+            (signal.high - asia_high) / atr_value,
+            (asia_high - signal.close) / atr_value,
+            close_location,
+        )
+
+    if (
+        signal.low < asia_low - 0.10 * atr_value
+        and signal.close > asia_low + 0.02 * atr_value
+        and lower_wick / bar_range >= 0.35
+        and close_location >= 0.50
+    ):
+        return (
+            Side.BUY,
+            signal.low - 0.15 * atr_value,
+            (asia_low - signal.low) / atr_value,
+            (signal.close - asia_low) / atr_value,
+            close_location,
+        )
+    return None
+
+
+def _asia_range_sweep_geometry(
+    bars: Sequence[MarketBar],
+    atr: Sequence[float],
+    index: int,
+) -> tuple[Side, float, float, float, float] | None:
+    if index < 0 or index >= len(bars) or index >= len(atr):
+        return None
+
+    signal = bars[index]
+    if signal.timestamp.utcoffset() is None:
+        return None
+    signal_local = signal.timestamp.astimezone(ATHENS)
+    asia_start = signal_local.replace(hour=ASIA_RANGE_START_HOUR, minute=0, second=0, microsecond=0)
+    asia_end = signal_local.replace(hour=ASIA_RANGE_END_HOUR, minute=0, second=0, microsecond=0)
+    observation_end = signal_local.replace(
+        hour=LONDON_OBSERVATION_END_HOUR, minute=0, second=0, microsecond=0
+    )
+    if not (asia_end <= signal_local < observation_end):
+        return None
+
+    same_day: list[tuple[int, MarketBar, datetime]] = []
+    for prior_index in range(index - 1, -1, -1):
+        prior = bars[prior_index]
+        if prior.timestamp.utcoffset() is None:
+            continue
+        prior_local = prior.timestamp.astimezone(ATHENS)
+        if prior_local.date() != signal_local.date():
+            if prior_local.date() < signal_local.date():
+                break
+            continue
+        same_day.append((prior_index, prior, prior_local))
+
+    asia_bars = [
+        prior for _, prior, prior_local in same_day if asia_start <= prior_local < asia_end
+    ]
+    if len(asia_bars) < ASIA_RANGE_MIN_M5_BARS:
+        return None
+
+    asia_high = max(bar.high for bar in asia_bars)
+    asia_low = min(bar.low for bar in asia_bars)
+
+    for prior_index, prior, prior_local in same_day:
+        if not (asia_end <= prior_local < signal_local):
+            continue
+        if _asia_range_sweep_match(prior, atr[prior_index], asia_high, asia_low) is not None:
+            return None
+
+    return _asia_range_sweep_match(signal, atr[index], asia_high, asia_low)
+
+
+def _asia_range_sweep_candidate(
+    bars: Sequence[MarketBar],
+    atr: Sequence[float],
+    index: int,
+) -> OpportunityCandidate | None:
+    if index + 1 >= len(bars):
+        return None
+    geometry = _asia_range_sweep_geometry(bars, atr, index)
+    if geometry is None:
+        return None
+    side, stop, _, _, _ = geometry
+    signal = bars[index]
+    entry = bars[index + 1]
+    return OpportunityCandidate(
+        symbol=signal.symbol,
+        mechanism=OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL,
+        side=side,
+        signal_at=signal.timestamp + timedelta(minutes=5),
+        entry_at=entry.timestamp,
+        signal_index=index,
+        entry_index=index + 1,
+        structural_stop=stop,
+        target_r=1.5,
+        max_holding_bars=12,
+        reason="completed Athens Asia range sweep with causal reclaim",
+    )
+
+
+def _asia_range_sweep_signal(
+    bars: Sequence[MarketBar],
+    atr: Sequence[float],
+):
+    if not bars:
+        return None
+    geometry = _asia_range_sweep_geometry(bars, atr, len(bars) - 1)
+    if geometry is None:
+        return None
+    side, stop, sweep_strength, reclaim, close_location = geometry
+    return (
+        side,
+        stop,
+        1.5,
+        12,
+        0.0,
+        sweep_strength,
+        None,
+        reclaim,
+        close_location,
+        "completed Athens Asia range sweep with causal reclaim",
+    )
 
 
 def _directional_pullback_resumption_candidate(

@@ -21,6 +21,7 @@ _MECHANISM_SLUG = {
     OpportunityMechanism.POST_SHOCK_CONTINUATION: "post_shock",
     OpportunityMechanism.DIRECTIONAL_TRANSITION: "directional_transition",
     OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION: "directional_pullback",
+    OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL: "asia_range_sweep",
 }
 
 
@@ -122,6 +123,9 @@ def shadow_mechanism_enabled(
     symbol: str,
     mechanism: OpportunityMechanism,
 ) -> bool:
-    if mechanism == OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION:
+    if mechanism in {
+        OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
+        OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL,
+    }:
         return symbol.upper() == "GBPUSD"
     return True

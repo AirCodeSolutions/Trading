@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `14427e5` (PR #36).
+Current deployed main commit: `fcf5c50` (PR #37).
 
 Operational services:
 
@@ -194,3 +194,33 @@ couples:
   capital granularity.
 
 No additional BTCUSD or EURUSD mechanism became PAPER-eligible.
+
+
+## Candidate in development — GBP Asia range sweep
+
+Branch: `feature/gbp-asia-range-sweep`.
+
+A distinct GBPUSD session-reversal mechanism is being promoted from fixed
+research into prospective collection as `asia_range_sweep_reversal`:
+
+- Asia range: 02:00 <= M5 open < 10:00, Europe/Athens;
+- London observation: 10:00 <= M5 open < 13:00;
+- first qualifying sweep of the completed session range only;
+- sweep magnitude > 0.10 ATR M5;
+- reclaim at least 0.02 ATR back inside the range;
+- rejection wick >= 35% and coherent close location;
+- entry on the next M5;
+- stop beyond the sweep extreme by 0.15 ATR;
+- target 1.5R, horizon 12 M5;
+- unchanged macro, 200 EUR capital, 1% base risk and 15% spread/stop gates.
+
+Frozen-cost GBPUSD replay reproduces the original research exactly:
+
+- 85 candidates, 21 executable;
+- train: 19 trades, +0.078R expectancy, PF 1.15;
+- validation: 2 trades, +1.017R expectancy, PF 99;
+- holdout: 0 trades.
+
+Decision: historical state remains **SHADOW**. Because train and validation are
+both positive, `paper_collection_candidate=true` under the PR #36 policy.
+Runtime collection is GBPUSD-only. This mechanism cannot authorize DEMO.

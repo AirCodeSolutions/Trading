@@ -10,6 +10,7 @@ _SLUG_TO_MECHANISM = {
     "post_shock": OpportunityMechanism.POST_SHOCK_CONTINUATION,
     "directional_transition": OpportunityMechanism.DIRECTIONAL_TRANSITION,
     "directional_pullback": OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
+    "asia_range_sweep": OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL,
 }
 
 

@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `5ca52a9` (PR #34).
+Current deployed main commit: `14427e5` (PR #36).
 
 Operational services:
 
@@ -36,11 +36,11 @@ Operational services:
 - backend: port 8020
 - SHADOW worker: self-healing heartbeat/watchdog
 - 21 active SHADOW scanners: 5 markets × 4 baseline mechanisms + 1 GBPUSD-only directional pullback
-- new PAPER entries are being narrowed to historically positive SHADOW evidence only
+- PAPER entries are limited to ACTIVE, positive-weakest SHADOW, or SHADOW with positive train + validation evidence
 - MT4 DEMO bridge: present but locked
 - live trading: locked
 
-Latest runtime checkpoint after PR #34 deployment:
+Latest runtime checkpoint after PR #36 deployment:
 
 - Portfolio Manager: **NO_TRADE**;
 - first clean post-cutover paper trade closed:
@@ -158,11 +158,10 @@ restricted to:
 - ACTIVE admissions; or
 - SHADOW admissions with `weakest_expectancy_r > 0`.
 
-The next PAPER-policy refinement is intentionally narrower than reopening all
-SHADOWs: a SHADOW may also collect PAPER when **train expectancy > 0 and
-validation expectancy > 0**, even if a still-small holdout is negative. This is
-research collection only; the historical admission remains SHADOW and DEMO
-remains locked.
+PR #36 adds a deliberately narrow exception to the positive-weakest rule: a
+SHADOW may collect PAPER when **train expectancy > 0 and validation expectancy
+> 0**, even if a still-small holdout is negative. This is research collection
+only; the historical admission remains SHADOW and DEMO remains locked.
 
 All scanners and blocked-probe ledgers continue to collect regardless.
 
@@ -181,3 +180,17 @@ The only positive weakest-expectancy SHADOW in the current frozen matrix is
 trades and frequently blocked by minimum-lot capital granularity.
 
 Existing paper trades are not force-closed by this policy.
+
+
+## Deployed PAPER eligibility after PR #36
+
+The frozen admission registry currently exposes exactly two PAPER-eligible
+couples:
+
+- `GBPUSD:directional_pullback_resumption` — eligible because train and
+  validation are positive while the holdout is only one trade;
+- `XAUUSD:failed_auction_reversal` — eligible because weakest independent
+  expectancy is positive, though live execution is often blocked by minimum-lot
+  capital granularity.
+
+No additional BTCUSD or EURUSD mechanism became PAPER-eligible.

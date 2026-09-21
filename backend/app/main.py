@@ -56,7 +56,6 @@ from app.services.research_execution_profile import (
     apply_research_execution_profile,
     load_research_execution_profile,
 )
-from app.services.runtime_admission_registry import save_research_admissions
 from app.services.session_preflight import build_session_preflight
 from app.services.shadow_collector import collect_btc_break_retest_once
 from app.services.shadow_overview import load_shadow_overview
@@ -341,10 +340,6 @@ def mt4_portfolio_research(
             request,
             macro_events_path=settings.macro_events_path,
             research_execution_profile_path=settings.research_execution_profile_path,
-        )
-        save_research_admissions(
-            settings.shadow_ledger_dir / "strategy_admissions.json",
-            result,
         )
         return result
     except ValueError as exc:

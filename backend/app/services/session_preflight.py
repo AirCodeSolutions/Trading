@@ -6,8 +6,11 @@ from app.domain.portfolio import TradingOverview
 from app.domain.session import (
     SessionAssetState,
     SessionAssetStatus,
+    SessionAssetTimeline,
     SessionPreflight,
     SessionReadinessStatus,
+    SessionRuntimeState,
+    SessionRuntimeSymbolState,
     ShadowWorkerHeartbeat,
 )
 from app.services.market_universe import build_market_universe
@@ -15,6 +18,7 @@ from app.services.mt4_live_quotes import LiveMarketQuote, read_live_market_quote
 
 WORKER_STALE_SECONDS = 180
 M5_SYNC_MAX_AGE = timedelta(minutes=10)
+M5_STALL_AFTER = timedelta(minutes=20)
 
 
 def load_worker_heartbeat(path: Path) -> ShadowWorkerHeartbeat | None:
@@ -26,6 +30,24 @@ def load_worker_heartbeat(path: Path) -> ShadowWorkerHeartbeat | None:
         )
     except (OSError, ValueError):
         return None
+
+
+def load_session_runtime_state(path: Path) -> SessionRuntimeState:
+    if not path.is_file():
+        return SessionRuntimeState()
+    try:
+        return SessionRuntimeState.model_validate_json(
+            path.read_text(encoding="utf-8")
+        )
+    except (OSError, ValueError):
+        return SessionRuntimeState()
+
+
+def save_session_runtime_state(path: Path, state: SessionRuntimeState) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(state.model_dump_json(indent=2), encoding="utf-8")
+    temporary.replace(path)
 
 
 def build_session_preflight(
@@ -62,31 +84,91 @@ def build_session_preflight(
         if heartbeat is not None
         else set()
     )
+    state_path = runtime_dir / "session_state.json"
+    runtime_state = load_session_runtime_state(state_path)
 
     assets: list[SessionAssetStatus] = []
+    timeline: list[SessionAssetTimeline] = []
     for symbol in watch_symbols:
         normalized = symbol.upper()
         asset = by_symbol.get(normalized)
         if asset is None:
             continue
         quote = quotes.get(normalized)
+        symbol_state = runtime_state.symbols.get(
+            normalized,
+            SessionRuntimeSymbolState(),
+        )
+
+        if asset.quote_live:
+            if symbol_state.quote_live_since is None:
+                symbol_state = SessionRuntimeSymbolState(
+                    quote_live_since=now,
+                )
+        else:
+            symbol_state = SessionRuntimeSymbolState()
+
         waiting_for_closed_m5 = (
             asset.quote_live
             and _waiting_for_fresh_closed_m5(quote, now)
         )
-        warming_up = (
-            normalized in warming_from_worker
-            or waiting_for_closed_m5
+        if (
+            asset.quote_live
+            and not waiting_for_closed_m5
+            and symbol_state.first_fresh_m5_at is None
+        ):
+            symbol_state.first_fresh_m5_at = now
+
+        m5_stalled = bool(
+            waiting_for_closed_m5
+            and symbol_state.quote_live_since is not None
+            and now - symbol_state.quote_live_since > M5_STALL_AFTER
         )
-        state = _asset_state(
+        if m5_stalled and symbol_state.m5_stalled_at is None:
+            symbol_state.m5_stalled_at = now
+
+        worker_warming = normalized in warming_from_worker
+        warming_up = worker_warming or (
+            waiting_for_closed_m5 and not m5_stalled
+        )
+        asset_state = _asset_state(
             asset,
             warming_up=warming_up,
+            m5_stalled=m5_stalled,
         )
-        if waiting_for_closed_m5:
+        if (
+            asset_state == SessionAssetState.READY
+            and symbol_state.ready_at is None
+        ):
+            symbol_state.ready_at = now
+
+        runtime_state.symbols[normalized] = symbol_state
+        last_closed_m5_at = (
+            quote.last_closed_m5_at
+            if quote is not None
+            else None
+        )
+        timeline.append(
+            SessionAssetTimeline(
+                symbol=normalized,
+                quote_live_since=symbol_state.quote_live_since,
+                first_fresh_m5_at=symbol_state.first_fresh_m5_at,
+                ready_at=symbol_state.ready_at,
+                m5_stalled_at=symbol_state.m5_stalled_at,
+                last_closed_m5_at=last_closed_m5_at,
+            )
+        )
+
+        if m5_stalled:
+            asset_reason = (
+                "broker quote is live but closed M5 feed is stalled "
+                "for more than 20 minutes"
+            )
+        elif waiting_for_closed_m5:
             asset_reason = (
                 "live broker quote received; waiting for a fresh closed M5 bar"
             )
-        elif normalized in warming_from_worker:
+        elif worker_warming:
             asset_reason = (
                 "session reopen warmup: waiting for three complete M5 bars"
             )
@@ -96,7 +178,7 @@ def build_session_preflight(
         assets.append(
             SessionAssetStatus(
                 symbol=normalized,
-                state=state,
+                state=asset_state,
                 quote_live=asset.quote_live,
                 paper_ready=asset.paper_ready,
                 broker_spec_ready=asset.broker_spec_ready,
@@ -108,7 +190,11 @@ def build_session_preflight(
             )
         )
 
-    ready = [item.symbol for item in assets if item.state == SessionAssetState.READY]
+    save_session_runtime_state(state_path, runtime_state)
+
+    ready = [
+        item.symbol for item in assets if item.state == SessionAssetState.READY
+    ]
     warming = [
         item.symbol
         for item in assets
@@ -123,7 +209,11 @@ def build_session_preflight(
         item.symbol
         for item in assets
         if item.state
-        in {SessionAssetState.MISSING_SPEC, SessionAssetState.MISSING_HISTORY}
+        in {
+            SessionAssetState.M5_STALLED,
+            SessionAssetState.MISSING_SPEC,
+            SessionAssetState.MISSING_HISTORY,
+        }
     ]
 
     non_btc_ready = [symbol for symbol in ready if symbol != "BTCUSD"]
@@ -133,7 +223,11 @@ def build_session_preflight(
         for item in assets
         if item.quote_live
         and item.state
-        in {SessionAssetState.MISSING_SPEC, SessionAssetState.MISSING_HISTORY}
+        in {
+            SessionAssetState.M5_STALLED,
+            SessionAssetState.MISSING_SPEC,
+            SessionAssetState.MISSING_HISTORY,
+        }
     ]
 
     if not worker_ok:
@@ -142,13 +236,13 @@ def build_session_preflight(
     elif live_but_degraded:
         status = SessionReadinessStatus.DEGRADED
         reason = (
-            "open-market data is live but incomplete for: "
+            "open-market data is live but incomplete or stalled for: "
             + ", ".join(live_but_degraded)
         )
     elif non_btc_warming and not non_btc_ready:
         status = SessionReadinessStatus.WARMING_UP
         reason = (
-            "market reopened; waiting for three complete M5 bars: "
+            "market reopened; waiting for closed M5 synchronization/warmup: "
             + ", ".join(non_btc_warming)
         )
     elif non_btc_ready:
@@ -182,6 +276,7 @@ def build_session_preflight(
         waiting_symbols=waiting,
         degraded_symbols=degraded,
         assets=assets,
+        timeline=timeline,
         reason=reason,
     )
 
@@ -190,6 +285,7 @@ def _asset_state(
     asset,
     *,
     warming_up: bool,
+    m5_stalled: bool,
 ) -> SessionAssetState:
     if not asset.has_m5 or not asset.has_m15:
         return SessionAssetState.MISSING_HISTORY
@@ -197,6 +293,8 @@ def _asset_state(
         return SessionAssetState.MISSING_SPEC
     if not asset.quote_live:
         return SessionAssetState.WAITING_QUOTE
+    if m5_stalled:
+        return SessionAssetState.M5_STALLED
     if warming_up:
         return SessionAssetState.WARMING_UP
     return SessionAssetState.READY

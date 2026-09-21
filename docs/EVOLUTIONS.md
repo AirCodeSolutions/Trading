@@ -145,7 +145,7 @@ With the frozen matrix, this newly adds only
 eligible under the positive-weakest rule.
 
 
-## PR #35 — promising SHADOW PAPER collection
+## PR #36 — promising SHADOW PAPER collection
 
 Status: **OPEN / PAPER research policy**.
 

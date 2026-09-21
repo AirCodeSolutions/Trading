@@ -3,9 +3,9 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+import app.main as main_module
 from app.core.config import settings
 from app.domain.opportunity import PortfolioResearchResult
-import app.main as main_module
 from app.main import app
 
 client = TestClient(app)

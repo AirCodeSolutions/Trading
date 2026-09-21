@@ -80,3 +80,19 @@ def test_snapshot_takes_precedence_over_bridge_json(tmp_path: Path) -> None:
     specs = list_mt4_symbol_specs(tmp_path)
 
     assert specs["XAUUSD"].spread == pytest.approx(0.2)
+
+
+def test_symbol_scoped_demo_bridge_snapshot_supplies_broker_spec(tmp_path: Path) -> None:
+    (tmp_path / "trading_demo_spec_EURUSD.csv").write_text(
+        "timestamp,symbol,bid,ask,digits,contract_size,tick_size,tick_value,point,"
+        "min_lot,max_lot,lot_step,stop_level,margin_required\n"
+        "1,EURUSD,1.1500,1.1501,5,100000,0.00001,0.87,0.00001,0.01,100,0.01,0,100\n",
+        encoding="utf-8",
+    )
+
+    spec = get_mt4_symbol_spec(tmp_path, "EURUSD")
+
+    assert spec is not None
+    assert spec.symbol == "EURUSD"
+    assert spec.bid == 1.15
+    assert spec.ask == 1.1501

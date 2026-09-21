@@ -228,9 +228,9 @@ Runtime activation remained locked after discovering that MT4 was running one
 bridge instance per active symbol. A single shared command file meant multiple
 instances could race to consume the same command.
 
-## In-flight — multi-instance DEMO bridge hardening
+## PR #42 — multi-instance DEMO bridge hardening
 
-Branch: `fix/demo-bridge-multi-instance`.
+Status: **MERGED** at `aa4b7f2`; runtime DEMO activation remains locked until the upgraded bridge snapshots are verified on all five symbols.
 
 - route open commands strictly to the chart whose `Symbol()` matches the command;
 - include the symbol in explicit close commands and verify the selected ticket
@@ -243,3 +243,24 @@ Branch: `fix/demo-bridge-multi-instance`.
 
 Validation: 134 backend tests passed, Ruff passed and MetaEditor compiled the
 hardened bridge with 0 errors / 0 warnings.
+
+
+## In-flight — symbol-scoped DEMO broker snapshots
+
+Branch: `fix/demo-bridge-symbol-specs`.
+
+Runtime verification after PR #42 showed BTCUSD/XAUUSD/XAGUSD READY but EURUSD
+and GBPUSD lacked current broker Bid/Ask/spec snapshots even though their M5/M15
+histories were fresh. To avoid adding another MT4 EA, each already-attached
+`TradingDemoExecutionBridge` now exports its own
+`trading_demo_spec_<SYMBOL>.csv` file.
+
+- one file per chart symbol, so there is no multi-instance write contention;
+- backend live quotes consume the newest scoped snapshot alongside legacy JSON;
+- broker specs consume scoped snapshots without overwriting account/position JSON;
+- existing `mt4_data_*` files remain untouched;
+- DEMO collection and bridge flags remain OFF until runtime proof is complete;
+- live trading remains disabled.
+
+Validation before PR: 14 targeted tests passed, Ruff passed and MetaEditor
+compiled the bridge with 0 errors / 0 warnings.

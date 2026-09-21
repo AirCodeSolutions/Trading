@@ -118,3 +118,20 @@ def test_live_quote_filter_excludes_out_of_scope_symbols(tmp_path: Path) -> None
     quotes = read_live_market_quotes(tmp_path, now, symbols=("EURUSD",))
 
     assert [quote.symbol for quote in quotes] == ["EURUSD"]
+
+
+def test_symbol_scoped_demo_bridge_snapshot_adds_live_quote(tmp_path: Path) -> None:
+    (tmp_path / "trading_demo_spec_GBPUSD.csv").write_text(
+        "timestamp,symbol,bid,ask,digits,contract_size,tick_size,tick_value,point,min_lot,max_lot,lot_step,stop_level,margin_required\n"
+        "1789838948,GBPUSD,1.34000,1.34011,5,100000,0.00001,0.87,0.00001,0.01,100,0.01,0,100\n",
+        encoding="utf-8",
+    )
+    now = datetime(2026, 9, 19, 17, 30, 0, tzinfo=TZ)
+
+    quotes = read_live_market_quotes(tmp_path, now, symbols=("GBPUSD",))
+
+    assert len(quotes) == 1
+    assert quotes[0].symbol == "GBPUSD"
+    assert quotes[0].bid == 1.34
+    assert quotes[0].ask == 1.34011
+    assert quotes[0].status == MarketFeedStatus.LIVE

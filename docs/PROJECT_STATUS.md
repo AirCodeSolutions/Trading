@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `1d4552a` (PR #31).
+Current deployed main commit: `5ca52a9` (PR #34).
 
 Operational services:
 
@@ -138,8 +138,8 @@ Focus only on BTC/EUR/GBP/XAU/XAG.
 The next work should increase the probability of finding executable edge, not
 add infrastructure:
 
-1. collect `directional_pullback_resumption` prospectively on GBPUSD only;
-2. continue the existing five-market/four-mechanism SHADOW collection;
+1. keep `directional_pullback_resumption` in SHADOW observation-only under frozen costs;
+2. continue the five-market baseline SHADOW collection and blocked probes;
 3. keep BTC as the primary broadly executable market and continue post-cutover
    prospective evidence;
 4. keep XAU/XAG in observation/blocked-probe mode until a genuinely structural

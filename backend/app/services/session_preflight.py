@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from pathlib import Path
+from uuid import uuid4
 
 from app.domain.macro import MacroGateStatus
 from app.domain.portfolio import TradingOverview
@@ -45,9 +46,12 @@ def load_session_runtime_state(path: Path) -> SessionRuntimeState:
 
 def save_session_runtime_state(path: Path, state: SessionRuntimeState) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(state.model_dump_json(indent=2), encoding="utf-8")
-    temporary.replace(path)
+    temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+    try:
+        temporary.write_text(state.model_dump_json(indent=2), encoding="utf-8")
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def build_session_preflight(
@@ -60,11 +64,11 @@ def build_session_preflight(
     demo_execution_ready: bool,
     watch_symbols: tuple[str, ...],
 ) -> SessionPreflight:
-    universe = build_market_universe(files_dir, now)
+    universe = build_market_universe(files_dir, now, symbols=watch_symbols)
     by_symbol = {item.symbol.upper(): item for item in universe}
     quotes = {
         quote.symbol.upper(): quote
-        for quote in read_live_market_quotes(files_dir, now)
+        for quote in read_live_market_quotes(files_dir, now, symbols=watch_symbols)
     }
     heartbeat = load_worker_heartbeat(runtime_dir / "worker_heartbeat.json")
     worker_age = (

@@ -109,3 +109,29 @@ def test_universe_becomes_paper_ready_from_single_exporter_snapshot(
     assert asset.quote_live is True
     assert asset.broker_spec_ready is True
     assert asset.paper_ready is True
+
+
+def test_universe_scope_excludes_abandoned_history(tmp_path: Path) -> None:
+    for symbol in ("EURUSD", "US500Cash"):
+        (tmp_path / f"{symbol}-M5.csv").write_text(
+            "20260919,16:55:00,1.14,1.15,1.13,1.145,100\n",
+            encoding="utf-8",
+        )
+        (tmp_path / f"{symbol}-M15.csv").write_text(
+            "20260919,16:45:00,1.14,1.15,1.13,1.145,300\n",
+            encoding="utf-8",
+        )
+    (tmp_path / "trading_symbol_specs.csv").write_text(
+        "timestamp,symbol,bid,ask,digits,contract_size,tick_size,tick_value,point,min_lot,max_lot,lot_step,stop_level,margin_required\n"
+        "1789838948,EURUSD,1.1450,1.1451,5,100000,0.00001,0.87,0.00001,0.01,100,0.01,0,100\n"
+        "1789838948,US500Cash,6500,6501,1,1,0.1,0.1,0.1,0.01,100,0.01,0,100\n",
+        encoding="utf-8",
+    )
+
+    assets = build_market_universe(
+        tmp_path,
+        datetime(2026, 9, 19, 17, 1, tzinfo=TZ),
+        symbols=("EURUSD",),
+    )
+
+    assert [asset.symbol for asset in assets] == ["EURUSD"]

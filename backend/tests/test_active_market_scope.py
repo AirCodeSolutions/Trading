@@ -33,3 +33,10 @@ def test_mt4_exporter_default_symbols_match_active_markets() -> None:
         "VOLIDXUSD",
     ):
         assert abandoned not in source
+
+
+def test_runtime_children_do_not_inherit_startup_lock() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    source = (repo_root / "ops" / "start_trading.sh").read_text(encoding="utf-8")
+
+    assert source.count("exec 9>&-") >= 3

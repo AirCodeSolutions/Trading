@@ -9,8 +9,9 @@ def collect_execution_cost_snapshot(
     files_dir: Path,
     ledger_path: Path,
     now: datetime,
+    symbols: tuple[str, ...] | None = None,
 ) -> int:
-    quotes = read_live_market_quotes(files_dir, now)
+    quotes = read_live_market_quotes(files_dir, now, symbols=symbols)
     if not quotes:
         return 0
 

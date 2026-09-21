@@ -51,6 +51,7 @@ worker_healthy() {
 
 if ! port_listening "$BACKEND_PORT"; then
   (
+    exec 9>&-
     cd "$BASE/backend"
     nohup .venv/bin/uvicorn app.main:app \
       --host 0.0.0.0 \
@@ -66,6 +67,7 @@ if ! worker_healthy; then
     sleep 1
   fi
   (
+    exec 9>&-
     cd "$BASE/backend"
     nohup .venv/bin/python -m app.shadow_worker \
       >>"$RUNTIME/logs/shadow-worker.log" 2>&1 &
@@ -75,6 +77,7 @@ fi
 
 if ! port_listening "$FRONTEND_PORT"; then
   (
+    exec 9>&-
     cd "$BASE/frontend"
     nohup "$NODE_BIN" ./node_modules/vite/bin/vite.js \
       --host 0.0.0.0 \

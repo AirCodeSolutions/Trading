@@ -23,6 +23,7 @@ def main() -> None:
                 settings.mt4_files_dir,
                 costs_path,
                 now,
+                symbols=settings.session_watch_symbols,
             )
             results = collect_all_shadow_once(
                 settings.mt4_files_dir,

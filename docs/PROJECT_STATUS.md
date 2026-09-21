@@ -28,14 +28,14 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `fcf5c50` (PR #37).
+Current deployed main commit: `587cae7` (PR #38).
 
 Operational services:
 
 - frontend: port 5180
 - backend: port 8020
-- SHADOW worker: self-healing heartbeat/watchdog
-- 21 active SHADOW scanners: 5 markets × 4 baseline mechanisms + 1 GBPUSD-only directional pullback
+- SHADOW worker: 22 active scanners; watchdog hardening is in progress on `fix/runtime-five-asset-watchdog`
+- 22 active SHADOW scanners: 5 markets × 4 baseline mechanisms + GBPUSD directional pullback + GBPUSD Asia range sweep
 - PAPER entries are limited to ACTIVE, positive-weakest SHADOW, or SHADOW with positive train + validation evidence
 - MT4 DEMO bridge: present but locked
 - live trading: locked
@@ -184,21 +184,23 @@ Existing paper trades are not force-closed by this policy.
 
 ## Deployed PAPER eligibility after PR #36
 
-The frozen admission registry currently exposes exactly two PAPER-eligible
+The frozen admission registry now exposes exactly three PAPER-eligible
 couples:
 
 - `GBPUSD:directional_pullback_resumption` — eligible because train and
   validation are positive while the holdout is only one trade;
 - `XAUUSD:failed_auction_reversal` — eligible because weakest independent
   expectancy is positive, though live execution is often blocked by minimum-lot
-  capital granularity.
+  capital granularity;
+- `GBPUSD:asia_range_sweep_reversal` — eligible because train and validation
+  expectancy are positive while holdout evidence is still empty.
 
-No additional BTCUSD or EURUSD mechanism became PAPER-eligible.
+No BTCUSD or EURUSD mechanism is PAPER-eligible.
 
 
-## Candidate in development — GBP Asia range sweep
+## Deployed candidate — GBP Asia range sweep
 
-Branch: `feature/gbp-asia-range-sweep`.
+Merged in PR #38, deployed at `587cae7`.
 
 A distinct GBPUSD session-reversal mechanism is being promoted from fixed
 research into prospective collection as `asia_range_sweep_reversal`:
@@ -224,3 +226,35 @@ Frozen-cost GBPUSD replay reproduces the original research exactly:
 Decision: historical state remains **SHADOW**. Because train and validation are
 both positive, `paper_collection_candidate=true` under the PR #36 policy.
 Runtime collection is GBPUSD-only. This mechanism cannot authorize DEMO.
+
+
+## Runtime hardening and path to broker DEMO
+
+A deployment check after PR #38 exposed two operational defects unrelated to
+strategy economics:
+
+- `/market/mt4/universe` still discovered abandoned historical symbols and could
+  spend more than 15 seconds parsing markets outside the five-asset scope;
+- `ops/start_trading.sh` children inherited the startup lock, preventing the
+  watchdog from restarting backend/worker after a controlled stop;
+- concurrent session-preflight requests shared one `.tmp` file and could raise
+  `FileNotFoundError`.
+
+Branch `fix/runtime-five-asset-watchdog` fixes all three and adds dashboard
+readiness telemetry. On real MT4 files the scoped live quote/universe reads are
+about 0.02 seconds and return exactly BTCUSD, EURUSD, GBPUSD, XAUUSD and XAGUSD.
+
+Current evidence path to broker DEMO is now explicit:
+
+1. historical admission policy requires 40 validation trades and 20 holdout
+   trades for `ACTIVE`;
+2. prospective qualification requires 20 post-cutover PAPER trades, positive
+   expectancy, PF >= 1.05 and max DD <= 12R;
+3. current promising SHADOWs are under-sampled historically, so the fixed
+   historical split cannot promote them to ACTIVE by simply waiting for more
+   prospective PAPER observations.
+
+This is a policy deadlock, not a risk problem. The next admission-policy change
+should allow a `paper_collection_candidate` SHADOW to become DEMO-eligible only
+after it independently satisfies the full prospective 20-trade qualification.
+Risk, spread/stop, macro, margin and live-trading locks remain unchanged.

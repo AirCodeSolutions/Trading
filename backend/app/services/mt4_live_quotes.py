@@ -17,7 +17,9 @@ _history_cache: dict[Path, tuple[int, list[MarketBar]]] = {}
 def read_live_market_quotes(
     files_dir: Path,
     now: datetime,
+    symbols: tuple[str, ...] | None = None,
 ) -> list[LiveMarketQuote]:
+    allowed = {symbol.upper() for symbol in symbols} if symbols else None
     raw_quotes: dict[str, tuple[datetime, float, float, int]] = {}
 
     snapshot_path = files_dir / "trading_symbol_specs.csv"
@@ -26,14 +28,19 @@ def read_live_market_quotes(
             with snapshot_path.open(newline="", encoding="utf-8-sig") as handle:
                 for row in csv.DictReader(handle):
                     parsed = _parse_csv_quote(row)
-                    if parsed is not None:
+                    if parsed is not None and (
+                        allowed is None or parsed[0] in allowed
+                    ):
                         _keep_newest(raw_quotes, *parsed)
         except OSError:
             pass
 
     for path in sorted(files_dir.glob("mt4_data_*.json")):
+        file_symbol = path.stem.removeprefix("mt4_data_").upper()
+        if allowed is not None and file_symbol not in allowed:
+            continue
         parsed = _parse_json_quote(path)
-        if parsed is not None:
+        if parsed is not None and (allowed is None or parsed[0] in allowed):
             _keep_newest(raw_quotes, *parsed)
 
     return [

@@ -38,6 +38,7 @@ Last updated: 2026-09-21.
 | #34 | `5ca52a9` | Frozen reproducible research execution costs |
 | #36 | `14427e5` | PAPER collection for promising under-sampled SHADOWs |
 | #37 | `fcf5c50` | Refresh deployed status through PR #36 |
+| #38 | `587cae7` | GBP Asia range sweep SHADOW/PAPER candidate |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
@@ -45,8 +46,8 @@ was incorporated by the later merged main-branch work.
 ## Current state
 
 - PR #29 is merged and deployed: GBPUSD `directional_pullback_resumption`, SHADOW-only;
-- current deployed main: `fcf5c50`;
-- runtime: 21 SHADOW scanners = 20 existing + 1 GBP directional pullback;
+- current deployed main: `587cae7`;
+- runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - current Portfolio Manager: `NO_TRADE`;
 - first clean post-cutover paper result: GBP failed-auction **+1.5R / +2.7329 EUR**;
 - DEMO bridge: locked;
@@ -164,9 +165,9 @@ Status: **MERGED + DEPLOYED / PAPER research policy**.
 - no DEMO admission or risk policy change.
 
 
-## In-flight — GBP Asia range sweep
+## PR #38 — GBP Asia range sweep
 
-Branch: `feature/gbp-asia-range-sweep`.
+Status: **MERGED + DEPLOYED / SHADOW + PAPER collection**.
 
 - new mechanism `asia_range_sweep_reversal`;
 - shared causal geometry for historical replay and runtime scanning;
@@ -178,3 +179,23 @@ Branch: `feature/gbp-asia-range-sweep`.
 - `paper_collection_candidate=true` under the existing train+validation-positive
   collection rule;
 - no DEMO authority, risk, lot, spread, macro or capital-policy change.
+
+
+## In-flight — five-asset runtime hardening + dashboard truth
+
+Branch: `fix/runtime-five-asset-watchdog`.
+
+- constrain runtime quote/universe discovery to the five active markets;
+- eliminate the >15s abandoned-symbol universe scan observed after PR #38;
+- make `session_state.json` atomic under concurrent preflight calls;
+- close the startup lock FD before spawning backend, worker and frontend so the
+  watchdog can self-heal again;
+- prevent overlapping frontend refresh cycles;
+- expose admission thresholds and `paper_collection_candidate` truth in the
+  dashboard;
+- add a ROAD TO BROKER DEMO panel with market readiness, scanner count, PAPER
+  candidates, prospective progress and remaining execution locks.
+
+Validation: 125 backend tests passed before the dashboard additions; targeted
+runtime reads on real MT4 files returned the five active symbols in about
+0.02 seconds. No risk or trading admission threshold is relaxed by this PR.

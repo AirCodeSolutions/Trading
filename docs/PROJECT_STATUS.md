@@ -28,18 +28,18 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `910da36` (PR #27).
+Current deployed main commit: `347e1b8` (PR #29).
 
 Operational services:
 
 - frontend: port 5180
 - backend: port 8020
 - SHADOW worker: self-healing heartbeat/watchdog
-- five active market scanners × four mechanisms = 20 SHADOW scanners
+- 21 active SHADOW scanners: 5 markets × 4 baseline mechanisms + 1 GBPUSD-only directional pullback
 - MT4 DEMO bridge: present but locked
 - live trading: locked
 
-Latest runtime checkpoint (2026-09-21 10:27 Europe/Athens):
+Latest runtime checkpoint after PR #29 deployment:
 
 - Portfolio Manager: **PAPER_ONLY**;
 - one post-cutover paper position is open:

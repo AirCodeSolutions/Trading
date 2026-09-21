@@ -33,8 +33,8 @@ from app.domain.shadow import ShadowCollectionResult, ShadowOpportunityDiagnosti
 from app.domain.shadow_paper import ShadowPaperSummary
 from app.services.admission import assess_strategy
 from app.services.approval_gate import ApprovalGate
-from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
 from app.services.blocked_probe_registry import load_blocked_probe_registry
+from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
 from app.services.capital_risk import size_position
 from app.services.demo_execution import build_demo_status, submit_selected_demo_order
 from app.services.execution_cost_history import summarize_execution_costs

@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `1d4552a` (PR #31).
+Current deployed main commit: `5ca52a9` (PR #34).
 
 Operational services:
 
@@ -40,7 +40,7 @@ Operational services:
 - MT4 DEMO bridge: present but locked
 - live trading: locked
 
-Latest runtime checkpoint after PR #31 deployment:
+Latest runtime checkpoint after PR #34 deployment:
 
 - Portfolio Manager: **NO_TRADE**;
 - first clean post-cutover paper trade closed:
@@ -158,11 +158,23 @@ restricted to:
 - ACTIVE admissions; or
 - SHADOW admissions with `weakest_expectancy_r > 0`.
 
+The next PAPER-policy refinement is intentionally narrower than reopening all
+SHADOWs: a SHADOW may also collect PAPER when **train expectancy > 0 and
+validation expectancy > 0**, even if a still-small holdout is negative. This is
+research collection only; the historical admission remains SHADOW and DEMO
+remains locked.
+
 All scanners and blocked-probe ledgers continue to collect regardless.
 
-After freezing research costs, `GBPUSD:directional_pullback_resumption` is
-**not positive on the independent holdout** (1 trade, -0.240R) and therefore
-must remain observation-only.
+After freezing research costs, `GBPUSD:directional_pullback_resumption` has:
+
+- train: positive expectancy;
+- validation: positive expectancy;
+- holdout: 1 trade at -0.240R.
+
+It remains historical SHADOW and cannot authorize DEMO. It is the sole new
+candidate for accelerated PAPER collection under the train+validation-positive
+rule.
 
 The only positive weakest-expectancy SHADOW in the current frozen matrix is
 `XAUUSD:failed_auction_reversal`, based on only four executable historical

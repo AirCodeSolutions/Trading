@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.domain.admission import AdmissionDecision
 from app.domain.broker import BrokerSymbolSpec
+from app.domain.macro import MacroEvent
 from app.domain.trading import Side
 
 
@@ -39,6 +40,7 @@ class OpportunityBacktestConfig(BaseModel):
     split: ResearchSplit
     requested_risk_fraction: float | None = Field(default=None, gt=0, le=1)
     slippage_spread_fraction: float = Field(default=0.25, ge=0, le=3)
+    macro_events: list[MacroEvent] = Field(default_factory=list)
 
 
 class Mt4OpportunityBacktestRequest(BaseModel):

@@ -99,4 +99,9 @@ def test_market_quality_separates_execution_fit_from_strategy_edge() -> None:
     )
     assert result.eligible_for_m15_research is True
     assert result.absolute_risk_feasible is True
+    assert result.default_risk_feasible is False
+    assert result.min_lot_loss_atr_m15_eur == pytest.approx(3.252601197, rel=1e-6)
+    assert result.required_capital_base_risk_eur == pytest.approx(325.2601197, rel=1e-6)
+    assert result.required_capital_max_risk_eur == pytest.approx(162.6300599, rel=1e-6)
+    assert result.minimum_feasible_risk_fraction == pytest.approx(0.016263006, rel=1e-6)
     assert result.execution_quality_score > 0

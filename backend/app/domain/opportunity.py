@@ -15,6 +15,7 @@ class OpportunityMechanism(StrEnum):
     BREAK_RETEST_REACCEL = "break_retest_reaccel"
     FAILED_AUCTION_REVERSAL = "failed_auction_reversal"
     DIRECTIONAL_TRANSITION = "directional_transition"
+    DIRECTIONAL_PULLBACK_RESUMPTION = "directional_pullback_resumption"
 
 
 def all_mechanisms() -> list[OpportunityMechanism]:

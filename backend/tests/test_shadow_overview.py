@@ -86,3 +86,23 @@ def test_shadow_overview_filters_symbols_and_ignores_non_diagnostic_ledgers(
     rows = load_shadow_overview(tmp_path, symbols=("EURUSD",))
 
     assert [row.symbol for row in rows] == ["EURUSD"]
+
+
+
+def test_shadow_overview_reads_directional_pullback_ledger(
+    tmp_path: Path,
+) -> None:
+    row = diagnostic(
+        "GBPUSD",
+        OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
+        at=AT,
+    )
+    (tmp_path / "GBPUSD_directional_pullback.jsonl").write_text(
+        row.model_dump_json() + "\n",
+        encoding="utf-8",
+    )
+
+    rows = load_shadow_overview(tmp_path, symbols=("GBPUSD",))
+
+    assert len(rows) == 1
+    assert rows[0].mechanism == OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION

@@ -133,11 +133,11 @@ Focus only on BTC/EUR/GBP/XAU/XAG.
 The next work should increase the probability of finding executable edge, not
 add infrastructure:
 
-1. identify one new causal mechanism suitable for EUR/GBP where lot granularity
-   is favorable;
-2. identify tighter but genuinely structural XAU/XAG setups instead of shrinking
-   stops artificially;
-3. keep BTC as the primary executable market and continue post-cutover
+1. collect `directional_pullback_resumption` prospectively on GBPUSD only;
+2. continue the existing five-market/four-mechanism SHADOW collection;
+3. keep BTC as the primary broadly executable market and continue post-cutover
    prospective evidence;
-4. preserve macro, spread, capital and causality gates;
-5. move SHADOW -> DEMO only after historical ACTIVE + prospective SUPPORTS_DEMO.
+4. keep XAU/XAG in observation/blocked-probe mode until a genuinely structural
+   setup fits the 200 EUR capital policy;
+5. preserve macro, spread, capital and causality gates;
+6. move SHADOW -> DEMO only after historical ACTIVE + prospective SUPPORTS_DEMO.

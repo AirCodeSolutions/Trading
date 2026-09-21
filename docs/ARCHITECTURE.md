@@ -37,7 +37,7 @@ Les seuils initiaux sont des définitions fixes de recherche, pas les meilleurs 
 
 ## Opportunity Engine
 
-Quatre mécanismes de recherche sont actuellement implémentés :
+Cinq mécanismes de recherche sont actuellement implémentés :
 
 ### post_shock_continuation
 
@@ -58,7 +58,22 @@ L'entrée se fait sur la M5 suivante, avec stop structurel fixe à 0,8 ATR M15,
 target 1,8R et horizon 18 M5. Ce mécanisme reste SHADOW tant que la validation
 prospective et le holdout sont insuffisants.
 
-Aucun de ces mécanismes n'est actif en production à ce stade.
+### directional_pullback_resumption
+
+Actif en runtime SHADOW **uniquement pour GBPUSD**. En régime M15 directionnel :
+
+1. deux M5 consécutives corrigent contre le régime ;
+2. la M5 suivante repart dans le sens du régime et clôture au-delà de l'extrême
+   de la seconde bougie de pullback ;
+3. entrée sur la M5 suivante ;
+4. stop derrière l'extrême du pullback avec buffer 0,10 ATR M5 ;
+5. target 2R, horizon 12 M5.
+
+La restriction GBPUSD est fondée sur le replay figé : les autres actifs n'ont
+pas une évidence suffisante/positive pour autoriser la collecte paper de ce
+mécanisme.
+
+Aucun de ces mécanismes n'est ACTIVE pour l'exécution broker à ce stade.
 
 ## Backtest causal
 

@@ -58,7 +58,10 @@ Mécanismes de recherche actuels :
 - `post_shock_continuation` ;
 - `break_retest_reaccel` ;
 - `failed_auction_reversal` ;
-- `directional_transition` — première transition causale M15 vers `directional_expansion`.
+- `directional_transition` — première transition causale M15 vers `directional_expansion` ;
+- `directional_pullback_resumption` — GBPUSD SHADOW only: régime M15 directionnel,
+  deux M5 de pullback puis clôture de reprise au-delà de l'extrême de la seconde
+  bougie, stop derrière le swing local.
 
 Le backtester :
 

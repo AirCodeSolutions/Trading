@@ -37,7 +37,8 @@ was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- no open feature is required to operate the current 5-market SHADOW runtime;
+- PR #29 is open: GBPUSD `directional_pullback_resumption`, SHADOW-only;
+- no open feature is required to operate the existing 5-market/four-mechanism runtime;
 - current deployed main: `910da36`;
 - current Portfolio Manager: `NO_TRADE`;
 - DEMO bridge: locked;
@@ -69,3 +70,16 @@ five retained assets, with:
 - execution feasibility under 200 EUR;
 - SHADOW-only activation first;
 - no DEMO activation unless both historical and prospective contracts pass.
+
+
+## PR #29 — directional pullback resumption
+
+Status: **OPEN / SHADOW-only candidate**.
+
+Scope:
+
+- new mechanism `directional_pullback_resumption`;
+- runtime collection restricted to GBPUSD;
+- unchanged risk, macro and spread/stop policies;
+- train/validation/holdout expectancy all positive on GBPUSD;
+- sample still insufficient for ACTIVE/DEMO.

@@ -9,6 +9,7 @@ _MECHANISM_SLUGS = {
     "failed_auction": OpportunityMechanism.FAILED_AUCTION_REVERSAL,
     "post_shock": OpportunityMechanism.POST_SHOCK_CONTINUATION,
     "directional_transition": OpportunityMechanism.DIRECTIONAL_TRANSITION,
+    "directional_pullback": OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
 }
 
 

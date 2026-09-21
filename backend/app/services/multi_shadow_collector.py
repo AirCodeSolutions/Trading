@@ -20,6 +20,7 @@ _MECHANISM_SLUG = {
     OpportunityMechanism.FAILED_AUCTION_REVERSAL: "failed_auction",
     OpportunityMechanism.POST_SHOCK_CONTINUATION: "post_shock",
     OpportunityMechanism.DIRECTIONAL_TRANSITION: "directional_transition",
+    OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION: "directional_pullback",
 }
 
 
@@ -56,6 +57,8 @@ def collect_all_shadow_once(
             continue
 
         for mechanism in OpportunityMechanism:
+            if not shadow_mechanism_enabled(asset.symbol, mechanism):
+                continue
             diagnostic = scan_shadow_opportunity(
                 bars_m5,
                 bars_m15,
@@ -108,3 +111,13 @@ def paper_entry_allowed(
         admission is not None
         and admission.state != AdmissionState.REJECTED
     )
+
+
+
+def shadow_mechanism_enabled(
+    symbol: str,
+    mechanism: OpportunityMechanism,
+) -> bool:
+    if mechanism == OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION:
+        return symbol.upper() == "GBPUSD"
+    return True

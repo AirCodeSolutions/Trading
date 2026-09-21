@@ -124,6 +124,11 @@ def scan_shadow_opportunity(
             structural_stop = entry - stop_atr
         else:
             structural_stop = entry + stop_atr + spec.spread
+    elif mechanism == OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION:
+        if side == Side.BUY:
+            structural_stop = raw_stop
+        else:
+            structural_stop = raw_stop + spec.spread
     elif side == Side.BUY:
         structural_stop = min(raw_stop, entry - stop_atr)
     else:
@@ -201,7 +206,79 @@ def _detect_signal(
             previous_regime,
             is_new_m15_close,
         )
+    if mechanism == OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION:
+        return _directional_pullback_resumption_signal(
+            bars,
+            atr,
+            regime,
+        )
     return None
+
+
+def _directional_pullback_resumption_signal(
+    bars: Sequence[MarketBar],
+    atr: Sequence[float],
+    regime: RegimeSnapshot,
+):
+    if (
+        len(bars) < 3
+        or regime.regime != MarketRegime.DIRECTIONAL
+        or regime.direction == 0
+    ):
+        return None
+
+    index = len(bars) - 1
+    value = atr[index]
+    if value <= 0:
+        return None
+
+    first_pullback = bars[index - 2]
+    second_pullback = bars[index - 1]
+    confirmation = bars[index]
+    side = Side.BUY if regime.direction > 0 else Side.SELL
+    bar_range = confirmation.high - confirmation.low
+    close_location = (
+        (confirmation.close - confirmation.low) / bar_range
+        if bar_range > 0
+        else None
+    )
+
+    if side == Side.BUY:
+        if not (
+            first_pullback.close < first_pullback.open
+            and second_pullback.close < second_pullback.open
+            and confirmation.close > confirmation.open
+            and confirmation.close > second_pullback.high
+        ):
+            return None
+        swing = min(first_pullback.low, second_pullback.low)
+        raw_stop = swing - 0.10 * value
+    else:
+        if not (
+            first_pullback.close > first_pullback.open
+            and second_pullback.close > second_pullback.open
+            and confirmation.close < confirmation.open
+            and confirmation.close < second_pullback.low
+        ):
+            return None
+        swing = max(first_pullback.high, second_pullback.high)
+        raw_stop = swing + 0.10 * value
+
+    if raw_stop <= 0:
+        return None
+
+    return (
+        side,
+        raw_stop,
+        2.0,
+        12,
+        0.0,
+        None,
+        None,
+        None,
+        close_location,
+        "directional M15 with two-bar M5 pullback and local-swing resumption",
+    )
 
 
 def _directional_transition_signal(

@@ -50,6 +50,7 @@ from app.services.mt4_live_quotes import read_live_market_quotes
 from app.services.mt4_specs import get_mt4_symbol_spec, list_mt4_symbol_specs
 from app.services.opportunity_backtester import run_opportunity_backtest
 from app.services.opportunity_matrix import run_mt4_portfolio_research
+from app.services.research_broker_specs import get_research_broker_spec
 from app.services.portfolio_overview import build_trading_overview
 from app.services.regime import classify_regime
 from app.services.runtime_admission_registry import save_research_admissions
@@ -134,6 +135,8 @@ def runtime_config() -> dict[str, object]:
         "absolute_max_risk_fraction": settings.absolute_max_risk_fraction,
         "max_daily_loss_fraction": settings.max_daily_loss_fraction,
         "paper_evidence_cutover_at": settings.paper_evidence_cutover_at,
+        "research_holdout_end_at": settings.research_holdout_end_at,
+        "research_broker_specs_path": str(settings.research_broker_specs_path),
         "max_spread_to_stop": settings.max_spread_to_stop,
     }
 
@@ -295,9 +298,12 @@ def mt4_opportunity_backtest(
 ) -> OpportunityBacktestResult:
     files_dir = _mt4_files_dir()
     symbol = _normalized_symbol(request.symbol)
-    spec = get_mt4_symbol_spec(files_dir, symbol)
+    spec = get_research_broker_spec(settings.research_broker_specs_path, symbol)
     if spec is None:
-        raise HTTPException(status_code=404, detail="MT4 broker symbol spec not found")
+        raise HTTPException(
+            status_code=404,
+            detail="research broker symbol spec not found",
+        )
 
     m5_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M5)
     m15_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M15)
@@ -306,10 +312,15 @@ def mt4_opportunity_backtest(
 
     bars_m5 = read_mt4_csv(m5_path, symbol, Timeframe.M5)
     bars_m15 = read_mt4_csv(m15_path, symbol, Timeframe.M15)
+    split = request.split
+    if split.holdout_end is None:
+        split = split.model_copy(
+            update={"holdout_end": settings.research_holdout_end_at}
+        )
     config = OpportunityBacktestConfig(
         spec=spec,
         mechanism=request.mechanism,
-        split=request.split,
+        split=split,
         requested_risk_fraction=request.requested_risk_fraction,
         slippage_spread_fraction=request.slippage_spread_fraction,
         macro_events=load_macro_events(settings.macro_events_path),
@@ -328,10 +339,17 @@ def mt4_portfolio_research(
     request: PortfolioResearchRequest,
 ) -> PortfolioResearchResult:
     try:
+        split = request.split
+        if split.holdout_end is None:
+            split = split.model_copy(
+                update={"holdout_end": settings.research_holdout_end_at}
+            )
+        frozen_request = request.model_copy(update={"split": split})
         result = run_mt4_portfolio_research(
             _mt4_files_dir(),
-            request,
+            frozen_request,
             macro_events_path=settings.macro_events_path,
+            research_broker_specs_path=settings.research_broker_specs_path,
         )
         save_research_admissions(
             settings.shadow_ledger_dir / "strategy_admissions.json",

@@ -21,13 +21,20 @@ def build_trading_overview(
     runtime_dir: Path,
     now: datetime,
 ) -> TradingOverview:
-    paper_rows = load_paper_registry(runtime_dir, now)
+    paper_rows = load_paper_registry(
+        runtime_dir,
+        now,
+        settings.paper_evidence_cutover_at,
+    )
     admissions = load_research_admissions(runtime_dir / "strategy_admissions.json")
 
     qualifications = [row.qualification for row in paper_rows]
     open_rows = [row for row in paper_rows if row.summary.open_trade is not None]
     research_pnl = sum(row.summary.total_pnl_eur for row in paper_rows)
     research_r = sum(row.summary.total_r for row in paper_rows)
+    legacy_pnl = sum(row.summary.legacy_pnl_eur for row in paper_rows)
+    legacy_r = sum(row.summary.legacy_total_r for row in paper_rows)
+    legacy_trades = sum(row.summary.legacy_trades for row in paper_rows)
     research_open_risk = sum(
         row.summary.open_trade.risk_eur
         for row in open_rows
@@ -115,6 +122,9 @@ def build_trading_overview(
             reference_capital_eur=settings.reference_capital_eur,
             research_paper_closed_pnl_eur=research_pnl,
             research_paper_total_r=research_r,
+            research_paper_legacy_closed_pnl_eur=legacy_pnl,
+            research_paper_legacy_total_r=legacy_r,
+            research_paper_legacy_trades=legacy_trades,
             research_paper_open_risk_eur=research_open_risk,
             research_paper_open_positions=len(open_rows),
             selected_daily_pnl_eur=selected_daily_pnl,

@@ -1,6 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
+from app.core.config import settings
 from app.domain.admission import AdmissionDecision, AdmissionState
 from app.domain.market import Timeframe
 from app.domain.opportunity import OpportunityMechanism
@@ -77,6 +78,7 @@ def collect_all_shadow_once(
                 trades_path=runtime_dir / f"{prefix}_paper_trades.jsonl",
                 evaluated_at=evaluated_at,
                 allow_new_entries=allow_new_entries,
+                evidence_cutover_at=settings.paper_evidence_cutover_at,
             )
             advance_blocked_probe_book(
                 diagnostic=diagnostic,

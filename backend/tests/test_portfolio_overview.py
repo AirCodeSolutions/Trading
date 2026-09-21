@@ -92,7 +92,11 @@ def test_parallel_shadow_losses_do_not_consume_selected_portfolio_budget(
         datetime(2026, 9, 19, 17, 0, tzinfo=TZ),
     )
 
-    assert overview.risk.research_paper_closed_pnl_eur == -2
+    assert overview.risk.research_paper_closed_pnl_eur == 0
+    assert overview.risk.research_paper_total_r == 0
+    assert overview.risk.research_paper_legacy_closed_pnl_eur == -2
+    assert overview.risk.research_paper_legacy_total_r == -1
+    assert overview.risk.research_paper_legacy_trades == 1
     assert overview.risk.selected_daily_pnl_eur == 0
     assert overview.risk.remaining_daily_loss_budget_eur == 6
     assert overview.portfolio.action == "no_trade"

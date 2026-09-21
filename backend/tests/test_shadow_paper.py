@@ -214,3 +214,64 @@ def test_partial_entry_bar_is_never_used_for_outcome() -> None:
 
     assert resolved.status == PaperTradeStatus.OPEN
     assert resolved.bars_held == 1
+
+
+
+def test_summary_separates_legacy_and_post_cutover_evidence(
+    tmp_path: Path,
+) -> None:
+    state_path = tmp_path / "state.json"
+    trades_path = tmp_path / "trades.jsonl"
+    state_path.write_text("{}", encoding="utf-8")
+
+    legacy = create_paper_trade(
+        diagnostic=diagnostic(),
+        spec=spec(),
+        evaluated_at=START + timedelta(minutes=5, seconds=2),
+    ).model_copy(
+        update={
+            "status": PaperTradeStatus.STOP,
+            "exit_at": START + timedelta(minutes=10),
+            "exit_price": 99.1,
+            "result_r": -1.0,
+            "pnl_eur": -2.0,
+            "bars_held": 1,
+        }
+    )
+    valid = create_paper_trade(
+        diagnostic=diagnostic(),
+        spec=spec(),
+        evaluated_at=START + timedelta(minutes=20, seconds=2),
+    ).model_copy(
+        update={
+            "trade_id": "post-cutover",
+            "signal_at": START + timedelta(minutes=20),
+            "entry_bar_at": START + timedelta(minutes=20),
+            "status": PaperTradeStatus.TARGET,
+            "exit_at": START + timedelta(minutes=25),
+            "exit_price": 101.9,
+            "result_r": 1.8,
+            "pnl_eur": 3.6,
+            "bars_held": 1,
+        }
+    )
+    trades_path.write_text(
+        legacy.model_dump_json() + "\n" + valid.model_dump_json() + "\n",
+        encoding="utf-8",
+    )
+
+    summary = load_shadow_paper_summary(
+        state_path,
+        trades_path,
+        evidence_cutover_at=START + timedelta(minutes=15),
+    )
+
+    assert summary.closed_trades == 1
+    assert summary.wins == 1
+    assert summary.losses == 0
+    assert summary.total_r == 1.8
+    assert summary.total_pnl_eur == 3.6
+    assert summary.legacy_trades == 1
+    assert summary.legacy_total_r == -1.0
+    assert summary.legacy_pnl_eur == -2.0
+    assert [trade.trade_id for trade in summary.recent_trades] == ["post-cutover"]

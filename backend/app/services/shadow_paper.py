@@ -27,6 +27,7 @@ def advance_shadow_paper_book(
     trades_path: Path,
     evaluated_at: datetime,
     allow_new_entries: bool = True,
+    evidence_cutover_at: datetime | None = None,
 ) -> ShadowPaperSummary:
     state = load_shadow_paper_state(state_path)
 
@@ -60,7 +61,11 @@ def advance_shadow_paper_book(
         state.last_started_signal_at = signal_at
 
     save_shadow_paper_state(state_path, state)
-    return load_shadow_paper_summary(state_path, trades_path)
+    return load_shadow_paper_summary(
+        state_path,
+        trades_path,
+        evidence_cutover_at=evidence_cutover_at,
+    )
 
 
 def create_paper_trade(
@@ -255,11 +260,34 @@ def load_closed_trades(path: Path) -> list[ShadowPaperTrade]:
 def load_shadow_paper_summary(
     state_path: Path,
     trades_path: Path,
+    *,
+    evidence_cutover_at: datetime | None = None,
 ) -> ShadowPaperSummary:
+    if (
+        evidence_cutover_at is not None
+        and evidence_cutover_at.utcoffset() is None
+    ):
+        raise ValueError("paper evidence cutover must be timezone-aware")
+
     state = load_shadow_paper_state(state_path)
-    trades = load_closed_trades(trades_path)
+    all_trades = load_closed_trades(trades_path)
+    trades = [
+        trade
+        for trade in all_trades
+        if evidence_cutover_at is None
+        or trade.opened_at >= evidence_cutover_at
+    ]
+    legacy = [
+        trade
+        for trade in all_trades
+        if evidence_cutover_at is not None
+        and trade.opened_at < evidence_cutover_at
+    ]
     results = [
         trade.result_r for trade in trades if trade.result_r is not None
+    ]
+    legacy_results = [
+        trade.result_r for trade in legacy if trade.result_r is not None
     ]
     gains = sum(result for result in results if result > 0)
     losses = -sum(result for result in results if result < 0)
@@ -282,6 +310,11 @@ def load_shadow_paper_summary(
         max_drawdown_r=max_drawdown,
         total_pnl_eur=sum(
             trade.pnl_eur or 0.0 for trade in trades
+        ),
+        legacy_trades=len(legacy),
+        legacy_total_r=sum(legacy_results),
+        legacy_pnl_eur=sum(
+            trade.pnl_eur or 0.0 for trade in legacy
         ),
         open_trade=state.open_trade,
         recent_trades=trades[-RECENT_TRADES_LIMIT:][::-1],

@@ -17,6 +17,7 @@ _SLUG_TO_MECHANISM = {
 def load_paper_registry(
     runtime_dir: Path,
     now: datetime | None = None,
+    evidence_cutover_at: datetime | None = None,
 ) -> list[PaperStrategyRuntime]:
     rows: list[PaperStrategyRuntime] = []
     for state_path in sorted(runtime_dir.glob("*_paper_state.json")):
@@ -25,10 +26,18 @@ def load_paper_registry(
             continue
         symbol, mechanism, prefix = parsed
         trades_path = runtime_dir / f"{prefix}_paper_trades.jsonl"
-        summary = load_shadow_paper_summary(state_path, trades_path)
+        summary = load_shadow_paper_summary(
+            state_path,
+            trades_path,
+            evidence_cutover_at=evidence_cutover_at,
+        )
         strategy_id = f"{symbol}:{mechanism.value}"
         qualification = assess_prospective(strategy_id, summary)
-        daily_pnl, daily_r = _daily_results(trades_path, now)
+        daily_pnl, daily_r = _daily_results(
+            trades_path,
+            now,
+            evidence_cutover_at,
+        )
         rows.append(
             PaperStrategyRuntime(
                 strategy_id=strategy_id,
@@ -46,6 +55,7 @@ def load_paper_registry(
 def _daily_results(
     trades_path: Path,
     now: datetime | None,
+    evidence_cutover_at: datetime | None,
 ) -> tuple[float, float]:
     if now is None:
         return 0.0, 0.0
@@ -53,7 +63,12 @@ def _daily_results(
     daily = [
         trade
         for trade in trades
-        if trade.exit_at is not None and trade.exit_at.date() == now.date()
+        if trade.exit_at is not None
+        and trade.exit_at.date() == now.date()
+        and (
+            evidence_cutover_at is None
+            or trade.opened_at >= evidence_cutover_at
+        )
     ]
     return (
         sum(trade.pnl_eur or 0.0 for trade in daily),

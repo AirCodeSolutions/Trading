@@ -59,6 +59,9 @@ type PaperSummary = {
   expectancy_r: number;
   profit_factor: number;
   total_pnl_eur: number;
+  legacy_trades: number;
+  legacy_total_r: number;
+  legacy_pnl_eur: number;
   open_trade: PaperTrade | null;
   recent_trades: PaperTrade[];
 };
@@ -126,6 +129,9 @@ type TradingOverview = {
     reference_capital_eur: number;
     research_paper_closed_pnl_eur: number;
     research_paper_total_r: number;
+    research_paper_legacy_closed_pnl_eur: number;
+    research_paper_legacy_total_r: number;
+    research_paper_legacy_trades: number;
     research_paper_open_risk_eur: number;
     research_paper_open_positions: number;
     selected_daily_pnl_eur: number;
@@ -627,10 +633,18 @@ export default function App() {
           <strong>{config ? `${config.reference_capital_eur.toFixed(0)} €` : "—"}</strong>
         </article>
         <article className="card">
-          <span className="label">PnL recherche SHADOW</span>
+          <span className="label">PnL evidence post-cutover</span>
           <strong>
             {overview
               ? `${overview.risk.research_paper_closed_pnl_eur >= 0 ? "+" : ""}${overview.risk.research_paper_closed_pnl_eur.toFixed(2)} €`
+              : "—"}
+          </strong>
+        </article>
+        <article className="card">
+          <span className="label">Legacy pré-cutover</span>
+          <strong>
+            {overview
+              ? `${overview.risk.research_paper_legacy_trades} trades · ${overview.risk.research_paper_legacy_total_r.toFixed(2)} R`
               : "—"}
           </strong>
         </article>
@@ -1108,6 +1122,14 @@ export default function App() {
           <div className="metric">
             <span>PnL paper</span>
             <strong>{paper ? `${paper.total_pnl_eur >= 0 ? "+" : ""}${paper.total_pnl_eur.toFixed(2)} €` : "—"}</strong>
+          </div>
+          <div className="metric">
+            <span>Legacy pré-cutover</span>
+            <strong>
+              {paper
+                ? `${paper.legacy_trades} trades · ${paper.legacy_total_r.toFixed(2)} R`
+                : "—"}
+            </strong>
           </div>
           <div className="metric">
             <span>Gagnants / perdants</span>

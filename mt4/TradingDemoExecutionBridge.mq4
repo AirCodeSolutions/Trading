@@ -8,6 +8,7 @@ string COMMAND_FILE = "trading_demo_command.csv";
 string CLOSE_COMMAND_FILE = "trading_demo_close_command.csv";
 string RESULT_FILE = "trading_demo_result.csv";
 string POSITIONS_FILE = "trading_demo_positions.csv";
+string EXECUTION_LOCK_FILE = "trading_demo_execution.lock";
 
 int OnInit()
 {
@@ -28,7 +29,28 @@ void OnTimer()
    ExportPositions();
 }
 
+int AcquireExecutionLock()
+{
+   return FileOpen(
+      EXECUTION_LOCK_FILE,
+      FILE_READ|FILE_WRITE|FILE_BIN
+   );
+}
+
 void ProcessCloseCommand()
+{
+   if(!FileIsExist(CLOSE_COMMAND_FILE))
+      return;
+
+   int lockHandle = AcquireExecutionLock();
+   if(lockHandle == INVALID_HANDLE)
+      return;
+
+   ProcessCloseCommandLocked();
+   FileClose(lockHandle);
+}
+
+void ProcessCloseCommandLocked()
 {
    if(!FileIsExist(CLOSE_COMMAND_FILE))
       return;
@@ -39,6 +61,7 @@ void ProcessCloseCommand()
 
    string commandId = FileReadString(handle);
    int ticket = (int)FileReadNumber(handle);
+   string symbol = FileReadString(handle);
    string strategyId = FileReadString(handle);
    string issuedAt = FileReadString(handle);
    int commandMagic = (int)FileReadNumber(handle);
@@ -50,6 +73,9 @@ void ProcessCloseCommand()
       FileDelete(CLOSE_COMMAND_FILE);
       return;
    }
+
+   if(symbol != Symbol())
+      return;
 
    if(!AllowDemoExecution)
    {
@@ -86,6 +112,13 @@ void ProcessCloseCommand()
       return;
    }
 
+   if(OrderSymbol() != Symbol())
+   {
+      WriteResult(commandId, "REFUSED", ticket, 9207, 0, 0, 0);
+      FileDelete(CLOSE_COMMAND_FILE);
+      return;
+   }
+
    if(OrderCloseTime() > 0)
    {
       WriteResult(commandId, "FILLED", ticket, 0, OrderClosePrice(), 0, 0);
@@ -101,12 +134,12 @@ void ProcessCloseCommand()
       return;
    }
 
-   string symbol = OrderSymbol();
-   int digits = (int)MarketInfo(symbol, MODE_DIGITS);
+   string orderSymbol = OrderSymbol();
+   int digits = (int)MarketInfo(orderSymbol, MODE_DIGITS);
    RefreshRates();
    double closePrice = orderType == OP_BUY
-      ? MarketInfo(symbol, MODE_BID)
-      : MarketInfo(symbol, MODE_ASK);
+      ? MarketInfo(orderSymbol, MODE_BID)
+      : MarketInfo(orderSymbol, MODE_ASK);
    closePrice = NormalizeDouble(closePrice, digits);
 
    ResetLastError();
@@ -134,6 +167,19 @@ void ProcessCommand()
    if(!FileIsExist(COMMAND_FILE))
       return;
 
+   int lockHandle = AcquireExecutionLock();
+   if(lockHandle == INVALID_HANDLE)
+      return;
+
+   ProcessCommandLocked();
+   FileClose(lockHandle);
+}
+
+void ProcessCommandLocked()
+{
+   if(!FileIsExist(COMMAND_FILE))
+      return;
+
    int handle = FileOpen(COMMAND_FILE, FILE_READ|FILE_CSV|FILE_ANSI, ',');
    if(handle == INVALID_HANDLE)
       return;
@@ -156,6 +202,9 @@ void ProcessCommand()
       FileDelete(COMMAND_FILE);
       return;
    }
+
+   if(symbol != Symbol())
+      return;
 
    if(!AllowDemoExecution)
    {

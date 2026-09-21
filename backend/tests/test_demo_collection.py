@@ -183,6 +183,7 @@ def test_demo_collection_closes_remaining_bridge_ticket_after_paper_timeout(tmp_
     close_command = read_pending_close_command(tmp_path / "trading_demo_close_command.csv")
     assert close_command is not None
     assert close_command.ticket == 321
+    assert close_command.symbol == "GBPUSD"
     assert close_command.strategy_id == STRATEGY
 
 

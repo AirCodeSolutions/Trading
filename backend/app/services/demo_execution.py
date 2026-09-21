@@ -185,7 +185,11 @@ def submit_demo_close_order(
         raise ValueError("a demo open command is still pending")
 
     positions = read_demo_positions(files_dir / POSITIONS_FILE)
-    if not any(position.ticket == ticket for position in positions):
+    position = next(
+        (position for position in positions if position.ticket == ticket),
+        None,
+    )
+    if position is None:
         raise ValueError("Trading-New bridge ticket is not open")
 
     close_path = files_dir / CLOSE_COMMAND_FILE
@@ -197,6 +201,7 @@ def submit_demo_close_order(
     command = DemoCloseCommand(
         command_id=uuid4().hex,
         ticket=ticket,
+        symbol=position.symbol,
         strategy_id=strategy_id,
         issued_at=now,
         magic_number=settings.demo_magic_number,
@@ -238,10 +243,11 @@ def read_pending_close_command(path: Path) -> DemoCloseCommand | None:
         return DemoCloseCommand(
             command_id=row[0],
             ticket=int(row[1]),
-            strategy_id=row[2],
-            issued_at=datetime.fromisoformat(row[3]),
-            magic_number=int(row[4]),
-            slippage_points=int(row[5]),
+            symbol=row[2],
+            strategy_id=row[3],
+            issued_at=datetime.fromisoformat(row[4]),
+            magic_number=int(row[5]),
+            slippage_points=int(row[6]),
         )
     except (IndexError, OSError, StopIteration, TypeError, ValueError):
         return None
@@ -324,6 +330,7 @@ def _write_close_command(path: Path, command: DemoCloseCommand) -> None:
             [
                 command.command_id,
                 command.ticket,
+                command.symbol,
                 command.strategy_id,
                 command.issued_at.isoformat(),
                 command.magic_number,

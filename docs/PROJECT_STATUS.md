@@ -262,9 +262,9 @@ Risk, spread/stop, macro, margin and live-trading locks remain unchanged.
 
 ## Broker DEMO collection implementation — 2026-09-21
 
-Current deployed `main` before this change remains `c314a9a` (PR #40). Branch
-`feature/demo-collection-execution` implements the six-step path from PAPER to
-isolated broker DEMO collection without changing any economic risk limit.
+PR #41 is merged and deployed at `0cef8eb`. It implements the six-step path
+from PAPER to isolated broker DEMO collection without changing any economic risk
+limit.
 
 The intended runtime contract is:
 
@@ -285,3 +285,30 @@ Validation on the development branch: 133 backend tests, Ruff, frontend build
 and MetaEditor compilation are green; the EA compiles with 0 errors / 0 warnings.
 The dashboard now exposes the collection lifecycle and Magic-scoped position
 count separately from unrelated broker positions.
+
+
+## MT4 multi-instance bridge hardening — 2026-09-21
+
+Runtime inspection after attaching `TradingDemoExecutionBridge` to the five
+active symbols found one instance on BTCUSD, XAGUSD, XAUUSD, EURUSD and GBPUSD.
+The backend was immediately returned to PAPER with DEMO collection/bridge flags
+OFF before any order was sent.
+
+This exposed a transport race in the first bridge version: all instances shared
+the same open/close command files and any instance could consume a command for a
+different symbol.
+
+Branch `fix/demo-bridge-multi-instance` hardens this contract:
+
+- an open command is processed only when its symbol exactly matches `Symbol()`;
+- close commands now carry an explicit symbol;
+- the selected close ticket must also belong to the current chart symbol;
+- all command handling is serialized by an exclusive MT4 lock file;
+- the one-position Trading-New cap and MagicNumber `560619` remain global;
+- external broker positions remain untouched;
+- live trading remains disabled.
+
+The runtime market files for BTCUSD/XAUUSD/XAGUSD continued to refresh while the
+DEMO bridge was locked, so no market-data regression was observed from this
+change. Full validation: 134 backend tests, Ruff and MetaEditor 0 errors /
+0 warnings.

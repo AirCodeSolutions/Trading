@@ -20,6 +20,7 @@ class DemoBridgeCommandStatus(StrEnum):
 class DemoCloseCommand(BaseModel):
     command_id: str
     ticket: int = Field(gt=0)
+    symbol: str
     strategy_id: str
     issued_at: datetime
     magic_number: int

@@ -201,9 +201,9 @@ targeted runtime reads on real MT4 files returned the five active symbols in
 about 0.02 seconds. No risk or trading admission threshold was relaxed.
 
 
-## In-flight — isolated broker DEMO collection
+## PR #41 — isolated broker DEMO collection
 
-Branch: `feature/demo-collection-execution`.
+Status: **MERGED + DEPLOYED** at `0cef8eb`.
 
 - new portfolio action `DEMO_COLLECTION` only for an open PAPER trade whose
   historical admission has `paper_collection_candidate=true`;
@@ -220,6 +220,26 @@ Branch: `feature/demo-collection-execution`.
   separates Trading-New positions from external broker positions;
 - live trading remains disabled.
 
-Local validation before PR: 133 backend tests passed, Ruff passed, frontend
+Validation before merge: 133 backend tests passed, Ruff passed, frontend
 build passed and MetaEditor compiled `TradingDemoExecutionBridge.mq4` with
 0 errors / 0 warnings.
+
+Runtime activation remained locked after discovering that MT4 was running one
+bridge instance per active symbol. A single shared command file meant multiple
+instances could race to consume the same command.
+
+## In-flight — multi-instance DEMO bridge hardening
+
+Branch: `fix/demo-bridge-multi-instance`.
+
+- route open commands strictly to the chart whose `Symbol()` matches the command;
+- include the symbol in explicit close commands and verify the selected ticket
+  also belongs to that chart symbol;
+- serialize command handling with an exclusive MT4 file lock so duplicate
+  instances of the same symbol cannot execute the same command concurrently;
+- keep the global MagicNumber `560619`, one Trading-New position maximum and
+  all existing DEMO/risk guards unchanged;
+- runtime DEMO flags stay OFF until the upgraded EA is proven active.
+
+Validation: 134 backend tests passed, Ruff passed and MetaEditor compiled the
+hardened bridge with 0 errors / 0 warnings.

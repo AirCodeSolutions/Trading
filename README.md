@@ -156,9 +156,12 @@ already listening.
 ### Historical admission refresh
 
 `backend/scripts/refresh_research_admissions.py` reproduces the frozen research
-split and persists the admission registry. The split boundaries do not roll
-forward automatically, which prevents the historical holdout from silently
-changing over time.
+split and persists the admission registry using a **versioned research execution
+profile**. Historical admission no longer depends on the transient live spread at
+the instant of refresh.
+
+Only this controlled refresh path writes `strategy_admissions.json`; interactive
+research API calls are read-only with respect to runtime admission policy.
 
 
 ## Multi-market MT4 bridge

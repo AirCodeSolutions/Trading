@@ -44,7 +44,7 @@ from app.services.market_quality import assess_market
 from app.services.market_store import MarketStore
 from app.services.market_universe import build_market_universe
 from app.services.mt4_csv import _server_timezone, read_mt4_csv, summarize_mt4_csv
-from app.services.mt4_history import resolve_mt4_history_path
+from app.services.mt4_history import load_mt4_research_history, resolve_mt4_history_path
 from app.services.mt4_live_bars import read_closed_bar_snapshot
 from app.services.mt4_live_quotes import read_live_market_quotes
 from app.services.mt4_specs import get_mt4_symbol_spec, list_mt4_symbol_specs
@@ -299,13 +299,10 @@ def mt4_opportunity_backtest(
     if spec is None:
         raise HTTPException(status_code=404, detail="MT4 broker symbol spec not found")
 
-    m5_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M5)
-    m15_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M15)
-    if m5_path is None or m15_path is None:
-        raise HTTPException(status_code=404, detail="M5/M15 MT4 history not found")
-
-    bars_m5 = read_mt4_csv(m5_path, symbol, Timeframe.M5)
-    bars_m15 = read_mt4_csv(m15_path, symbol, Timeframe.M15)
+    try:
+        bars_m5, bars_m15 = load_mt4_research_history(files_dir, symbol)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     config = OpportunityBacktestConfig(
         spec=spec,
         mechanism=request.mechanism,

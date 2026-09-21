@@ -31,7 +31,11 @@ from app.domain.regime import RegimeSnapshot
 from app.domain.session import SessionPreflight
 from app.domain.shadow import ShadowCollectionResult, ShadowOpportunityDiagnostic
 from app.domain.shadow_paper import ShadowPaperSummary
-from app.services.admission import assess_strategy
+from app.services.admission import (
+    MIN_HOLDOUT_TRADES,
+    MIN_VALIDATION_TRADES,
+    assess_strategy,
+)
 from app.services.approval_gate import ApprovalGate
 from app.services.blocked_probe_registry import load_blocked_probe_registry
 from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
@@ -51,6 +55,7 @@ from app.services.mt4_specs import get_mt4_symbol_spec, list_mt4_symbol_specs
 from app.services.opportunity_backtester import run_opportunity_backtest
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.portfolio_overview import build_trading_overview
+from app.services.prospective_qualification import MIN_PROSPECTIVE_TRADES
 from app.services.regime import classify_regime
 from app.services.research_execution_model import (
     apply_research_execution_model,
@@ -139,6 +144,9 @@ def runtime_config() -> dict[str, object]:
         "max_daily_loss_fraction": settings.max_daily_loss_fraction,
         "paper_evidence_cutover_at": settings.paper_evidence_cutover_at,
         "max_spread_to_stop": settings.max_spread_to_stop,
+        "prospective_min_trades": MIN_PROSPECTIVE_TRADES,
+        "historical_validation_min_trades": MIN_VALIDATION_TRADES,
+        "historical_holdout_min_trades": MIN_HOLDOUT_TRADES,
     }
 
 

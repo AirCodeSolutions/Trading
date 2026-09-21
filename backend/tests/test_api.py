@@ -22,6 +22,9 @@ def test_runtime_is_safe_by_default() -> None:
     assert payload["reference_capital_eur"] == 200.0
     assert payload["risk_per_trade_fraction"] == 0.01
     assert payload["absolute_max_risk_fraction"] == 0.02
+    assert payload["prospective_min_trades"] == 20
+    assert payload["historical_validation_min_trades"] == 40
+    assert payload["historical_holdout_min_trades"] == 20
 
 
 def test_ingest_and_read_m5_bar() -> None:

@@ -8,6 +8,9 @@ type RuntimeConfig = {
   reference_capital_eur: number;
   risk_per_trade_fraction: number;
   absolute_max_risk_fraction: number;
+  prospective_min_trades: number;
+  historical_validation_min_trades: number;
+  historical_holdout_min_trades: number;
 };
 
 type ShadowSizing = {
@@ -114,6 +117,8 @@ type PaperStrategyRuntime = {
   mechanism: string;
   summary: PaperSummary & { max_drawdown_r: number };
   qualification: ProspectiveQualification;
+  historical_state: "rejected" | "shadow" | "active" | null;
+  paper_collection_candidate: boolean;
 };
 
 type TradingOverview = {
@@ -422,8 +427,11 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
+    let refreshing = false;
 
     const refreshCore = async () => {
+      if (refreshing) return;
+      refreshing = true;
       try {
         const [
           healthResponse,
@@ -494,6 +502,8 @@ export default function App() {
         setBlockedProbes(blockedProbesPayload);
       } catch {
         if (active) setStatus("Backend indisponible");
+      } finally {
+        refreshing = false;
       }
     };
 
@@ -507,8 +517,11 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
+    let refreshing = false;
 
     const refreshQuotes = async () => {
+      if (refreshing) return;
+      refreshing = true;
       try {
         const response = await fetch("/api/v1/market/mt4/live");
         if (!response.ok) throw new Error("market feed unavailable");
@@ -516,6 +529,8 @@ export default function App() {
         if (active) setQuotes(payload);
       } catch {
         if (active) setQuotes([]);
+      } finally {
+        refreshing = false;
       }
     };
 
@@ -528,6 +543,16 @@ export default function App() {
   }, []);
 
   const liveCount = quotes.filter((quote) => quote.status === "live").length;
+  const paperCandidates = overview?.paper_strategies.filter(
+    (row) => row.paper_collection_candidate
+  ) ?? [];
+  const bestProspective = paperCandidates.reduce<PaperStrategyRuntime | null>(
+    (best, row) =>
+      best == null || row.summary.closed_trades > best.summary.closed_trades ? row : best,
+    null
+  );
+  const prospectiveTarget = config?.prospective_min_trades ?? 20;
+  const prospectiveProgress = bestProspective?.summary.closed_trades ?? 0;
 
   return (
     <main className="shell">
@@ -664,6 +689,52 @@ export default function App() {
             {demo ? (demo.guard.ready ? "READY" : "LOCKED") : "—"}
           </strong>
         </article>
+      </section>
+
+
+      <section className="gate-panel">
+        <div className="shadow-heading">
+          <div>
+            <p className="eyebrow">ROAD TO BROKER DEMO · ÉTAT RÉEL</p>
+            <h2>{demo?.guard.ready ? "DEMO READY" : "QUALIFICATION EN COURS"}</h2>
+          </div>
+          <span className={`badge ${demo?.guard.ready ? "gate-ready" : "gate-locked"}`}>
+            LIVE {config?.live_trading_enabled ? "ACTIF" : "VERROUILLÉ"}
+          </span>
+        </div>
+
+        <div className="gate-grid">
+          <div className="gate-card">
+            <span className="label">Marchés runtime</span>
+            <strong>{preflight ? `${preflight.ready_symbols.length}/5 READY` : "—"}</strong>
+            <p>{preflight?.ready_symbols.join(", ") || "Préflight indisponible."}</p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Scanners SHADOW</span>
+            <strong>{opportunities.length || "—"}</strong>
+            <p>Détection causale active sur les cinq marchés conservés.</p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Candidats PAPER</span>
+            <strong>{paperCandidates.length}</strong>
+            <p>{paperCandidates.map((row) => row.strategy_id).join(" · ") || "Aucun candidat admis à la collecte."}</p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Preuve prospective</span>
+            <strong>{prospectiveProgress}/{prospectiveTarget} trades</strong>
+            <p>{bestProspective ? `Meilleure progression : ${bestProspective.strategy_id}` : "Aucune preuve prospective candidate clôturée."}</p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Admission historique</span>
+            <strong>{overview?.portfolio.historical_active ? "ACTIVE" : "NON SATISFAITE"}</strong>
+            <p>Politique actuelle : ≥{config?.historical_validation_min_trades ?? 40} validation + ≥{config?.historical_holdout_min_trades ?? 20} holdout.</p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Bridge broker DEMO</span>
+            <strong>{demo?.guard.bridge_enabled ? "ENABLED" : "DISABLED"}</strong>
+            <p>{demo?.guard.reasons.join(" · ") || "Tous les verrous DEMO sont satisfaits."}</p>
+          </div>
+        </div>
       </section>
 
       <section className="market-section">
@@ -831,6 +902,7 @@ export default function App() {
             <span>Expectancy</span>
             <span>PF</span>
             <span>DD</span>
+            <span>Historique</span>
             <span>Qualification</span>
           </div>
           {overview?.paper_strategies.length ? (
@@ -841,6 +913,7 @@ export default function App() {
                 <span>{row.summary.expectancy_r.toFixed(3)} R</span>
                 <span>{row.summary.profit_factor.toFixed(2)}</span>
                 <span>{row.summary.max_drawdown_r.toFixed(2)} R</span>
+                <span>{row.historical_state?.toUpperCase() ?? "—"}{row.paper_collection_candidate ? " · PAPER CANDIDATE" : ""}</span>
                 <span>{row.qualification.state.replaceAll("_", " ").toUpperCase()}</span>
               </div>
             ))

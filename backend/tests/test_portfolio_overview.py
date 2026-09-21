@@ -100,3 +100,42 @@ def test_parallel_shadow_losses_do_not_consume_selected_portfolio_budget(
     assert overview.risk.selected_daily_pnl_eur == 0
     assert overview.risk.remaining_daily_loss_budget_eur == 6
     assert overview.portfolio.action == "no_trade"
+
+
+def test_overview_exposes_historical_paper_collection_status(tmp_path: Path) -> None:
+    files_dir = tmp_path / "mt4"
+    runtime_dir = tmp_path / "runtime"
+    files_dir.mkdir()
+    runtime_dir.mkdir()
+
+    state_path = runtime_dir / "GBPUSD_directional_pullback_paper_state.json"
+    state_path.write_text(ShadowPaperState().model_dump_json(), encoding="utf-8")
+    (runtime_dir / "strategy_admissions.json").write_text(
+        json.dumps(
+            {
+                "GBPUSD:directional_pullback_resumption": {
+                    "strategy_id": "GBPUSD:directional_pullback_resumption",
+                    "state": "shadow",
+                    "reason": "insufficient independent validation evidence",
+                    "weakest_expectancy_r": -0.24,
+                    "worst_drawdown_r": 2.7,
+                    "paper_collection_candidate": True,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    overview = build_trading_overview(
+        files_dir,
+        runtime_dir,
+        datetime(2026, 9, 21, 17, 0, tzinfo=TZ),
+    )
+
+    row = next(
+        item
+        for item in overview.paper_strategies
+        if item.strategy_id == "GBPUSD:directional_pullback_resumption"
+    )
+    assert row.historical_state == "shadow"
+    assert row.paper_collection_candidate is True

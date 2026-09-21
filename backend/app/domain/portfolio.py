@@ -3,6 +3,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
+from app.domain.admission import AdmissionState
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.shadow_paper import ShadowPaperSummary
 
@@ -51,6 +52,8 @@ class PaperStrategyRuntime(BaseModel):
     mechanism: OpportunityMechanism
     summary: ShadowPaperSummary
     qualification: ProspectiveQualification
+    historical_state: AdmissionState | None = None
+    paper_collection_candidate: bool = False
     daily_pnl_eur: float = 0.0
     daily_r: float = 0.0
 

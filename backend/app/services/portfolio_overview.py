@@ -27,6 +27,19 @@ def build_trading_overview(
         settings.paper_evidence_cutover_at,
     )
     admissions = load_research_admissions(runtime_dir / "strategy_admissions.json")
+    paper_rows = [
+        row.model_copy(
+            update={
+                "historical_state": admissions[row.strategy_id].state,
+                "paper_collection_candidate": admissions[
+                    row.strategy_id
+                ].paper_collection_candidate,
+            }
+        )
+        if row.strategy_id in admissions
+        else row
+        for row in paper_rows
+    ]
 
     qualifications = [row.qualification for row in paper_rows]
     open_rows = [row for row in paper_rows if row.summary.open_trade is not None]

@@ -150,7 +150,7 @@ def _directional_pullback_resumption_candidate(
 ) -> OpportunityCandidate | None:
     if index < 2 or index + 1 >= len(bars):
         return None
-    if regime.regime != MarketRegime.DIRECTIONAL or regime.direction == 0:
+    if regime.regime != MarketRegime.DIRECTIONAL or regime.direction <= 0:
         return None
 
     value = atr[index]
@@ -161,28 +161,16 @@ def _directional_pullback_resumption_candidate(
     second_pullback = bars[index - 1]
     confirmation = bars[index]
     entry = bars[index + 1]
-    side = Side.BUY if regime.direction > 0 else Side.SELL
-
-    if side == Side.BUY:
-        if not (
-            first_pullback.close < first_pullback.open
-            and second_pullback.close < second_pullback.open
-            and confirmation.close > confirmation.open
-            and confirmation.close > second_pullback.high
-        ):
-            return None
-        swing = min(first_pullback.low, second_pullback.low)
-        stop = swing - 0.10 * value
-    else:
-        if not (
-            first_pullback.close > first_pullback.open
-            and second_pullback.close > second_pullback.open
-            and confirmation.close < confirmation.open
-            and confirmation.close < second_pullback.low
-        ):
-            return None
-        swing = max(first_pullback.high, second_pullback.high)
-        stop = swing + 0.10 * value
+    side = Side.BUY
+    if not (
+        first_pullback.close < first_pullback.open
+        and second_pullback.close < second_pullback.open
+        and confirmation.close > confirmation.open
+        and confirmation.close > second_pullback.high
+    ):
+        return None
+    swing = min(first_pullback.low, second_pullback.low)
+    stop = swing - 0.10 * value
 
     if stop <= 0:
         return None

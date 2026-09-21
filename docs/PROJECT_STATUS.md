@@ -298,7 +298,7 @@ This exposed a transport race in the first bridge version: all instances shared
 the same open/close command files and any instance could consume a command for a
 different symbol.
 
-Branch `fix/demo-bridge-multi-instance` hardens this contract:
+PR #42 (`aa4b7f2`) hardens this contract:
 
 - an open command is processed only when its symbol exactly matches `Symbol()`;
 - close commands now carry an explicit symbol;
@@ -312,3 +312,21 @@ The runtime market files for BTCUSD/XAUUSD/XAGUSD continued to refresh while the
 DEMO bridge was locked, so no market-data regression was observed from this
 change. Full validation: 134 backend tests, Ruff and MetaEditor 0 errors /
 0 warnings.
+
+
+## Five-symbol broker snapshot completion — 2026-09-21
+
+Post-merge runtime checks of PR #42 kept DEMO safely OFF and found a separate
+market-readiness gap: EURUSD and GBPUSD had fresh M5/M15 history but no current
+broker quote/spec snapshot, so the preflight exposed only BTCUSD/XAUUSD/XAGUSD as
+READY.
+
+Branch `fix/demo-bridge-symbol-specs` makes the existing five bridge instances
+self-contained for broker metadata. Each bridge writes a unique
+`trading_demo_spec_<SYMBOL>.csv` with current Bid/Ask and MT4 lot/tick/margin
+specification. The backend reads these files as an additional quote/spec source
+without altering legacy `mt4_data_*` account or position files.
+
+The intended delivery condition is 5/5 READY, zero Trading-New bridge positions,
+no pending open/close command, live trading disabled, then DEMO_COLLECTION may be
+re-armed. Validation before PR: 14 targeted tests, Ruff and MetaEditor 0/0.

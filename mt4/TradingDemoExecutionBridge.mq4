@@ -13,6 +13,7 @@ string EXECUTION_LOCK_FILE = "trading_demo_execution.lock";
 int OnInit()
 {
    EventSetTimer(MathMax(1, PollEverySeconds));
+   ExportSymbolSnapshot();
    ExportPositions();
    return(INIT_SUCCEEDED);
 }
@@ -24,9 +25,73 @@ void OnDeinit(const int reason)
 
 void OnTimer()
 {
+   ExportSymbolSnapshot();
    ProcessCloseCommand();
    ProcessCommand();
    ExportPositions();
+}
+
+string SymbolSnapshotFile()
+{
+   return "trading_demo_spec_" + Symbol() + ".csv";
+}
+
+void ExportSymbolSnapshot()
+{
+   string symbol = Symbol();
+   double bid = MarketInfo(symbol, MODE_BID);
+   double ask = MarketInfo(symbol, MODE_ASK);
+   double tickSize = MarketInfo(symbol, MODE_TICKSIZE);
+   double tickValue = MarketInfo(symbol, MODE_TICKVALUE);
+   double minLot = MarketInfo(symbol, MODE_MINLOT);
+   double maxLot = MarketInfo(symbol, MODE_MAXLOT);
+   double lotStep = MarketInfo(symbol, MODE_LOTSTEP);
+
+   if(
+      bid <= 0
+      || ask <= 0
+      || ask < bid
+      || tickSize <= 0
+      || tickValue <= 0
+      || minLot <= 0
+      || maxLot <= 0
+      || lotStep <= 0
+   )
+      return;
+
+   int handle = FileOpen(
+      SymbolSnapshotFile(),
+      FILE_WRITE|FILE_CSV|FILE_ANSI,
+      ','
+   );
+   if(handle == INVALID_HANDLE)
+      return;
+
+   FileWrite(
+      handle,
+      "timestamp","symbol","bid","ask","digits","contract_size",
+      "tick_size","tick_value","point","min_lot","max_lot","lot_step",
+      "stop_level","margin_required"
+   );
+   FileWrite(
+      handle,
+      (long)TimeCurrent(),
+      symbol,
+      bid,
+      ask,
+      (int)MarketInfo(symbol, MODE_DIGITS),
+      MarketInfo(symbol, MODE_LOTSIZE),
+      tickSize,
+      tickValue,
+      MarketInfo(symbol, MODE_POINT),
+      minLot,
+      maxLot,
+      lotStep,
+      MarketInfo(symbol, MODE_STOPLEVEL),
+      MarketInfo(symbol, MODE_MARGINREQUIRED)
+   );
+   FileFlush(handle);
+   FileClose(handle);
 }
 
 int AcquireExecutionLock()

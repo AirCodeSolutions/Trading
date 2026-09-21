@@ -84,6 +84,8 @@ def read_symbol_json(path: Path) -> BrokerSymbolSpec | None:
 
 def list_mt4_symbol_specs(files_dir: Path) -> dict[str, BrokerSymbolSpec]:
     specs = read_symbol_snapshot(files_dir / "trading_symbol_specs.csv")
+    for path in sorted(files_dir.glob("trading_demo_spec_*.csv")):
+        specs.update(read_symbol_snapshot(path))
     for path in files_dir.glob("mt4_data_*.json"):
         spec = read_symbol_json(path)
         if spec is not None:

@@ -21,3 +21,12 @@ def test_demo_bridge_routes_commands_to_chart_symbol_and_serializes_execution() 
     assert "if(symbol != Symbol())" in source
     assert "if(OrderSymbol() != Symbol())" in source
     assert "FileClose(lockHandle);" in source
+
+
+def test_demo_bridge_exports_symbol_scoped_broker_snapshot() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    source = (repo_root / "mt4" / "TradingDemoExecutionBridge.mq4").read_text(encoding="utf-8")
+
+    assert 'string SymbolSnapshotFile()' in source
+    assert '"trading_demo_spec_" + Symbol() + ".csv"' in source
+    assert "ExportSymbolSnapshot();" in source

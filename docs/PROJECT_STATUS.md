@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `347e1b8` (PR #29).
+Current deployed main commit: `1d4552a` (PR #31).
 
 Operational services:
 
@@ -40,7 +40,7 @@ Operational services:
 - MT4 DEMO bridge: present but locked
 - live trading: locked
 
-Latest runtime checkpoint after PR #29 deployment:
+Latest runtime checkpoint after PR #31 deployment:
 
 - Portfolio Manager: **PAPER_ONLY**;
 - one post-cutover paper position is open:

@@ -29,3 +29,4 @@ class AdmissionDecision(BaseModel):
     reason: str
     weakest_expectancy_r: float
     worst_drawdown_r: float
+    paper_collection_candidate: bool = False

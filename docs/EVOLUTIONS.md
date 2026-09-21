@@ -31,6 +31,10 @@ Last updated: 2026-09-21.
 | #25 | `71b4bd4` | Live capital/execution feasibility matrix |
 | #26 | `634d2b4` | Historical/runtime macro policy parity |
 | #27 | `910da36` | Legacy vs post-cutover paper evidence separation |
+| #28 | `7e8893f` | Project status, evolutions and five-asset scope |
+| #29 | `347e1b8` | GBP directional pullback resumption SHADOW |
+| #30 | `d138a3a` | MT4 exporter locked to five active markets |
+| #31 | `1d4552a` | PAPER entries focused on positive historical SHADOW evidence |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
@@ -38,9 +42,10 @@ was incorporated by the later merged main-branch work.
 ## Current state
 
 - PR #29 is merged and deployed: GBPUSD `directional_pullback_resumption`, SHADOW-only;
-- current deployed main: `347e1b8`;
+- current deployed main: `1d4552a` (PR #31);
 - runtime: 21 SHADOW scanners = 20 existing + 1 GBP directional pullback;
-- current Portfolio Manager: `PAPER_ONLY` while the GBP failed-auction paper trade is open;
+- first clean post-cutover GBP failed-auction PAPER trade closed at +1.5R / +2.73 EUR;
+- current Portfolio Manager returns to `NO_TRADE` when no paper position is open;
 - DEMO bridge: locked;
 - live trading: locked;
 - post-cutover prospective evidence: zero closed trades at the time of this
@@ -99,7 +104,7 @@ Status: **MERGED + DEPLOYED**.
 
 ## PR #31 — positive-SHADOW paper focus
 
-Status: **OPEN / prospective evidence policy**.
+Status: **MERGED + DEPLOYED / prospective evidence policy**.
 
 - all SHADOW scanners continue to run;
 - blocked probes and diagnostics remain unchanged;
@@ -108,3 +113,14 @@ Status: **OPEN / prospective evidence policy**.
 - historically negative SHADOW mechanisms no longer start fresh paper trades;
 - existing open paper trades are allowed to finish normally;
 - risk, lot, stop, target and broker execution guards are unchanged.
+
+
+## PR #32 — stable research execution profile
+
+Status: **IN DEVELOPMENT**.
+
+- historical admissions use a versioned execution profile instead of the spread snapshot of the refresh second;
+- spreads use observed runtime medians;
+- contract/tick/margin assumptions are frozen for research reproducibility;
+- interactive research API no longer mutates the runtime admission registry;
+- only the controlled refresh script writes `strategy_admissions.json`.

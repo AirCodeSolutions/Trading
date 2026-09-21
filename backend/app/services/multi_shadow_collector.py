@@ -67,8 +67,9 @@ def collect_all_shadow_once(
             appended = append_shadow_observation(ledger_path, diagnostic)
             strategy_id = f"{asset.symbol}:{mechanism.value}"
             admission = admissions.get(strategy_id)
-            allow_new_entries = not (
-                admission is not None and admission.state == AdmissionState.REJECTED
+            allow_new_entries = (
+                admission is not None
+                and admission.state != AdmissionState.REJECTED
             )
             paper = advance_shadow_paper_book(
                 diagnostic=diagnostic,

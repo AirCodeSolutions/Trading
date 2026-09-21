@@ -20,7 +20,6 @@ from app.services.blocked_probe import (
     resolve_open_probe,
 )
 
-
 TZ = ZoneInfo("Europe/Athens")
 START = datetime(2026, 9, 21, 8, 10, tzinfo=TZ)
 

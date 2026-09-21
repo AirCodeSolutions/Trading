@@ -38,7 +38,7 @@ was incorporated by the later merged main-branch work.
 ## Current state
 
 - PR #29 is merged and deployed: GBPUSD `directional_pullback_resumption`, SHADOW-only;
-- current deployed main: `347e1b8`;
+- current deployed main: `1d4552a`;
 - runtime: 21 SHADOW scanners = 20 existing + 1 GBP directional pullback;
 - current Portfolio Manager: `PAPER_ONLY` while the GBP failed-auction paper trade is open;
 - DEMO bridge: locked;
@@ -99,7 +99,7 @@ Status: **MERGED + DEPLOYED**.
 
 ## PR #31 — positive-SHADOW paper focus
 
-Status: **OPEN / prospective evidence policy**.
+Status: **MERGED + DEPLOYED / prospective evidence policy**.
 
 - all SHADOW scanners continue to run;
 - blocked probes and diagnostics remain unchanged;

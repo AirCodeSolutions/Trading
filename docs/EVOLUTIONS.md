@@ -143,3 +143,18 @@ In development after PR #34:
 With the frozen matrix, this newly adds only
 `GBPUSD:directional_pullback_resumption`; XAU failed-auction was already
 eligible under the positive-weakest rule.
+
+
+## PR #35 — promising SHADOW PAPER collection
+
+Status: **OPEN / PAPER research policy**.
+
+- REJECTED admissions remain fully blocked;
+- ACTIVE admissions remain PAPER-eligible;
+- positive-weakest SHADOW admissions remain PAPER-eligible;
+- a SHADOW with positive train + positive validation may collect PAPER even if a
+  tiny holdout is currently negative;
+- frozen-matrix impact: exactly two PAPER-eligible pairs:
+  - GBPUSD:directional_pullback_resumption;
+  - XAUUSD:failed_auction_reversal;
+- no DEMO admission or risk policy change.

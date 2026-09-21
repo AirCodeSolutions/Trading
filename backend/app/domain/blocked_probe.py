@@ -24,6 +24,11 @@ class BlockedOpportunityProbe(BaseModel):
     block_reason: str
     max_risk_approved: bool
     max_risk_reason: str | None = None
+    min_lot_loss_eur: float = Field(default=0.0, ge=0)
+    required_capital_base_risk_eur: float = Field(default=0.0, ge=0)
+    required_capital_max_risk_eur: float = Field(default=0.0, ge=0)
+    minimum_feasible_risk_fraction: float = Field(default=0.0, ge=0)
+    capital_granularity_feasible_under_max_risk: bool = False
     status: PaperTradeStatus = PaperTradeStatus.OPEN
     exit_at: datetime | None = None
     exit_price: float | None = None

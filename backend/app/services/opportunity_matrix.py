@@ -13,6 +13,7 @@ from app.services.mt4_csv import read_mt4_csv
 from app.services.mt4_history import resolve_mt4_history_path
 from app.services.mt4_specs import list_mt4_symbol_specs
 from app.services.opportunity_backtester import run_opportunity_backtest
+from app.services.research_broker_specs import load_research_broker_specs
 
 
 def run_mt4_portfolio_research(
@@ -20,8 +21,13 @@ def run_mt4_portfolio_research(
     request: PortfolioResearchRequest,
     *,
     macro_events_path: Path | None = None,
+    research_broker_specs_path: Path | None = None,
 ) -> PortfolioResearchResult:
-    specs = list_mt4_symbol_specs(files_dir)
+    specs = (
+        load_research_broker_specs(research_broker_specs_path)
+        if research_broker_specs_path is not None
+        else list_mt4_symbol_specs(files_dir)
+    )
     macro_events = (
         load_macro_events(macro_events_path)
         if macro_events_path is not None

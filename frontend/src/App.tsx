@@ -19,6 +19,9 @@ type ShadowSizing = {
 };
 
 type ShadowDiagnostic = {
+  symbol: string;
+  mechanism: string;
+  evaluated_at: string;
   state: "no_signal" | "signal_blocked" | "signal_executable";
   side: "buy" | "sell" | null;
   regime: string;
@@ -346,6 +349,7 @@ function MarketCard({ quote }: { quote: MarketQuote }) {
 export default function App() {
   const [config, setConfig] = useState<RuntimeConfig | null>(null);
   const [shadow, setShadow] = useState<ShadowDiagnostic | null>(null);
+  const [opportunities, setOpportunities] = useState<ShadowDiagnostic[]>([]);
   const [paper, setPaper] = useState<PaperSummary | null>(null);
   const [quotes, setQuotes] = useState<MarketQuote[]>([]);
   const [universe, setUniverse] = useState<MarketUniverseAsset[]>([]);
@@ -371,7 +375,8 @@ export default function App() {
           costsResponse,
           macroResponse,
           demoResponse,
-          preflightResponse
+          preflightResponse,
+          opportunitiesResponse
         ] = await Promise.all([
           fetch("/api/v1/health"),
           fetch("/api/v1/config"),
@@ -382,7 +387,8 @@ export default function App() {
           fetch("/api/v1/market/mt4/costs"),
           fetch("/api/v1/macro/status"),
           fetch("/api/v1/execution/demo/status"),
-          fetch("/api/v1/session/preflight")
+          fetch("/api/v1/session/preflight"),
+          fetch("/api/v1/shadow/overview")
         ]);
         if (!healthResponse.ok || !configResponse.ok) {
           throw new Error("backend unavailable");
@@ -400,6 +406,9 @@ export default function App() {
         const preflightPayload = preflightResponse.ok
           ? await preflightResponse.json()
           : null;
+        const opportunitiesPayload = opportunitiesResponse.ok
+          ? await opportunitiesResponse.json()
+          : [];
 
         if (!active) return;
         setStatus(health.status === "ok" ? "Opérationnel" : "Dégradé");
@@ -412,6 +421,7 @@ export default function App() {
         setMacro(macroPayload);
         setDemo(demoPayload);
         setPreflight(preflightPayload);
+        setOpportunities(opportunitiesPayload);
       } catch {
         if (active) setStatus("Backend indisponible");
       }
@@ -777,6 +787,58 @@ export default function App() {
             </span>
           </div>
         ) : null}
+      </section>
+
+      <section className="opportunity-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">LIVE OPPORTUNITY BOARD</p>
+            <h2>{opportunities.length} scanners actifs</h2>
+          </div>
+          <p>
+            Évaluation causale M5/M15. Aucun état SHADOW ne crée d’ordre broker.
+          </p>
+        </div>
+
+        <div className="opportunity-summary">
+          <span>
+            EXECUTABLE <strong>{opportunities.filter((item) => item.state === "signal_executable").length}</strong>
+          </span>
+          <span>
+            BLOQUÉ <strong>{opportunities.filter((item) => item.state === "signal_blocked").length}</strong>
+          </span>
+          <span>
+            NO SIGNAL <strong>{opportunities.filter((item) => item.state === "no_signal").length}</strong>
+          </span>
+        </div>
+
+        <div className="opportunity-table">
+          <div className="opportunity-row opportunity-head">
+            <span>Actif</span>
+            <span>Mécanisme</span>
+            <span>État</span>
+            <span>Régime</span>
+            <span>Side</span>
+            <span>Dernière M5</span>
+            <span>Diagnostic</span>
+          </div>
+          {opportunities.map((item) => (
+            <div
+              className="opportunity-row"
+              key={`${item.symbol}:${item.mechanism}`}
+            >
+              <strong>{item.symbol}</strong>
+              <span>{item.mechanism.replaceAll("_", " ")}</span>
+              <span className={`opportunity-state state-${item.state}`}>
+                {item.state.replaceAll("_", " ")}
+              </span>
+              <span>{item.regime.replaceAll("_", " ")}</span>
+              <span>{item.side?.toUpperCase() ?? "—"}</span>
+              <span>{new Date(item.latest_closed_m5_at).toLocaleTimeString("fr-FR")}</span>
+              <span className="opportunity-reason">{item.reason}</span>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="shadow-panel">

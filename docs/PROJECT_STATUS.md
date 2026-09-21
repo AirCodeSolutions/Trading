@@ -39,7 +39,12 @@ Operational services:
 - MT4 DEMO bridge: present but locked
 - live trading: locked
 
-Current Portfolio Manager action: **NO_TRADE**.
+Latest runtime checkpoint (2026-09-21 10:27 Europe/Athens):
+
+- Portfolio Manager: **PAPER_ONLY**;
+- one post-cutover paper position is open:
+  `GBPUSD:failed_auction_reversal`, BUY, 0.03 lot, risk ≈ 1.82 EUR;
+- MT4 DEMO bridge: 0 bridge positions, 0 pending commands, still locked.
 
 No strategy currently satisfies both:
 
@@ -76,10 +81,10 @@ The evidence cutover is:
 PR #27 keeps all earlier trades for audit but excludes them from prospective
 qualification metrics.
 
-Current ledger separation:
+Current ledger separation at the checkpoint:
 
-- post-cutover evidence: 0 closed trades / 0R / 0 EUR
-- legacy pre-cutover evidence: 7 trades / -7R / -10.8621 EUR
+- post-cutover: 0 closed trades / 0R / 0 EUR, plus 1 open GBPUSD paper trade;
+- legacy pre-cutover: 7 trades / -7R / -10.8621 EUR.
 
 The legacy losses remain visible and are never deleted.
 
@@ -89,8 +94,9 @@ Live capital/execution feasibility has shown:
 
 - BTCUSD: currently the clearest market compatible with 200 EUR under the
   existing risk policy;
-- EURUSD / GBPUSD: lot granularity is compatible, but some opportunities are
-  rejected when spread is too large relative to structural stop distance;
+- EURUSD / GBPUSD: lot granularity is compatible; spread can still block
+  narrow-stop setups, but GBPUSD has now produced the first executable
+  post-cutover paper entry;
 - XAUUSD / XAGUSD: many setups are structurally blocked by minimum-lot
   granularity at 200 EUR.
 

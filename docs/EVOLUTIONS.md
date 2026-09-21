@@ -37,10 +37,10 @@ was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- PR #29 is open: GBPUSD `directional_pullback_resumption`, SHADOW-only;
-- no open feature is required to operate the existing 5-market/four-mechanism runtime;
-- current deployed main: `910da36`;
-- current Portfolio Manager: `NO_TRADE`;
+- PR #29 is merged and deployed: GBPUSD `directional_pullback_resumption`, SHADOW-only;
+- current deployed main: `347e1b8`;
+- runtime: 21 SHADOW scanners = 20 existing + 1 GBP directional pullback;
+- current Portfolio Manager: `PAPER_ONLY` while the GBP failed-auction paper trade is open;
 - DEMO bridge: locked;
 - live trading: locked;
 - post-cutover prospective evidence: zero closed trades at the time of this
@@ -74,7 +74,7 @@ five retained assets, with:
 
 ## PR #29 — directional pullback resumption
 
-Status: **OPEN / SHADOW-only candidate**.
+Status: **MERGED + DEPLOYED / SHADOW-only**.
 
 Scope:
 
@@ -82,4 +82,16 @@ Scope:
 - runtime collection restricted to GBPUSD;
 - unchanged risk, macro and spread/stop policies;
 - train/validation/holdout expectancy all positive on GBPUSD;
-- sample still insufficient for ACTIVE/DEMO.
+- sample still insufficient for ACTIVE/DEMO;
+- deployed admission: SHADOW, weakest independent expectancy +0.0958R;
+- runtime collection is GBPUSD-only.
+
+
+## PR #30 — five-market exporter scope
+
+Status: **OPEN / scope cleanup**.
+
+- MT4 exporter defaults restricted to BTCUSD, EURUSD, GBPUSD, XAUUSD, XAGUSD;
+- abandoned index/volatility aliases removed from source;
+- backend and exporter scope locked by automated tests;
+- no trading/risk behavior change.

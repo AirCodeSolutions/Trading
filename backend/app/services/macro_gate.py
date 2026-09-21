@@ -27,26 +27,42 @@ def load_macro_events(path: Path) -> list[MacroEvent]:
     return sorted(events, key=lambda item: item.start_at)
 
 
+def active_macro_blackouts(
+    events: list[MacroEvent],
+    now: datetime,
+    *,
+    currency: str = "USD",
+) -> list[MacroEvent]:
+    if now.utcoffset() is None:
+        raise ValueError("macro gate requires timezone-aware now")
+
+    normalized_currency = currency.upper()
+    relevant = [
+        event
+        for event in events
+        if normalized_currency in {item.upper() for item in event.currencies}
+    ]
+    active: list[MacroEvent] = []
+    for event in relevant:
+        block_start = event.start_at - timedelta(minutes=event.pre_block_minutes)
+        block_end = event.end_at + timedelta(minutes=event.post_block_minutes)
+        if block_start <= now <= block_end and event.impact == MacroImpact.HIGH:
+            active.append(event)
+    return active
+
+
 def macro_gate_status(
     path: Path,
     now: datetime,
     *,
     currency: str = "USD",
 ) -> MacroGateStatus:
-    if now.utcoffset() is None:
-        raise ValueError("macro gate requires timezone-aware now")
-
     events = [
         event
         for event in load_macro_events(path)
         if currency.upper() in {item.upper() for item in event.currencies}
     ]
-    active: list[MacroEvent] = []
-    for event in events:
-        block_start = event.start_at - timedelta(minutes=event.pre_block_minutes)
-        block_end = event.end_at + timedelta(minutes=event.post_block_minutes)
-        if block_start <= now <= block_end and event.impact == MacroImpact.HIGH:
-            active.append(event)
+    active = active_macro_blackouts(events, now, currency=currency)
 
     future = [
         event

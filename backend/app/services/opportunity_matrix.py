@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from app.domain.admission import AdmissionState
-from app.domain.market import Timeframe
 from app.domain.opportunity import (
     OpportunityBacktestConfig,
     OpportunityBacktestResult,
@@ -9,8 +8,7 @@ from app.domain.opportunity import (
     PortfolioResearchResult,
 )
 from app.services.macro_gate import load_macro_events
-from app.services.mt4_csv import read_mt4_csv
-from app.services.mt4_history import resolve_mt4_history_path
+from app.services.mt4_history import load_mt4_research_history
 from app.services.mt4_specs import list_mt4_symbol_specs
 from app.services.opportunity_backtester import run_opportunity_backtest
 
@@ -46,14 +44,11 @@ def run_mt4_portfolio_research(
             skipped_symbols[symbol] = "broker symbol spec not found"
             continue
 
-        m5_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M5)
-        m15_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M15)
-        if m5_path is None or m15_path is None:
+        try:
+            bars_m5, bars_m15 = load_mt4_research_history(files_dir, symbol)
+        except FileNotFoundError:
             skipped_symbols[symbol] = "M5/M15 history not found"
             continue
-
-        bars_m5 = read_mt4_csv(m5_path, symbol, Timeframe.M5)
-        bars_m15 = read_mt4_csv(m15_path, symbol, Timeframe.M15)
         if not bars_m5 or not bars_m15:
             skipped_symbols[symbol] = "M5/M15 history is empty"
             continue

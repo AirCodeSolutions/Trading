@@ -36,6 +36,7 @@ Last updated: 2026-09-21.
 | #30 | `d138a3a` | MT4 exporter locked to five active markets |
 | #31 | `1d4552a` | Paper entries focused on positive historical SHADOW evidence |
 | #34 | `5ca52a9` | Frozen reproducible research execution costs |
+| #36 | `14427e5` | PAPER collection for promising under-sampled SHADOWs |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
@@ -43,7 +44,7 @@ was incorporated by the later merged main-branch work.
 ## Current state
 
 - PR #29 is merged and deployed: GBPUSD `directional_pullback_resumption`, SHADOW-only;
-- current deployed main: `5ca52a9`;
+- current deployed main: `14427e5`;
 - runtime: 21 SHADOW scanners = 20 existing + 1 GBP directional pullback;
 - current Portfolio Manager: `NO_TRADE`;
 - first clean post-cutover paper result: GBP failed-auction **+1.5R / +2.7329 EUR**;
@@ -87,10 +88,12 @@ Scope:
 - new mechanism `directional_pullback_resumption`;
 - runtime collection restricted to GBPUSD;
 - unchanged risk, macro and spread/stop policies;
-- train/validation/holdout expectancy all positive on GBPUSD;
-- sample still insufficient for ACTIVE/DEMO;
-- deployed admission: SHADOW, weakest independent expectancy +0.0958R;
-- runtime collection is GBPUSD-only.
+- runtime collection is GBPUSD-only;
+- frozen-cost evidence after PR #34:
+  - train 9 trades, +0.197R;
+  - validation 8 trades, +0.438R;
+  - holdout 1 trade, -0.240R;
+- admission remains SHADOW and cannot authorize DEMO.
 
 
 ## PR #30 — five-market exporter scope
@@ -128,9 +131,9 @@ Status: **MERGED + DEPLOYED**.
   model its holdout is 1 trade at -0.240R, so it remains observation-only.
 
 
-## Next — promising SHADOW PAPER collection
+## Promising SHADOW PAPER collection
 
-In development after PR #34:
+Deployed in PR #36:
 
 - keep REJECTED admissions fully blocked;
 - ACTIVE admissions remain PAPER-eligible;
@@ -147,7 +150,7 @@ eligible under the positive-weakest rule.
 
 ## PR #36 — promising SHADOW PAPER collection
 
-Status: **OPEN / PAPER research policy**.
+Status: **MERGED + DEPLOYED / PAPER research policy**.
 
 - REJECTED admissions remain fully blocked;
 - ACTIVE admissions remain PAPER-eligible;

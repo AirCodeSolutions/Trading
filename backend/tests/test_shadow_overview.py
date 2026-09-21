@@ -6,7 +6,6 @@ from app.domain.regime import MarketRegime
 from app.domain.shadow import ShadowOpportunityDiagnostic, ShadowSignalState
 from app.services.shadow_overview import load_shadow_overview
 
-
 AT = datetime(2026, 9, 21, 8, 0, tzinfo=UTC)
 
 

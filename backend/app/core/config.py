@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     )
 
     macro_events_path: Path = Path("config/macro_events_2026.json")
+    research_execution_model_path: Path = Path(
+        "config/research_execution_model.json"
+    )
     paper_evidence_cutover_at: datetime = datetime.fromisoformat(
         "2026-09-20T12:53:56+03:00"
     )

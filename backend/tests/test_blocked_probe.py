@@ -112,6 +112,11 @@ def test_blocked_probe_preserves_base_reason_and_max_risk_viability() -> None:
     assert probe.block_reason == "minimum broker lot exceeds the risk budget"
     assert probe.max_risk_approved is True
     assert probe.target_r == 1.5
+    assert probe.min_lot_loss_eur == 3.0
+    assert probe.required_capital_base_risk_eur == 300.0
+    assert probe.required_capital_max_risk_eur == 150.0
+    assert probe.minimum_feasible_risk_fraction == 0.015
+    assert probe.capital_granularity_feasible_under_max_risk is True
 
 
 def test_blocked_probe_resolves_target_without_position_sizing() -> None:
@@ -172,3 +177,54 @@ def test_blocked_probe_summary_is_separate_from_paper_pnl(
     assert summary.closed_probes == 0
     assert summary.total_r == 0
     assert summary.open_probe is None
+
+
+def test_existing_open_probe_is_enriched_with_capital_feasibility(
+    tmp_path: Path,
+) -> None:
+    state_path = tmp_path / "state.json"
+    probes_path = tmp_path / "probes.jsonl"
+    diag = diagnostic(max_risk_approved=False)
+
+    first = advance_blocked_probe_book(
+        diagnostic=diag,
+        spec=spec(),
+        bars_m5=[],
+        state_path=state_path,
+        probes_path=probes_path,
+        evaluated_at=diag.evaluated_at,
+    )
+    assert first.open_probe is not None
+
+    legacy = first.open_probe.model_copy(
+        update={
+            "min_lot_loss_eur": 0.0,
+            "required_capital_base_risk_eur": 0.0,
+            "required_capital_max_risk_eur": 0.0,
+            "minimum_feasible_risk_fraction": 0.0,
+            "capital_granularity_feasible_under_max_risk": False,
+        }
+    )
+    from app.domain.blocked_probe import BlockedProbeState
+    from app.services.blocked_probe import save_blocked_probe_state
+
+    save_blocked_probe_state(
+        state_path,
+        BlockedProbeState(
+            last_started_signal_at=diag.latest_closed_m5_at + timedelta(minutes=5),
+            open_probe=legacy,
+        ),
+    )
+
+    second = advance_blocked_probe_book(
+        diagnostic=diag,
+        spec=spec(),
+        bars_m5=[],
+        state_path=state_path,
+        probes_path=probes_path,
+        evaluated_at=diag.evaluated_at + timedelta(seconds=30),
+    )
+
+    assert second.open_probe is not None
+    assert second.open_probe.min_lot_loss_eur == 3.0
+    assert second.open_probe.required_capital_max_risk_eur == 150.0

@@ -14,7 +14,7 @@ from app.domain.shadow import (
 )
 from app.domain.trading import Side
 from app.services.capital_risk import size_position
-from app.services.opportunity_strategies import _atr_series
+from app.services.opportunity_strategies import _asia_range_sweep_signal, _atr_series
 from app.services.replay import RegimeReplay
 from app.services.session_continuity import reopen_warmup_remaining
 
@@ -124,7 +124,10 @@ def scan_shadow_opportunity(
             structural_stop = entry - stop_atr
         else:
             structural_stop = entry + stop_atr + spec.spread
-    elif mechanism == OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION:
+    elif mechanism in {
+        OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
+        OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL,
+    }:
         if side == Side.BUY:
             structural_stop = raw_stop
         else:
@@ -212,6 +215,8 @@ def _detect_signal(
             atr,
             regime,
         )
+    if mechanism == OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL:
+        return _asia_range_sweep_signal(bars, atr)
     return None
 
 

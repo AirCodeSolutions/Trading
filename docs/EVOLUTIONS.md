@@ -37,6 +37,7 @@ Last updated: 2026-09-21.
 | #31 | `1d4552a` | Paper entries focused on positive historical SHADOW evidence |
 | #34 | `5ca52a9` | Frozen reproducible research execution costs |
 | #36 | `14427e5` | PAPER collection for promising under-sampled SHADOWs |
+| #37 | `fcf5c50` | Refresh deployed status through PR #36 |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
@@ -44,7 +45,7 @@ was incorporated by the later merged main-branch work.
 ## Current state
 
 - PR #29 is merged and deployed: GBPUSD `directional_pullback_resumption`, SHADOW-only;
-- current deployed main: `14427e5`;
+- current deployed main: `fcf5c50`;
 - runtime: 21 SHADOW scanners = 20 existing + 1 GBP directional pullback;
 - current Portfolio Manager: `NO_TRADE`;
 - first clean post-cutover paper result: GBP failed-auction **+1.5R / +2.7329 EUR**;
@@ -161,3 +162,19 @@ Status: **MERGED + DEPLOYED / PAPER research policy**.
   - GBPUSD:directional_pullback_resumption;
   - XAUUSD:failed_auction_reversal;
 - no DEMO admission or risk policy change.
+
+
+## In-flight — GBP Asia range sweep
+
+Branch: `feature/gbp-asia-range-sweep`.
+
+- new mechanism `asia_range_sweep_reversal`;
+- shared causal geometry for historical replay and runtime scanning;
+- runtime scope restricted to GBPUSD;
+- registry slug: `asia_range_sweep`;
+- frozen-cost replay reproduced: train 19 / +0.078R / PF 1.15, validation
+  2 / +1.017R / PF 99, holdout 0;
+- historical admission remains SHADOW;
+- `paper_collection_candidate=true` under the existing train+validation-positive
+  collection rule;
+- no DEMO authority, risk, lot, spread, macro or capital-policy change.

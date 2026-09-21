@@ -16,6 +16,7 @@ class OpportunityMechanism(StrEnum):
     FAILED_AUCTION_REVERSAL = "failed_auction_reversal"
     DIRECTIONAL_TRANSITION = "directional_transition"
     DIRECTIONAL_PULLBACK_RESUMPTION = "directional_pullback_resumption"
+    ASIA_RANGE_SWEEP_REVERSAL = "asia_range_sweep_reversal"
 
 
 def all_mechanisms() -> list[OpportunityMechanism]:

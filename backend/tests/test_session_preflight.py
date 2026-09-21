@@ -1,4 +1,5 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -10,8 +11,11 @@ from app.domain.portfolio import (
     PortfolioRiskSnapshot,
     TradingOverview,
 )
-from app.domain.session import ShadowWorkerHeartbeat
-from app.services.session_preflight import build_session_preflight
+from app.domain.session import SessionRuntimeState, ShadowWorkerHeartbeat
+from app.services.session_preflight import (
+    build_session_preflight,
+    save_session_runtime_state,
+)
 
 TZ = ZoneInfo("Europe/Athens")
 NOW = datetime(2026, 9, 19, 17, 30, tzinfo=TZ)
@@ -359,3 +363,15 @@ def test_preflight_degrades_when_live_quote_outlives_stalled_m5(
     assert stalled.assets[0].state == "m5_stalled"
     assert stalled.degraded_symbols == ["EURUSD"]
     assert stalled.timeline[0].m5_stalled_at == stalled_now
+
+
+def test_session_state_save_is_safe_under_concurrent_requests(tmp_path: Path) -> None:
+    path = tmp_path / "session_state.json"
+
+    def save(_: int) -> None:
+        save_session_runtime_state(path, SessionRuntimeState())
+
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        list(pool.map(save, range(100)))
+
+    assert json.loads(path.read_text(encoding="utf-8")) == {"symbols": {}}

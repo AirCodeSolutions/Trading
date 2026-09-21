@@ -160,6 +160,7 @@ def mt4_market_universe() -> list[MarketUniverseAsset]:
     return build_market_universe(
         _mt4_files_dir(),
         datetime.now(tz=_server_timezone()),
+        symbols=settings.session_watch_symbols,
     )
 
 
@@ -171,6 +172,7 @@ def mt4_live_market_quotes() -> list[LiveMarketQuote]:
     return read_live_market_quotes(
         _mt4_files_dir(),
         datetime.now(tz=_server_timezone()),
+        symbols=settings.session_watch_symbols,
     )
 
 

@@ -13,16 +13,21 @@ from app.services.mt4_specs import list_mt4_symbol_specs
 def build_market_universe(
     files_dir: Path,
     now: datetime,
+    symbols: tuple[str, ...] | None = None,
 ) -> list[MarketUniverseAsset]:
     specs = list_mt4_symbol_specs(files_dir)
     quotes = {
         quote.symbol: quote
-        for quote in read_live_market_quotes(files_dir, now)
+        for quote in read_live_market_quotes(files_dir, now, symbols=symbols)
     }
-    symbols = _discover_symbols(files_dir) | set(specs) | set(quotes)
+    requested_symbols = (
+        _discover_symbols(files_dir) | set(specs) | set(quotes)
+        if symbols is None
+        else {symbol.upper() for symbol in symbols}
+    )
     assets: list[MarketUniverseAsset] = []
 
-    for symbol in sorted(symbols):
+    for symbol in sorted(requested_symbols):
         quote = quotes.get(symbol)
         m5_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M5)
         m15_path = resolve_mt4_history_path(files_dir, symbol, Timeframe.M15)

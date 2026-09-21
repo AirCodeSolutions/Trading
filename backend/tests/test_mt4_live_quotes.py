@@ -108,3 +108,13 @@ def test_newest_quote_wins_between_json_and_multi_market_exporter(
 
     assert quote.bid == 81600
     assert quote.ask == 81624.5
+
+
+def test_live_quote_filter_excludes_out_of_scope_symbols(tmp_path: Path) -> None:
+    write_quote(tmp_path / "mt4_data_EURUSD.json", 1789838948, "EURUSD")
+    write_quote(tmp_path / "mt4_data_US500Cash.json", 1789838948, "US500Cash")
+    now = datetime(2026, 9, 19, 17, 30, 0, tzinfo=TZ)
+
+    quotes = read_live_market_quotes(tmp_path, now, symbols=("EURUSD",))
+
+    assert [quote.symbol for quote in quotes] == ["EURUSD"]

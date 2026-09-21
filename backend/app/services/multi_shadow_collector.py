@@ -34,7 +34,11 @@ def collect_all_shadow_once(
     admissions = load_research_admissions(runtime_dir / "strategy_admissions.json")
     assets = [
         asset
-        for asset in build_market_universe(files_dir, evaluated_at)
+        for asset in build_market_universe(
+            files_dir,
+            evaluated_at,
+            symbols=settings.session_watch_symbols,
+        )
         if asset.paper_ready and asset.quote_live
     ]
 

@@ -89,9 +89,22 @@ Scope:
 
 ## PR #30 — five-market exporter scope
 
-Status: **OPEN / scope cleanup**.
+Status: **MERGED + DEPLOYED**.
 
 - MT4 exporter defaults restricted to BTCUSD, EURUSD, GBPUSD, XAUUSD, XAGUSD;
 - abandoned index/volatility aliases removed from source;
 - backend and exporter scope locked by automated tests;
 - no trading/risk behavior change.
+
+
+## PR #31 — positive-SHADOW paper focus
+
+Status: **OPEN / prospective evidence policy**.
+
+- all SHADOW scanners continue to run;
+- blocked probes and diagnostics remain unchanged;
+- new PAPER entries require either ACTIVE admission or SHADOW admission with
+  positive weakest independent expectancy;
+- historically negative SHADOW mechanisms no longer start fresh paper trades;
+- existing open paper trades are allowed to finish normally;
+- risk, lot, stop, target and broker execution guards are unchanged.

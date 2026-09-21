@@ -1,11 +1,351 @@
 [
   {
+    "event_id": "bls-nfp-2026-03-06",
+    "name": "US Employment Situation (NFP)",
+    "start_at": "2026-03-06T08:30:00-05:00",
+    "end_at": "2026-03-06T08:30:00-05:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BLS release calendar"
+  },
+  {
+    "event_id": "bls-cpi-2026-03-11",
+    "name": "US Consumer Price Index",
+    "start_at": "2026-03-11T08:30:00-04:00",
+    "end_at": "2026-03-11T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BLS release calendar"
+  },
+  {
+    "event_id": "bea-gdp-pce-2026-03-13",
+    "name": "US GDP Second Estimate + PCE",
+    "start_at": "2026-03-13T08:30:00-04:00",
+    "end_at": "2026-03-13T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BEA release schedule"
+  },
+  {
+    "event_id": "fomc-2026-03-18",
+    "name": "FOMC decision-day safety window",
+    "start_at": "2026-03-18T12:00:00-04:00",
+    "end_at": "2026-03-18T16:00:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 0,
+    "post_block_minutes": 30,
+    "source": "Federal Reserve FOMC meeting calendar; operational blackout window"
+  },
+  {
+    "event_id": "bls-nfp-2026-04-03",
+    "name": "US Employment Situation (NFP)",
+    "start_at": "2026-04-03T08:30:00-04:00",
+    "end_at": "2026-04-03T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BLS release calendar"
+  },
+  {
+    "event_id": "bea-gdp-pce-2026-04-09",
+    "name": "US GDP Third Estimate + PCE",
+    "start_at": "2026-04-09T08:30:00-04:00",
+    "end_at": "2026-04-09T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BEA release schedule"
+  },
+  {
+    "event_id": "bls-cpi-2026-04-10",
+    "name": "US Consumer Price Index",
+    "start_at": "2026-04-10T08:30:00-04:00",
+    "end_at": "2026-04-10T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BLS release calendar"
+  },
+  {
+    "event_id": "fomc-2026-04-29",
+    "name": "FOMC decision-day safety window",
+    "start_at": "2026-04-29T12:00:00-04:00",
+    "end_at": "2026-04-29T16:00:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 0,
+    "post_block_minutes": 30,
+    "source": "Federal Reserve FOMC meeting calendar; operational blackout window"
+  },
+  {
+    "event_id": "bea-gdp-pce-2026-04-30",
+    "name": "US GDP Advance + PCE",
+    "start_at": "2026-04-30T08:30:00-04:00",
+    "end_at": "2026-04-30T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BEA release schedule"
+  },
+  {
+    "event_id": "bls-nfp-2026-05-08",
+    "name": "US Employment Situation (NFP)",
+    "start_at": "2026-05-08T08:30:00-04:00",
+    "end_at": "2026-05-08T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BLS release calendar"
+  },
+  {
+    "event_id": "bls-cpi-2026-05-12",
+    "name": "US Consumer Price Index",
+    "start_at": "2026-05-12T08:30:00-04:00",
+    "end_at": "2026-05-12T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BLS release calendar"
+  },
+  {
+    "event_id": "bea-gdp-pce-2026-05-28",
+    "name": "US GDP Second Estimate + PCE",
+    "start_at": "2026-05-28T08:30:00-04:00",
+    "end_at": "2026-05-28T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BEA release schedule"
+  },
+  {
+    "event_id": "bls-nfp-2026-06-05",
+    "name": "US Employment Situation (NFP)",
+    "start_at": "2026-06-05T08:30:00-04:00",
+    "end_at": "2026-06-05T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BLS release calendar"
+  },
+  {
+    "event_id": "bls-cpi-2026-06-10",
+    "name": "US Consumer Price Index",
+    "start_at": "2026-06-10T08:30:00-04:00",
+    "end_at": "2026-06-10T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BLS release calendar"
+  },
+  {
+    "event_id": "fomc-2026-06-17",
+    "name": "FOMC decision-day safety window",
+    "start_at": "2026-06-17T12:00:00-04:00",
+    "end_at": "2026-06-17T16:00:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 0,
+    "post_block_minutes": 30,
+    "source": "Federal Reserve FOMC meeting calendar; operational blackout window"
+  },
+  {
+    "event_id": "bea-gdp-pce-2026-06-25",
+    "name": "US GDP Third Estimate + PCE",
+    "start_at": "2026-06-25T08:30:00-04:00",
+    "end_at": "2026-06-25T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BEA release schedule"
+  },
+  {
+    "event_id": "bls-nfp-2026-07-02",
+    "name": "US Employment Situation (NFP)",
+    "start_at": "2026-07-02T08:30:00-04:00",
+    "end_at": "2026-07-02T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BLS release calendar"
+  },
+  {
+    "event_id": "bls-cpi-2026-07-14",
+    "name": "US Consumer Price Index",
+    "start_at": "2026-07-14T08:30:00-04:00",
+    "end_at": "2026-07-14T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BLS release calendar"
+  },
+  {
+    "event_id": "fomc-2026-07-29",
+    "name": "FOMC decision-day safety window",
+    "start_at": "2026-07-29T12:00:00-04:00",
+    "end_at": "2026-07-29T16:00:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 0,
+    "post_block_minutes": 30,
+    "source": "Federal Reserve FOMC meeting calendar; operational blackout window"
+  },
+  {
+    "event_id": "bea-gdp-pce-2026-07-30",
+    "name": "US GDP Advance + PCE",
+    "start_at": "2026-07-30T08:30:00-04:00",
+    "end_at": "2026-07-30T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BEA release schedule"
+  },
+  {
+    "event_id": "bls-nfp-2026-08-07",
+    "name": "US Employment Situation (NFP)",
+    "start_at": "2026-08-07T08:30:00-04:00",
+    "end_at": "2026-08-07T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BLS release calendar"
+  },
+  {
+    "event_id": "bls-cpi-2026-08-12",
+    "name": "US Consumer Price Index",
+    "start_at": "2026-08-12T08:30:00-04:00",
+    "end_at": "2026-08-12T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BLS release calendar"
+  },
+  {
+    "event_id": "bea-gdp-pce-2026-08-26",
+    "name": "US GDP Second Estimate + PCE",
+    "start_at": "2026-08-26T08:30:00-04:00",
+    "end_at": "2026-08-26T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BEA release schedule"
+  },
+  {
+    "event_id": "bls-nfp-2026-09-04",
+    "name": "US Employment Situation (NFP)",
+    "start_at": "2026-09-04T08:30:00-04:00",
+    "end_at": "2026-09-04T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BLS release calendar"
+  },
+  {
+    "event_id": "bls-cpi-2026-09-11",
+    "name": "US Consumer Price Index",
+    "start_at": "2026-09-11T08:30:00-04:00",
+    "end_at": "2026-09-11T08:30:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 30,
+    "post_block_minutes": 45,
+    "source": "BLS release calendar"
+  },
+  {
+    "event_id": "fomc-2026-09-16",
+    "name": "FOMC decision-day safety window",
+    "start_at": "2026-09-16T12:00:00-04:00",
+    "end_at": "2026-09-16T16:00:00-04:00",
+    "impact": "high",
+    "currencies": [
+      "USD"
+    ],
+    "pre_block_minutes": 0,
+    "post_block_minutes": 30,
+    "source": "Federal Reserve FOMC meeting calendar; operational blackout window"
+  },
+  {
     "event_id": "bea-pce-gdp-2026-09-30",
     "name": "US GDP Third Estimate + PCE",
     "start_at": "2026-09-30T08:30:00-04:00",
     "end_at": "2026-09-30T08:30:00-04:00",
     "impact": "high",
-    "currencies": ["USD"],
+    "currencies": [
+      "USD"
+    ],
     "pre_block_minutes": 30,
     "post_block_minutes": 45,
     "source": "BEA release schedule"
@@ -16,7 +356,9 @@
     "start_at": "2026-10-02T08:30:00-04:00",
     "end_at": "2026-10-02T08:30:00-04:00",
     "impact": "high",
-    "currencies": ["USD"],
+    "currencies": [
+      "USD"
+    ],
     "pre_block_minutes": 30,
     "post_block_minutes": 45,
     "source": "BLS release calendar"
@@ -27,7 +369,9 @@
     "start_at": "2026-10-14T08:30:00-04:00",
     "end_at": "2026-10-14T08:30:00-04:00",
     "impact": "high",
-    "currencies": ["USD"],
+    "currencies": [
+      "USD"
+    ],
     "pre_block_minutes": 30,
     "post_block_minutes": 45,
     "source": "BLS release calendar"
@@ -38,7 +382,9 @@
     "start_at": "2026-10-28T12:00:00-04:00",
     "end_at": "2026-10-28T16:00:00-04:00",
     "impact": "high",
-    "currencies": ["USD"],
+    "currencies": [
+      "USD"
+    ],
     "pre_block_minutes": 0,
     "post_block_minutes": 30,
     "source": "Federal Reserve FOMC meeting calendar; operational blackout window"
@@ -49,7 +395,9 @@
     "start_at": "2026-10-29T08:30:00-04:00",
     "end_at": "2026-10-29T08:30:00-04:00",
     "impact": "high",
-    "currencies": ["USD"],
+    "currencies": [
+      "USD"
+    ],
     "pre_block_minutes": 30,
     "post_block_minutes": 45,
     "source": "BEA release schedule"
@@ -60,7 +408,9 @@
     "start_at": "2026-11-06T08:30:00-05:00",
     "end_at": "2026-11-06T08:30:00-05:00",
     "impact": "high",
-    "currencies": ["USD"],
+    "currencies": [
+      "USD"
+    ],
     "pre_block_minutes": 30,
     "post_block_minutes": 45,
     "source": "BLS release calendar"
@@ -71,7 +421,9 @@
     "start_at": "2026-11-10T08:30:00-05:00",
     "end_at": "2026-11-10T08:30:00-05:00",
     "impact": "high",
-    "currencies": ["USD"],
+    "currencies": [
+      "USD"
+    ],
     "pre_block_minutes": 30,
     "post_block_minutes": 45,
     "source": "BLS release calendar"
@@ -82,7 +434,9 @@
     "start_at": "2026-11-25T08:30:00-05:00",
     "end_at": "2026-11-25T08:30:00-05:00",
     "impact": "high",
-    "currencies": ["USD"],
+    "currencies": [
+      "USD"
+    ],
     "pre_block_minutes": 30,
     "post_block_minutes": 45,
     "source": "BEA release schedule"
@@ -93,7 +447,9 @@
     "start_at": "2026-12-04T08:30:00-05:00",
     "end_at": "2026-12-04T08:30:00-05:00",
     "impact": "high",
-    "currencies": ["USD"],
+    "currencies": [
+      "USD"
+    ],
     "pre_block_minutes": 30,
     "post_block_minutes": 45,
     "source": "BLS release calendar"
@@ -104,7 +460,9 @@
     "start_at": "2026-12-09T12:00:00-05:00",
     "end_at": "2026-12-09T16:00:00-05:00",
     "impact": "high",
-    "currencies": ["USD"],
+    "currencies": [
+      "USD"
+    ],
     "pre_block_minutes": 0,
     "post_block_minutes": 30,
     "source": "Federal Reserve FOMC meeting calendar; operational blackout window"
@@ -115,7 +473,9 @@
     "start_at": "2026-12-23T08:30:00-05:00",
     "end_at": "2026-12-23T08:30:00-05:00",
     "impact": "high",
-    "currencies": ["USD"],
+    "currencies": [
+      "USD"
+    ],
     "pre_block_minutes": 30,
     "post_block_minutes": 45,
     "source": "BEA release schedule"

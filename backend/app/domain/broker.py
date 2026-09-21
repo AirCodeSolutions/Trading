@@ -58,6 +58,9 @@ class MarketQualityResult(BaseModel):
     spread_atr_m5: float
     spread_atr_m15: float
     min_lot_loss_atr_m15_eur: float
+    required_capital_base_risk_eur: float = Field(default=0.0, ge=0)
+    required_capital_max_risk_eur: float = Field(default=0.0, ge=0)
+    minimum_feasible_risk_fraction: float = Field(default=0.0, ge=0)
     default_risk_feasible: bool
     absolute_risk_feasible: bool
     execution_quality_score: float = Field(ge=0, le=100)

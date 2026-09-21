@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 
@@ -40,6 +41,9 @@ class Settings(BaseSettings):
     )
 
     macro_events_path: Path = Path("config/macro_events_2026.json")
+    paper_evidence_cutover_at: datetime = datetime.fromisoformat(
+        "2026-09-20T12:53:56+03:00"
+    )
 
     demo_execution_bridge_enabled: bool = False
     demo_magic_number: int = 560619

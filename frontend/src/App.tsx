@@ -228,6 +228,38 @@ type SessionPreflight = {
   reason: string;
 };
 
+type BlockedProbe = {
+  probe_id: string;
+  symbol: string;
+  mechanism: string;
+  side: "buy" | "sell";
+  signal_at: string;
+  entry_price: number;
+  stop_price: number;
+  target_price: number;
+  block_reason: string;
+  max_risk_approved: boolean;
+  max_risk_reason: string | null;
+  status: "open" | "stop" | "target" | "timeout";
+  result_r: number | null;
+};
+
+type BlockedProbeRuntime = {
+  strategy_id: string;
+  symbol: string;
+  mechanism: string;
+  summary: {
+    closed_probes: number;
+    wins: number;
+    losses: number;
+    total_r: number;
+    expectancy_r: number;
+    profit_factor: number;
+    open_probe: BlockedProbe | null;
+    recent_probes: BlockedProbe[];
+  };
+};
+
 type MarketQuote = {
   symbol: string;
   as_of: string;
@@ -350,6 +382,7 @@ export default function App() {
   const [config, setConfig] = useState<RuntimeConfig | null>(null);
   const [shadow, setShadow] = useState<ShadowDiagnostic | null>(null);
   const [opportunities, setOpportunities] = useState<ShadowDiagnostic[]>([]);
+  const [blockedProbes, setBlockedProbes] = useState<BlockedProbeRuntime[]>([]);
   const [paper, setPaper] = useState<PaperSummary | null>(null);
   const [quotes, setQuotes] = useState<MarketQuote[]>([]);
   const [universe, setUniverse] = useState<MarketUniverseAsset[]>([]);
@@ -376,7 +409,8 @@ export default function App() {
           macroResponse,
           demoResponse,
           preflightResponse,
-          opportunitiesResponse
+          opportunitiesResponse,
+          blockedProbesResponse
         ] = await Promise.all([
           fetch("/api/v1/health"),
           fetch("/api/v1/config"),
@@ -388,7 +422,8 @@ export default function App() {
           fetch("/api/v1/macro/status"),
           fetch("/api/v1/execution/demo/status"),
           fetch("/api/v1/session/preflight"),
-          fetch("/api/v1/shadow/overview")
+          fetch("/api/v1/shadow/overview"),
+          fetch("/api/v1/shadow/blocked-probes")
         ]);
         if (!healthResponse.ok || !configResponse.ok) {
           throw new Error("backend unavailable");
@@ -409,6 +444,9 @@ export default function App() {
         const opportunitiesPayload = opportunitiesResponse.ok
           ? await opportunitiesResponse.json()
           : [];
+        const blockedProbesPayload = blockedProbesResponse.ok
+          ? await blockedProbesResponse.json()
+          : [];
 
         if (!active) return;
         setStatus(health.status === "ok" ? "Opérationnel" : "Dégradé");
@@ -422,6 +460,7 @@ export default function App() {
         setDemo(demoPayload);
         setPreflight(preflightPayload);
         setOpportunities(opportunitiesPayload);
+        setBlockedProbes(blockedProbesPayload);
       } catch {
         if (active) setStatus("Backend indisponible");
       }
@@ -839,6 +878,64 @@ export default function App() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="blocked-probe-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">BLOCKED OPPORTUNITY PROBES</p>
+            <h2>Edge bloqué ≠ edge perdu</h2>
+          </div>
+          <p>
+            Suivi théorique en R des setups refusés par le sizing ou les coûts.
+            Aucun lot ni ordre broker n’est créé.
+          </p>
+        </div>
+
+        {blockedProbes.filter(
+          (row) => row.summary.open_probe || row.summary.closed_probes > 0
+        ).length ? (
+          <div className="probe-table">
+            <div className="probe-row probe-head">
+              <span>Stratégie</span>
+              <span>Probes</span>
+              <span>Expectancy</span>
+              <span>PF</span>
+              <span>Ouvert</span>
+              <span>Viable 2 %</span>
+              <span>Blocage</span>
+            </div>
+            {blockedProbes
+              .filter(
+                (row) => row.summary.open_probe || row.summary.closed_probes > 0
+              )
+              .map((row) => {
+                const latest =
+                  row.summary.open_probe ?? row.summary.recent_probes[0] ?? null;
+                return (
+                  <div className="probe-row" key={row.strategy_id}>
+                    <strong>{row.symbol} · {row.mechanism.replaceAll("_", " ")}</strong>
+                    <span>{row.summary.closed_probes}</span>
+                    <span className={row.summary.expectancy_r >= 0 ? "positive-text" : "negative-text"}>
+                      {row.summary.closed_probes
+                        ? `${row.summary.expectancy_r >= 0 ? "+" : ""}${row.summary.expectancy_r.toFixed(2)} R`
+                        : "—"}
+                    </span>
+                    <span>{row.summary.closed_probes ? row.summary.profit_factor.toFixed(2) : "—"}</span>
+                    <span>{row.summary.open_probe ? row.summary.open_probe.side.toUpperCase() : "—"}</span>
+                    <span className={latest?.max_risk_approved ? "positive-text" : "negative-text"}>
+                      {latest ? (latest.max_risk_approved ? "OUI" : "NON") : "—"}
+                    </span>
+                    <span className="opportunity-reason">{latest?.block_reason ?? "—"}</span>
+                  </div>
+                );
+              })}
+          </div>
+        ) : (
+          <p className="paper-empty">
+            Aucun probe bloqué suivi depuis l’activation de cette télémétrie.
+          </p>
+        )}
       </section>
 
       <section className="shadow-panel">

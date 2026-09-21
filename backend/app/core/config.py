@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     paper_evidence_cutover_at: datetime = datetime.fromisoformat(
         "2026-09-20T12:53:56+03:00"
     )
+    research_holdout_end_at: datetime = datetime.fromisoformat(
+        "2026-09-20T12:53:56+03:00"
+    )
+    research_broker_specs_path: Path = Path(
+        "config/research_broker_specs_2026-09-21.json"
+    )
 
     demo_execution_bridge_enabled: bool = False
     demo_magic_number: int = 560619

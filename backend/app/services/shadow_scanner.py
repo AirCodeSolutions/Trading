@@ -223,7 +223,7 @@ def _directional_pullback_resumption_signal(
     if (
         len(bars) < 3
         or regime.regime != MarketRegime.DIRECTIONAL
-        or regime.direction == 0
+        or regime.direction <= 0
     ):
         return None
 
@@ -235,7 +235,7 @@ def _directional_pullback_resumption_signal(
     first_pullback = bars[index - 2]
     second_pullback = bars[index - 1]
     confirmation = bars[index]
-    side = Side.BUY if regime.direction > 0 else Side.SELL
+    side = Side.BUY
     bar_range = confirmation.high - confirmation.low
     close_location = (
         (confirmation.close - confirmation.low) / bar_range
@@ -243,26 +243,15 @@ def _directional_pullback_resumption_signal(
         else None
     )
 
-    if side == Side.BUY:
-        if not (
-            first_pullback.close < first_pullback.open
-            and second_pullback.close < second_pullback.open
-            and confirmation.close > confirmation.open
-            and confirmation.close > second_pullback.high
-        ):
-            return None
-        swing = min(first_pullback.low, second_pullback.low)
-        raw_stop = swing - 0.10 * value
-    else:
-        if not (
-            first_pullback.close > first_pullback.open
-            and second_pullback.close > second_pullback.open
-            and confirmation.close < confirmation.open
-            and confirmation.close < second_pullback.low
-        ):
-            return None
-        swing = max(first_pullback.high, second_pullback.high)
-        raw_stop = swing + 0.10 * value
+    if not (
+        first_pullback.close < first_pullback.open
+        and second_pullback.close < second_pullback.open
+        and confirmation.close > confirmation.open
+        and confirmation.close > second_pullback.high
+    ):
+        return None
+    swing = min(first_pullback.low, second_pullback.low)
+    raw_stop = swing - 0.10 * value
 
     if raw_stop <= 0:
         return None

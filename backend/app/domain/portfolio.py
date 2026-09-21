@@ -74,6 +74,9 @@ class PortfolioRiskSnapshot(BaseModel):
     reference_capital_eur: float = Field(gt=0)
     research_paper_closed_pnl_eur: float
     research_paper_total_r: float
+    research_paper_legacy_closed_pnl_eur: float = 0.0
+    research_paper_legacy_total_r: float = 0.0
+    research_paper_legacy_trades: int = Field(default=0, ge=0)
     research_paper_open_risk_eur: float = Field(ge=0)
     research_paper_open_positions: int = Field(ge=0)
     selected_daily_pnl_eur: float

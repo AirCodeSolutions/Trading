@@ -795,3 +795,27 @@ Key result:
 No runtime scanner, strategy, risk or bridge behavior changes.
 
 Validation: 191 backend tests passed; Ruff clean; frontend TypeScript/Vite build passed.
+
+
+## In-flight — Causal × Economic Candidate Matrix
+
+Branch: `research/causal-economic-candidate-matrix`.
+
+Research-only additions:
+
+- typed causal/economic matrix report;
+- deterministic directional-consistency states;
+- exact reuse of PR #68 causal split statistics;
+- exact reuse of PR #69 economic sizing/stop profiles;
+- CLI `scripts/analyze_causal_economic_matrix.py`;
+- dedicated test.
+
+First result:
+
+- 35 asset/pattern cells analyzed;
+- no ALIGNED_STABLE cell;
+- 9 economically feasible OPPOSED_STABLE cells across BTC/EUR/GBP/XAU;
+- XAG OPPOSED_STABLE cells remain unusable because the asset-level feasible stop
+  interval is empty at 400 EUR.
+
+No runtime or dashboard change in this branch.

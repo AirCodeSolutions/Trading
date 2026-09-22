@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed code commit: `b07ee23` (PR #58).
+Current deployed code commit: `99e2d30` (PR #60).
 
 Operational services:
 
@@ -679,9 +679,9 @@ No real or DEMO order was sent by this validation.
 The manual panel is therefore deployed and ready for operator use in broker DEMO.
 
 
-## Trading Intelligence v1 — 8-step development in flight
+## Trading Intelligence v1 — 8 steps deployed
 
-Branch: `feat/trading-intelligence-v1`.
+Status: **MERGED + DEPLOYED** through PR #60 at `99e2d30`.
 
 The four currently DEMO-collectable mechanisms remain frozen. This work is
 observability/research infrastructure and does not change entries, stops,
@@ -717,12 +717,12 @@ The eight requested steps are implemented as follows:
 Real read-only development checkpoint over the latest 24 h:
 
 - market-first opportunities: **113**;
-- captured by any same-direction SHADOW signal within ±3 M5 of episode birth: **12**;
-- fully missed: **101**;
+- captured by any same-direction SHADOW signal within ±3 M5 of episode birth: **15**;
+- fully missed: **98**;
 - BTCUSD: 23 opportunities, 1 captured, 22 missed (4.3%);
 - EURUSD: 23 / 3 / 20 (13.0%);
-- GBPUSD: 23 / 2 / 21 (8.7%);
-- XAUUSD: 22 / 3 / 19 (13.6%);
+- GBPUSD: 23 / 3 / 20 (13.0%);
+- XAUUSD: 22 / 5 / 17 (22.7%);
 - XAGUSD: 22 / 3 / 19 (13.6%).
 
 The market-first denominator is retrospective research telemetry, not a trading
@@ -736,3 +736,28 @@ Known limitation: the current Trading-New bridge exports open-position PnL but
 does not provide reliable realized PnL for closed bridge tickets. The daily
 report therefore exposes broker realized PnL as `UNKNOWN` rather than
 fabricating it.
+
+
+### Runtime proof after PR #60 deployment
+
+- deployed code SHA: `99e2d30`;
+- session preflight: **READY**, 5/5 retained symbols;
+- SHADOW worker heartbeat: **OK**, 22 scanners, no worker error;
+- execution mode: DEMO; collection ON; bridge ON; LIVE OFF;
+- 0 PAPER open, 0 Trading-New bridge position, 0 pending broker command at the
+  verification checkpoint;
+- 4 PAPER-eligible / DEMO-collectable strategies remain unchanged:
+  BTCUSD break/retest, GBPUSD Asia sweep, GBPUSD directional pullback and
+  XAUUSD break/retest;
+- intelligence/reporting endpoints return HTTP 200;
+- qualification history is persisted and all current prospective rows remain
+  COLLECTING; no strategy is currently degraded;
+- execution-quality audit currently reports 0 commands / 0 fills because no
+  post-PR60 DEMO command has yet been emitted;
+- latest 24 h intelligence snapshot: 113 market-first episodes, 15 matched by
+  SHADOW signals and 98 missed;
+- full backend suite: 177 passed; Ruff clean; frontend build clean.
+
+The intelligence layer is observability/research infrastructure. The market-first
+episodes are retrospective coverage telemetry and must not be interpreted as
+98 immediately tradable profitable setups.

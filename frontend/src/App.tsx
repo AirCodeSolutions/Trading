@@ -533,6 +533,8 @@ type EconomicFeasibilityReport = {
   }[];
 };
 
+type DashboardView = "overview" | "trading" | "markets" | "research";
+
 type DailyTradingReport = {
   report_date: string;
   generated_at: string;
@@ -727,6 +729,7 @@ export default function App() {
   const [demo, setDemo] = useState<DemoExecutionStatus | null>(null);
   const [preflight, setPreflight] = useState<SessionPreflight | null>(null);
   const [status, setStatus] = useState("Connexion au backend…");
+  const [activeView, setActiveView] = useState<DashboardView>("overview");
   const [manualSymbol, setManualSymbol] = useState("BTCUSD");
   const [manualSide, setManualSide] = useState<"buy" | "sell">("buy");
   const [manualStop, setManualStop] = useState("");
@@ -951,6 +954,17 @@ export default function App() {
     .filter((episode) => episode.capture_state === "missed")
     .sort((left, right) => right.move_atr - left.move_atr)
     .slice(0, 12);
+  const executableOpportunities = opportunities.filter(
+    (item) => item.state === "signal_executable"
+  ).length;
+  const tradingNewPositions = demo?.bridge_positions.length ?? 0;
+  const paperPnlToday = dailyReport?.paper_closed_pnl_eur_today ?? 0;
+  const systemReady = preflight?.status === "ready";
+  const autoDemoState = tradingNewPositions
+    ? "POSITION OUVERTE"
+    : demoTransportArmed
+      ? "ARMÉ · EN ATTENTE"
+      : "DÉSARMÉ";
 
   const refreshExecutionState = async () => {
     const [overviewResponse, demoResponse, preflightResponse] = await Promise.all([
@@ -1080,16 +1094,103 @@ export default function App() {
 
   return (
     <main className="shell">
-      <header>
-        <p className="eyebrow">M5 / M15 · MT4 · REGIME-FIRST</p>
-        <h1>Trading Control Center</h1>
-        <p className="subtitle">
-          Marché réel MT4, détection de régime et collecte SHADOW dans une vue unique.
-          Le live trading reste verrouillé tant qu’aucune stratégie n’est qualifiée.
-        </p>
+      <header className="dashboard-header">
+        <div>
+          <p className="eyebrow">TRADING-NEW · MT4 · M5 / M15</p>
+          <h1>Trading Control Center</h1>
+          <p className="subtitle">
+            Pilotage quotidien en premier. Les détails marchés et recherche restent accessibles
+            sans encombrer la vue principale.
+          </p>
+        </div>
+        <div className={systemReady ? "system-pill system-pill-ready" : "system-pill system-pill-warning"}>
+          <span className="system-dot" />
+          <div>
+            <small>SYSTÈME</small>
+            <strong>{systemReady ? "READY" : status.toUpperCase()}</strong>
+          </div>
+        </div>
       </header>
 
-      <section className={`preflight-panel preflight-${preflight?.status ?? "unknown"}`}>
+      <section className="command-center">
+        <div className="command-center-heading">
+          <div>
+            <span className="label">SITUATION EN UN COUP D’ŒIL</span>
+            <strong>{automaticTradingLabel}</strong>
+          </div>
+          <span className={demoTransportArmed ? "command-status command-status-ready" : "command-status"}>
+            {overview?.broker?.is_demo ? "BROKER DEMO" : "BROKER —"}
+          </span>
+        </div>
+        <div className="command-center-grid">
+          <article>
+            <span>Système</span>
+            <strong className={systemReady ? "positive-text" : "negative-text"}>
+              {systemReady ? "5/5 READY" : preflight?.status.replaceAll("_", " ").toUpperCase() ?? "—"}
+            </strong>
+            <small>Worker {preflight?.worker_ok ? "OK" : "KO"}</small>
+          </article>
+          <article>
+            <span>Auto DEMO</span>
+            <strong className={demoTransportArmed ? "positive-text" : ""}>{autoDemoState}</strong>
+            <small>LIVE {config?.live_trading_enabled ? "ON" : "OFF"}</small>
+          </article>
+          <article>
+            <span>Positions Trading-New</span>
+            <strong>{tradingNewPositions}</strong>
+            <small>{demo?.pending_command || demo?.pending_close_command ? "commande en attente" : "aucune commande"}</small>
+          </article>
+          <article>
+            <span>PnL PAPER aujourd’hui</span>
+            <strong className={paperPnlToday >= 0 ? "positive-text" : "negative-text"}>
+              {dailyReport ? `${paperPnlToday >= 0 ? "+" : ""}${paperPnlToday.toFixed(2)} €` : "—"}
+            </strong>
+            <small>{dailyReport ? `${dailyReport.paper_closed_r_today >= 0 ? "+" : ""}${dailyReport.paper_closed_r_today.toFixed(2)} R` : "—"}</small>
+          </article>
+          <article>
+            <span>Opportunités exécutables</span>
+            <strong>{executableOpportunities}</strong>
+            <small>{opportunities.length} scanners</small>
+          </article>
+          <article>
+            <span>Macro</span>
+            <strong className={macro?.blocked ? "negative-text" : "positive-text"}>
+              {macro ? (macro.blocked ? "BLOCKED" : "CLEAR") : "—"}
+            </strong>
+            <small>{macro?.next_event?.name ?? "aucun événement chargé"}</small>
+          </article>
+          <article>
+            <span>Preuve prospective</span>
+            <strong>{prospectiveProgress}/{prospectiveTarget}</strong>
+            <small>{paperCandidates.length} stratégie(s) PAPER-éligible(s)</small>
+          </article>
+        </div>
+      </section>
+
+      <nav className="dashboard-nav" aria-label="Navigation du dashboard">
+        {([
+          ["overview", "Vue d’ensemble", "Pilotage"],
+          ["trading", "Trading", "Exécution"],
+          ["markets", "Marchés", "Prix & coûts"],
+          ["research", "Recherche", "Evidence"]
+        ] as [DashboardView, string, string][]).map(([view, label, hint]) => (
+          <button
+            key={view}
+            type="button"
+            className={activeView === view ? "dashboard-nav-button active" : "dashboard-nav-button"}
+            aria-pressed={activeView === view}
+            onClick={() => setActiveView(view)}
+          >
+            <strong>{label}</strong>
+            <span>{hint}</span>
+          </button>
+        ))}
+      </nav>
+
+      <section
+        hidden={activeView !== "overview"}
+        className={`preflight-panel preflight-${preflight?.status ?? "unknown"}`}
+      >
         <div className="shadow-heading">
           <div>
             <p className="eyebrow">SESSION PREFLIGHT · REPRISE AUTOMATIQUE</p>
@@ -1139,32 +1240,35 @@ export default function App() {
         </p>
 
         {preflight?.timeline.length ? (
-          <div className="session-timeline">
-            <div className="timeline-row timeline-head">
-              <span>Actif</span>
-              <span>Quote LIVE</span>
-              <span>1re M5 fraîche</span>
-              <span>Dernière M5</span>
-              <span>READY</span>
-              <span>Stall</span>
-            </div>
-            {preflight.timeline.map((item) => (
-              <div className="timeline-row" key={item.symbol}>
-                <strong>{item.symbol}</strong>
-                <span>{item.quote_live_since ? new Date(item.quote_live_since).toLocaleTimeString("fr-FR") : "—"}</span>
-                <span>{item.first_fresh_m5_at ? new Date(item.first_fresh_m5_at).toLocaleTimeString("fr-FR") : "—"}</span>
-                <span>{item.last_closed_m5_at ? new Date(item.last_closed_m5_at).toLocaleTimeString("fr-FR") : "—"}</span>
-                <span>{item.ready_at ? new Date(item.ready_at).toLocaleTimeString("fr-FR") : "—"}</span>
-                <span className={item.m5_stalled_at ? "negative-text" : ""}>
-                  {item.m5_stalled_at ? new Date(item.m5_stalled_at).toLocaleTimeString("fr-FR") : "—"}
-                </span>
+          <details className="preflight-details">
+            <summary>Détails techniques par actif</summary>
+            <div className="session-timeline">
+              <div className="timeline-row timeline-head">
+                <span>Actif</span>
+                <span>Quote LIVE</span>
+                <span>1re M5 fraîche</span>
+                <span>Dernière M5</span>
+                <span>READY</span>
+                <span>Stall</span>
               </div>
-            ))}
-          </div>
+              {preflight.timeline.map((item) => (
+                <div className="timeline-row" key={item.symbol}>
+                  <strong>{item.symbol}</strong>
+                  <span>{item.quote_live_since ? new Date(item.quote_live_since).toLocaleTimeString("fr-FR") : "—"}</span>
+                  <span>{item.first_fresh_m5_at ? new Date(item.first_fresh_m5_at).toLocaleTimeString("fr-FR") : "—"}</span>
+                  <span>{item.last_closed_m5_at ? new Date(item.last_closed_m5_at).toLocaleTimeString("fr-FR") : "—"}</span>
+                  <span>{item.ready_at ? new Date(item.ready_at).toLocaleTimeString("fr-FR") : "—"}</span>
+                  <span className={item.m5_stalled_at ? "negative-text" : ""}>
+                    {item.m5_stalled_at ? new Date(item.m5_stalled_at).toLocaleTimeString("fr-FR") : "—"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </details>
         ) : null}
       </section>
 
-      <section className="grid">
+      <section className="grid legacy-summary-grid" hidden>
         <article className="card">
           <span className="label">Système</span>
           <strong>{status}</strong>
@@ -1216,7 +1320,7 @@ export default function App() {
       </section>
 
 
-      <section className="execution-panel">
+      <section className="execution-panel" hidden={activeView !== "trading"}>
         <div className="shadow-heading">
           <div>
             <p className="eyebrow">AUTOMATIC EXECUTION · ÉTAT BROKER</p>
@@ -1332,7 +1436,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="manual-trade-panel">
+      <section className="manual-trade-panel" hidden={activeView !== "trading"}>
         <div className="section-heading">
           <div>
             <p className="eyebrow">MANUAL DEMO TRADE</p>
@@ -1407,7 +1511,10 @@ export default function App() {
         <p className="manual-warning">DEMO uniquement. Le manuel est bloqué si un PAPER ou une position Trading-New est déjà ouvert. LIVE reste verrouillé.</p>
       </section>
 
-      <section className="trade-blotter-panel">
+      <section
+        className="trade-blotter-panel"
+        hidden={activeView !== "overview" && activeView !== "trading"}
+      >
         <div className="section-heading">
           <div>
             <p className="eyebrow">TRADE BLOTTER</p>
@@ -1465,7 +1572,7 @@ export default function App() {
         ) : null}
       </section>
 
-      <section className="intelligence-panel">
+      <section className="intelligence-panel" hidden={activeView !== "research"}>
         <div className="section-heading">
           <div>
             <p className="eyebrow">TRADING INTELLIGENCE · 8 CHANTIERS</p>
@@ -1782,7 +1889,7 @@ export default function App() {
         ) : null}
       </section>
 
-      <section className="strategy-map-panel">
+      <section className="strategy-map-panel" hidden={activeView !== "research"}>
         <div className="section-heading">
           <div>
             <p className="eyebrow">STRATEGY MAP · SPÉCIALISATION PAR ACTIF</p>
@@ -1838,7 +1945,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="gate-panel">
+      <section className="gate-panel" hidden={activeView !== "trading"}>
         <div className="shadow-heading">
           <div>
             <p className="eyebrow">ROAD TO BROKER DEMO · ÉTAT RÉEL</p>
@@ -1898,7 +2005,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="market-section">
+      <section className="market-section" hidden={activeView !== "markets"}>
         <div className="section-heading">
           <div>
             <p className="eyebrow">MARKET FEED · MT4</p>
@@ -1945,7 +2052,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="quality-panel">
+      <section className="quality-panel" hidden={activeView !== "markets"}>
         <div className="section-heading">
           <div>
             <p className="eyebrow">CAPITAL / EXECUTION FEASIBILITY · 1 ATR M15</p>
@@ -2000,7 +2107,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="portfolio-panel">
+      <section className="portfolio-panel" hidden={activeView !== "trading"}>
         <div className="shadow-heading">
           <div>
             <p className="eyebrow">
@@ -2106,7 +2213,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="gate-panel">
+      <section className="gate-panel" hidden={activeView !== "trading"}>
         <div className="shadow-heading">
           <div>
             <p className="eyebrow">MACRO + EXECUTION GATE</p>
@@ -2166,7 +2273,7 @@ export default function App() {
         ) : null}
       </section>
 
-      <section className="opportunity-panel">
+      <section className="opportunity-panel" hidden={activeView !== "trading"}>
         <div className="section-heading">
           <div>
             <p className="eyebrow">LIVE OPPORTUNITY BOARD</p>
@@ -2218,7 +2325,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="gate-panel">
+      <section className="gate-panel" hidden={activeView !== "research"}>
         <div className="section-heading">
           <div>
             <p className="eyebrow">OPPORTUNITY FUNNEL · 24 H · READ-ONLY</p>
@@ -2406,7 +2513,7 @@ export default function App() {
         ) : null}
       </section>
 
-      <section className="blocked-probe-panel">
+      <section className="blocked-probe-panel" hidden={activeView !== "research"}>
         <div className="section-heading">
           <div>
             <p className="eyebrow">BLOCKED OPPORTUNITY PROBES</p>
@@ -2492,7 +2599,7 @@ export default function App() {
         )}
       </section>
 
-      <section className="shadow-panel">
+      <section className="shadow-panel" hidden={activeView !== "research"}>
         <div className="shadow-heading">
           <div>
             <p className="eyebrow">BTCUSD · BREAK / RETEST · SHADOW</p>
@@ -2552,7 +2659,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="paper-panel">
+      <section className="paper-panel" hidden={activeView !== "research"}>
         <div className="shadow-heading">
           <div>
             <p className="eyebrow">PROSPECTIVE PAPER EVIDENCE · BTCUSD</p>
@@ -2661,7 +2768,7 @@ export default function App() {
         ) : null}
       </section>
 
-      <section className="panel">
+      <section className="panel" hidden={activeView !== "research"}>
         <div>
           <p className="eyebrow">STRATEGY ADMISSION</p>
           <h2>REJECTED → SHADOW → ACTIVE</h2>

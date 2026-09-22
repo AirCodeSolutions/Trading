@@ -73,13 +73,14 @@ Last updated: 2026-09-22.
 | #71 | `d4dac43` | Causal × Economic Candidate Matrix |
 | #72 | `9c2c80a` | Record matrix-guided reversal replays |
 | #73 | `cf05e90` | Dashboard Command Center UX |
+| #74 | `b5388e4` | Causal Sequence Research v1 |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current repository served: `cf05e90` through PR #73; frontend Command Center UX is active, while backend/worker trading decision and execution behavior remains unchanged from PR #69;
+- current repository served: `b5388e4` through PR #74; frontend Command Center UX is active, causal-sequence research is merged, while backend/worker trading decision and execution behavior remains unchanged from PR #69;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
@@ -873,9 +874,9 @@ changes.
 Validation: frontend TypeScript/Vite build passed; git diff check clean.
 
 
-## In-flight — Causal Sequence Research v1
+## PR #74 — Causal Sequence Research v1
 
-Branch: `research/causal-sequence-v1`.
+Status: **MERGED** at `b5388e4`.
 
 Research-only additions:
 
@@ -897,3 +898,22 @@ Research result so far:
 
 No runtime scanner, admission, risk, execution or dashboard behavior changes in
 this research branch.
+
+
+## Next chantier — Execution-Aware Sequence Research
+
+The next research step must use actual executable path geometry earlier in the
+discovery process instead of applying broker economics only after a sequence has
+been selected.
+
+Planned scope:
+
+- reuse causal three-M5 sequences from PR #74;
+- label every occurrence with first-touch outcomes derived from economically
+  feasible stop geometry by asset;
+- keep frozen spread, minimum lot, margin, macro and 400 EUR risk policy;
+- compare sequence success to the corresponding asset baseline in
+  train / validation / holdout;
+- replay only sequences that remain positive after this execution-aware screen;
+- do not add a runtime strategy without independent positive train,
+  validation and holdout evidence.

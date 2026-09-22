@@ -904,3 +904,22 @@ capital changes.
   BTC/EUR/GBP/XAU have a non-empty feasible stop interval;
   XAG has no feasible interval;
 - no strategy, admission, risk, stop, target or bridge rule changed.
+
+
+## Causal × Economic Candidate Matrix — current chantier
+
+Branch: `research/causal-economic-candidate-matrix`.
+
+The current research layer now intersects causal stability with executable
+broker/capital geometry before any new mechanism replay.
+
+The first pass finds no causal pattern that remains positively aligned with the
+future move across train / validation / holdout. Several patterns are instead
+consistently anti-aligned and economically feasible on BTC/EUR/GBP/XAU.
+
+This does not promote a reversal strategy automatically. It narrows the next
+research hypotheses to cells where both structural consistency and executable
+geometry exist. The next concrete replay target is GBPUSD
+`structural_extreme_stretch` as an opposite-side structural mean-reversion
+hypothesis, because that cell is stable across all three windows and was not
+already rejected by the earlier compression/displacement replays.

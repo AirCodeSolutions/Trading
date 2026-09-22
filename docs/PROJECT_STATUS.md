@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `d758112` (PR #54).
+Current deployed main commit: `0cd45a6` (PR #56).
 
 Operational services:
 
@@ -604,3 +604,15 @@ Runtime remains DEMO collection ON, bridge ON, LIVE OFF, with unchanged 1% base
 risk and 15% spread/stop ceiling.
 
 PR #55 was closed unmerged as an exact duplicate of already-merged PR #54.
+
+
+### Runtime proof after PR #56 deployment
+
+- pre-deploy safety check: 0 PAPER open, 0 Trading-New bridge position,
+  0 pending open/close command;
+- runtime SHA: `0cd45a6`;
+- session preflight: READY, 5/5 retained symbols;
+- DEMO mode, collection ON, bridge ON, LIVE OFF;
+- Portfolio Manager: `NO_TRADE`;
+- current reason: `4 PAPER-eligible SHADOW strategies are waiting for an executable PAPER trade`;
+- 0 bridge positions and 0 pending broker commands.

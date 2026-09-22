@@ -54,13 +54,15 @@ Last updated: 2026-09-22.
 | #52 | `6a7e8e6` | Collect every PAPER-eligible SHADOW strategy in isolated DEMO |
 | #53 | `c487190` | Record PR52 deployment |
 | #54 | `d758112` | Use freshest closed runtime bar source |
+| #55 | — | Closed unmerged as duplicate of #54 |
+| #56 | `0cd45a6` | Clarify Portfolio Manager waiting state |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current deployed main: `d758112` through PR #54;
+- current deployed main: `0cd45a6` through PR #56;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
@@ -497,7 +499,9 @@ showed all five retained symbols on the same current M5 close instead of
 BTC/XAG lagging by multiple bars.
 
 
-## In-flight — Portfolio waiting-state truth
+## PR #56 — Portfolio waiting-state truth
+
+Status: **MERGED + DEPLOYED** at `0cd45a6`.
 
 Branch: `feat/portfolio-waiting-reason`.
 

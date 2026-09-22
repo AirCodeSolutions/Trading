@@ -794,3 +794,19 @@ The Trading Intelligence panel now shows the 12 largest missed market-first epis
 
 The panel remains research-only: the episode direction and magnitude are known
 from the future window and are therefore never used as live trade inputs.
+
+
+## Missed Opportunity Classifier v1 — development checkpoint
+
+Branch: `feat/missed-opportunity-classifier-v1`.
+
+The Trading Intelligence layer now classifies each market-first episode from
+causal pre-move context and exposes a dashboard summary plus per-episode labels.
+
+The first real 24 h checkpoint does **not** justify promoting a new trading
+mechanism: directional displacement was more often opposed than aligned with
+the future move (12 vs 16), while structural extreme/stretch was exactly split
+11 vs 11. Compression contexts are common but mostly direction-neutral.
+
+This work improves research triage only. The four current DEMO-collectable
+strategies remain frozen and unchanged.

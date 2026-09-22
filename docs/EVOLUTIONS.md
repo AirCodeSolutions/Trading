@@ -679,3 +679,37 @@ Frontend-only intelligence improvement:
   changes.
 
 No scanner, strategy, admission, risk, execution or bridge behavior changes.
+
+
+## In-flight — Missed Opportunity Classifier v1
+
+Branch: `feat/missed-opportunity-classifier-v1`.
+
+Trading Intelligence additions:
+
+- causal context classification for every market-first episode;
+- fixed causal classes: auction failure/reclaim, compression breakout,
+  displacement, extreme/stretch, compression state, structural extreme and
+  unclassified;
+- causal feature payload stored with each episode;
+- summary by causal pattern: total, missed, aligned, opposed, neutral and
+  average future move ATR;
+- dashboard pattern-summary table;
+- Missed Opportunity Review now shows causal pattern and
+  aligned/opposed/neutral status.
+
+Safety:
+
+- causal class uses only bars available at episode birth;
+- future movement is used only for retrospective alignment metadata;
+- no scanner, admission, sizing, stop, target, risk or bridge change;
+- old Trading Intelligence cache remains backward-compatible.
+
+Validation checkpoint:
+
+- 183 backend tests passed;
+- causal future-independence test passed;
+- legacy cache compatibility test passed;
+- Ruff clean;
+- frontend TypeScript/Vite build clean;
+- real 24 h classifier runtime remains ~0.44 s.

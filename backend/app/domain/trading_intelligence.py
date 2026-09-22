@@ -13,6 +13,40 @@ class OpportunityCaptureState(StrEnum):
     MISSED = "missed"
 
 
+class OpportunityCausalPattern(StrEnum):
+    AUCTION_FAILURE_RECLAIM = "auction_failure_reclaim"
+    COMPRESSION_BREAKOUT = "compression_breakout"
+    DIRECTIONAL_DISPLACEMENT = "directional_displacement"
+    STRUCTURAL_EXTREME_STRETCH = "structural_extreme_stretch"
+    COMPRESSION_STATE = "compression_state"
+    STRUCTURAL_EXTREME = "structural_extreme"
+    UNCLASSIFIED = "unclassified"
+
+
+class OpportunityCausalContext(BaseModel):
+    pattern: OpportunityCausalPattern = OpportunityCausalPattern.UNCLASSIFIED
+    side: Side | None = None
+    aligned_with_move: bool | None = None
+    range_position_24: float = Field(default=0.5, ge=0, le=1)
+    return_3_atr: float = 0.0
+    return_6_atr: float = 0.0
+    compression_6_24: float = Field(default=1.0, ge=0)
+    body_fraction: float = Field(default=0.0, ge=-1, le=1)
+    sweep_atr: float = Field(default=0.0, ge=0)
+    reclaim_atr: float = Field(default=0.0, ge=0)
+    evidence: list[str] = Field(default_factory=list)
+
+
+class OpportunityCausalPatternSummary(BaseModel):
+    pattern: OpportunityCausalPattern
+    episodes: int = Field(ge=0)
+    missed: int = Field(ge=0)
+    aligned: int = Field(ge=0)
+    opposed: int = Field(ge=0)
+    no_direction: int = Field(ge=0)
+    average_move_atr: float = Field(ge=0)
+
+
 class TradeIntelligence(BaseModel):
     trade_id: str
     source: str
@@ -52,6 +86,9 @@ class MarketOpportunityEpisode(BaseModel):
     move_atr: float = Field(ge=0)
     capture_state: OpportunityCaptureState
     matching_strategies: list[str] = Field(default_factory=list)
+    causal_context: OpportunityCausalContext = Field(
+        default_factory=OpportunityCausalContext
+    )
 
 
 class AssetIntelligence(BaseModel):
@@ -80,4 +117,7 @@ class TradingIntelligenceOverview(BaseModel):
     trades: list[TradeIntelligence] = Field(default_factory=list)
     opportunities: list[MarketOpportunityEpisode] = Field(default_factory=list)
     assets: list[AssetIntelligence] = Field(default_factory=list)
+    causal_patterns: list[OpportunityCausalPatternSummary] = Field(
+        default_factory=list
+    )
     limitations: list[str] = Field(default_factory=list)

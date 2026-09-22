@@ -280,3 +280,144 @@ def test_market_opportunity_counts_prebirth_signal_as_captured() -> None:
 
     assert episodes
     assert episodes[0].capture_state == OpportunityCaptureState.EXECUTABLE
+
+
+def test_causal_classifier_detects_upper_auction_failure_reclaim() -> None:
+    from app.domain.trading_intelligence import OpportunityCausalPattern
+    from app.services.trading_intelligence import _classify_causal_context
+
+    start = NOW.replace(hour=7, minute=0)
+    bars = [
+        bar(
+            start + timedelta(minutes=5 * i),
+            1.1000,
+            1.1004,
+            1.0996,
+            1.1000,
+        )
+        for i in range(30)
+    ]
+    bars[24] = bar(
+        start + timedelta(minutes=5 * 24),
+        1.1003,
+        1.1010,
+        1.0998,
+        1.1002,
+    )
+    atr = [0.001] * len(bars)
+
+    context = _classify_causal_context(
+        bars=bars,
+        atr=atr,
+        index=24,
+        episode_side=Side.SELL,
+    )
+
+    assert context.pattern == OpportunityCausalPattern.AUCTION_FAILURE_RECLAIM
+    assert context.side == Side.SELL
+    assert context.aligned_with_move is True
+    assert context.sweep_atr > 0.5
+    assert context.reclaim_atr > 0
+    assert context.evidence == ["upper 24-M5 sweep reclaimed causally"]
+
+
+def test_causal_classifier_is_independent_of_future_bars() -> None:
+    from app.services.trading_intelligence import _classify_causal_context
+
+    start = NOW.replace(hour=7, minute=0)
+    bars = [
+        bar(
+            start + timedelta(minutes=5 * i),
+            1.1000,
+            1.1004,
+            1.0996,
+            1.1000,
+        )
+        for i in range(30)
+    ]
+    bars[24] = bar(
+        start + timedelta(minutes=5 * 24),
+        1.1003,
+        1.1010,
+        1.0998,
+        1.1002,
+    )
+    atr = [0.001] * len(bars)
+    original = _classify_causal_context(
+        bars=bars,
+        atr=atr,
+        index=24,
+        episode_side=Side.SELL,
+    )
+
+    changed = list(bars)
+    for i in range(25, len(changed)):
+        changed[i] = bar(
+            start + timedelta(minutes=5 * i),
+            1.5000,
+            1.7000,
+            1.3000,
+            1.6000,
+        )
+    after_future_change = _classify_causal_context(
+        bars=changed,
+        atr=atr,
+        index=24,
+        episode_side=Side.SELL,
+    )
+
+    assert after_future_change == original
+
+
+def test_causal_pattern_summary_counts_alignment_and_misses() -> None:
+    from app.domain.trading_intelligence import (
+        MarketOpportunityEpisode,
+        OpportunityCausalContext,
+        OpportunityCausalPattern,
+    )
+    from app.services.trading_intelligence import _causal_pattern_summaries
+
+    rows = [
+        MarketOpportunityEpisode(
+            episode_id="one",
+            symbol="BTCUSD",
+            side=Side.BUY,
+            birth_at=NOW,
+            horizon_end_at=NOW + timedelta(hours=1),
+            reference_price=100.0,
+            atr_m5=1.0,
+            move_atr=2.0,
+            capture_state=OpportunityCaptureState.MISSED,
+            causal_context=OpportunityCausalContext(
+                pattern=OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+                side=Side.BUY,
+                aligned_with_move=True,
+            ),
+        ),
+        MarketOpportunityEpisode(
+            episode_id="two",
+            symbol="BTCUSD",
+            side=Side.SELL,
+            birth_at=NOW + timedelta(hours=1),
+            horizon_end_at=NOW + timedelta(hours=2),
+            reference_price=101.0,
+            atr_m5=1.0,
+            move_atr=3.0,
+            capture_state=OpportunityCaptureState.BLOCKED,
+            causal_context=OpportunityCausalContext(
+                pattern=OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+                side=Side.BUY,
+                aligned_with_move=False,
+            ),
+        ),
+    ]
+
+    summary = _causal_pattern_summaries(rows)
+
+    assert len(summary) == 1
+    assert summary[0].episodes == 2
+    assert summary[0].missed == 1
+    assert summary[0].aligned == 1
+    assert summary[0].opposed == 1
+    assert summary[0].no_direction == 0
+    assert summary[0].average_move_atr == 2.5

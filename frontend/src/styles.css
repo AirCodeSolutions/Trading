@@ -1478,9 +1478,14 @@ h1 {
   line-height: 1.6;
 }
 
-.missed-opportunity-row {
+.causal-pattern-row {
   min-width: 820px;
-  grid-template-columns: 1.6fr 0.8fr 0.7fr 0.9fr 1fr 0.9fr;
+  grid-template-columns: 2fr repeat(5, 0.7fr) 0.9fr;
+}
+
+.missed-opportunity-row {
+  min-width: 1120px;
+  grid-template-columns: 1.55fr 0.65fr 0.72fr 0.85fr 1.55fr 0.85fr 0.95fr 0.85fr;
 }
 
 .missed-opportunity-row strong {
@@ -1488,7 +1493,11 @@ h1 {
 }
 
 @media (max-width: 900px) {
-  .missed-opportunity-row {
+  .causal-pattern-row {
     min-width: 760px;
+  }
+
+  .missed-opportunity-row {
+    min-width: 1040px;
   }
 }

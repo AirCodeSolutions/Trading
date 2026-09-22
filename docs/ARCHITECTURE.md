@@ -37,7 +37,7 @@ Les seuils initiaux sont des définitions fixes de recherche, pas les meilleurs 
 
 ## Opportunity Engine
 
-Cinq mécanismes de recherche sont actuellement implémentés :
+Six mécanismes de recherche sont actuellement implémentés :
 
 ### post_shock_continuation
 
@@ -57,6 +57,14 @@ Déclenché une seule fois à la clôture M15 qui bascule vers `directional_expa
 L'entrée se fait sur la M5 suivante, avec stop structurel fixe à 0,8 ATR M15,
 target 1,8R et horizon 18 M5. Ce mécanisme reste SHADOW tant que la validation
 prospective et le holdout sont insuffisants.
+
+### asia_range_sweep_reversal
+
+Range asiatique causal 02:00–10:00 Europe/Athens, puis première sweep/reclaim
+qualifiante pendant Londres 10:00–13:00. Le stop reste derrière l'extrême du
+sweep avec buffer ATR et l'entrée se fait sur la M5 suivante. Le mécanisme est
+partagé entre backtest et runtime, mais son admission reste spécifique au couple
+actif × mécanisme.
 
 ### directional_pullback_resumption
 
@@ -224,3 +232,24 @@ PR #27 separates:
 - legacy pre-cutover trades retained for audit.
 
 No trade ledger is deleted or rewritten by this separation.
+
+## Spécialisation par actif
+
+L'architecture ne suppose pas qu'une même stratégie doit fonctionner sur tous
+les marchés. L'infrastructure (données, régime, risk engine, backtest, SHADOW,
+PAPER, bridge) est commune, mais l'unité d'admission est le couple
+`symbol × mechanism`.
+
+Conséquences :
+
+- un mécanisme peut être PAPER-éligible sur BTCUSD et REJECTED sur EURUSD ;
+- un mécanisme peut rester SHADOW sur un actif sans être lancé sur les autres ;
+- les mécanismes spécifiques, comme `directional_pullback_resumption` GBPUSD,
+  ne sont pas étendus à d'autres actifs sans preuve ;
+- le Portfolio Manager sélectionne parmi les couples admis, pas parmi des
+  stratégies globales appliquées uniformément ;
+- aucun actif n'est forcé à trader : `RESEARCH ONLY` est un état normal lorsque
+  l'évidence n'est pas suffisante.
+
+Le dashboard expose désormais cette carte de spécialisation directement depuis
+le registre d'admission courant.

@@ -964,3 +964,145 @@ h1 {
   color: #e5ebf2;
   font-size: 12px;
 }
+
+.execution-panel,
+.strategy-map-panel {
+  margin-top: 14px;
+  padding: 30px;
+  border: 1px solid #1c2b3a;
+  border-radius: 18px;
+  background: rgba(13, 24, 35, 0.9);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.22);
+}
+
+.execution-panel {
+  border-color: rgba(244, 190, 90, 0.42);
+  background:
+    linear-gradient(135deg, rgba(244, 190, 90, 0.07), transparent 46%),
+    rgba(13, 24, 35, 0.92);
+}
+
+.execution-explainer {
+  margin: 14px 0 0;
+  max-width: 980px;
+  color: #aab8c7;
+  line-height: 1.65;
+}
+
+.execution-path {
+  margin-top: 20px;
+  display: grid;
+  gap: 10px;
+}
+
+.execution-step {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border: 1px solid #1c2b3a;
+  border-radius: 12px;
+  background: rgba(4, 12, 19, 0.42);
+}
+
+.execution-step strong {
+  display: block;
+  color: #e4ebf3;
+  font-size: 13px;
+}
+
+.execution-step p {
+  margin: 5px 0 0;
+  color: #8fa0b2;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.step-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+  border: 2px solid #5b6875;
+  background: transparent;
+}
+
+.step-ok {
+  border-color: #78d8c7;
+  background: #78d8c7;
+  box-shadow: 0 0 12px rgba(120, 216, 199, 0.35);
+}
+
+.strategy-map-panel {
+  background:
+    linear-gradient(135deg, rgba(71, 119, 255, 0.07), transparent 48%),
+    rgba(13, 24, 35, 0.9);
+}
+
+.strategy-map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.strategy-asset-card {
+  min-height: 180px;
+  padding: 18px;
+  border: 1px solid #223446;
+  border-radius: 14px;
+  background: rgba(4, 12, 19, 0.42);
+}
+
+.strategy-asset-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.strategy-asset-head > strong {
+  font-size: 14px;
+  letter-spacing: 0.08em;
+}
+
+.strategy-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.strategy-line {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #1c2b3a;
+  border-radius: 10px;
+  background: rgba(13, 24, 35, 0.68);
+}
+
+.strategy-line strong {
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.strategy-line span {
+  color: #8fa0b2;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.strategy-empty {
+  margin: 20px 0 0;
+  color: #8fa0b2;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+@media (max-width: 780px) {
+  .execution-panel,
+  .strategy-map-panel {
+    padding: 22px 18px;
+  }
+}

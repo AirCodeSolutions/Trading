@@ -938,3 +938,25 @@ sufficient entry logic.
 
 Next chantier: **Causal Sequence Research v1**, using ordered pre-move context
 states across multiple M5 bars rather than adding more static thresholds.
+
+
+## Dashboard UX — current chantier
+
+Branch: `feat/dashboard-command-center`.
+
+The dashboard is being reorganized around operational decisions instead of one
+long stack of technical panels.
+
+The default view now answers the immediate questions first:
+
+- is the runtime healthy?;
+- is automatic DEMO transport armed?;
+- does Trading-New have an open broker position?;
+- what is today's PAPER PnL?;
+- are executable opportunities present?;
+- is macro clear?;
+- how far has prospective evidence progressed?
+
+Detailed execution, market and research information remains available through
+separate top-level views. This is a presentation-only change and does not alter
+trading authority or evidence policy.

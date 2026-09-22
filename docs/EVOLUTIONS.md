@@ -839,3 +839,31 @@ No runtime change.
 Decision: coarse single-state anti-alignment is insufficient. Next chantier is
 Causal Sequence Research v1 using multi-M5 state transitions before market-first
 moves.
+
+
+## In-flight — Dashboard Command Center UX
+
+Branch: `feat/dashboard-command-center`.
+
+Frontend-only usability refactor:
+
+- new permanent **Command Center** summary with the seven operational metrics
+  needed for day-to-day supervision:
+  system readiness, auto-DEMO state, Trading-New positions, PAPER PnL today,
+  executable opportunities, macro gate and prospective progress;
+- four explicit dashboard views:
+  `Vue d’ensemble`, `Trading`, `Marchés`, `Recherche`;
+- default overview reduced to command center + compact session preflight +
+  Trade Blotter;
+- technical preflight timeline moved behind a collapsed details control;
+- trading execution/manual/portfolio/gates isolated in the Trading view;
+- quotes and execution feasibility isolated in the Markets view;
+- intelligence, strategy map, funnel, probes, SHADOW/PAPER and admission moved
+  to the Research view;
+- sticky navigation and responsive mobile layout;
+- legacy nine-card summary grid retained in source but no longer displayed.
+
+No backend, scanner, admission, sizing, risk, stop/target or broker bridge behavior
+changes.
+
+Validation: frontend TypeScript/Vite build passed; git diff check clean.

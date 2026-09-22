@@ -45,13 +45,15 @@ Last updated: 2026-09-22.
 | #43 | `7764ec7` | Symbol-scoped broker quote/spec snapshots from each DEMO bridge |
 | #44 | `eb3578b` | No-trade runtime status + dashboard state clarity |
 | #45 | `fd00652` | Read-only opportunity funnel telemetry |
+| #46 | `7dd72bd` | Economic reference capital 400 EUR + capital-aware funnel |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current deployed main: `fd00652` through PR #45;
+- current deployed main: `7dd72bd` through PR #46;
+- economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
 - current Portfolio Manager: `NO_TRADE`;
@@ -320,9 +322,9 @@ where economic feasibility and edge coexist.
 Targeted validation: 3 new tests passed, Ruff passed, frontend build passed.
 
 
-## In-flight — PR #46 capital 400 EUR + capital-aware funnel
+## PR #46 — capital 400 EUR + capital-aware funnel
 
-Branch: `feat/capital-400-funnel`.
+Status: **MERGED + DEPLOYED** at `7dd72bd`.
 
 The economic reference capital was increased by the user from 200 EUR to
 **400 EUR**. This is treated as a capital-base update, not a percentage-risk
@@ -355,3 +357,15 @@ Trailing-24h checkpoint at 400 EUR:
 
 Conclusion: increasing capital improves execution feasibility but does not
 justify enabling all newly feasible setups. Edge selection remains necessary.
+
+
+### Runtime proof after PR #46 deployment
+
+- 22 SHADOW scanners completed a full cycle;
+- 5/5 retained symbols PAPER-ready;
+- worker error = null;
+- 0 PAPER position open;
+- 0 Trading-New bridge position;
+- 0 pending open/close/result command;
+- frontend HTTP 200;
+- execution remains PAPER-only, DEMO collection OFF, DEMO bridge OFF, LIVE OFF.

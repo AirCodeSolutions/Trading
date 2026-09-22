@@ -636,3 +636,18 @@ Research outcome from the first pass:
 
 Next research direction: event-chain significance rather than static-bar
 patterns.
+
+
+## Research follow-up — failed-auction event chains
+
+Branch: `research/btc-failed-auction-displacement`.
+
+Read-only replay only; no runtime change.
+
+- BTC full sweep-candle displacement confirmation: rejected on validation;
+- BTC pre-sweep micro-pivot confirmation: rejected on all windows;
+- XAU full displacement confirmation: positive but severely under-sampled in
+  train/validation and 2/2 losses in holdout;
+- XAU feasibility remains constrained by the 0.01 minimum lot at 400 EUR.
+
+No strategy is promoted from this branch.

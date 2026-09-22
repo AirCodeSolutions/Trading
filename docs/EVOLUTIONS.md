@@ -797,7 +797,9 @@ No runtime scanner, strategy, risk or bridge behavior changes.
 Validation: 191 backend tests passed; Ruff clean; frontend TypeScript/Vite build passed.
 
 
-## In-flight — Causal × Economic Candidate Matrix
+## PR #71 — Causal × Economic Candidate Matrix
+
+Status: **MERGED** at `d4dac43`.
 
 Branch: `research/causal-economic-candidate-matrix`.
 
@@ -819,3 +821,21 @@ First result:
   interval is empty at 400 EUR.
 
 No runtime or dashboard change in this branch.
+
+
+## Research checkpoint — matrix-guided reversal replays
+
+Branch: `research/gbp-structural-extreme-reversion`.
+
+Read-only replay results:
+
+- GBPUSD structural_extreme_stretch opposite-side reversal: rejected on train,
+  validation and holdout;
+- XAUUSD directional_displacement opposite-side reversal: rejected on train,
+  validation and holdout.
+
+No runtime change.
+
+Decision: coarse single-state anti-alignment is insufficient. Next chantier is
+Causal Sequence Research v1 using multi-M5 state transitions before market-first
+moves.

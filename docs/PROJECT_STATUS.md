@@ -1083,3 +1083,29 @@ Validation on the PR branch: 211 backend tests passed, Ruff clean,
   GBP Asia sweep, GBP directional pullback and XAU break/retest;
 - frontend Command Center remains active on port 5180;
 - LIVE remains OFF.
+
+
+## 2026-09-22 — reprise post-PR #79
+
+Verification de reprise effectuee avant toute nouvelle modification :
+
+- `origin/main` = `a3fb3bd` (PR #79, documentation du deploiement #78) ;
+- PR #73 bien incluse dans `main` et **Command Center actif** sur le frontend `:5180` ;
+- frontend servi depuis `/home/laetitia/trading/Trading/frontend`, HTTP 200 ;
+- source Vite active contenant `Vue d’ensemble`, `Marches`, `Recherche` et
+  `Details techniques par actif` ;
+- backend et worker laisses intacts ; aucun restart necessaire ;
+- preflight runtime **READY 5/5** ;
+- capital de reference 400 EUR, risque de base 1 %, DEMO collection ON,
+  bridge ON, LIVE OFF ;
+- 23 fichiers PAPER courants controles, tous avec `open_trade = null` ;
+- le worktree temporaire `Trading-dashboard` etait propre et a ete supprime
+  apres confirmation du frontend actif.
+
+Le chantier `Causal Sequence Research v1` n etait plus en etat partiel : il a
+ete fusionne via #74, puis prolonge par #76 (execution-aware), #77 (collecteur
+BTC SHADOW/PAPER) et #78/#79 (singleton worker + documentation).
+
+Validation de reprise : 17 tests cibles sequence/execution/parite passent.
+Aucun changement de runtime, risque, sizing, stop, target, spread ou LIVE n a
+ete effectue pendant cette reprise.

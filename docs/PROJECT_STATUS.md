@@ -776,3 +776,15 @@ Therefore no new runtime strategy is being promoted from this pass.
 The next research focus is event-chain structure, especially meaningful failed
 auction / transition sequences, rather than further threshold tuning of generic
 M5 momentum or compression patterns.
+
+
+## Event-chain research checkpoint
+
+BTC failed-auction refinement is closed after both opposite-displacement and
+micro-pivot confirmation chains failed independent validation.
+
+XAU failed-auction displacement produced positive small train/validation samples
+but failed its two-trade holdout and remains mostly infeasible at the 400 EUR
+risk budget because of the broker minimum lot.
+
+No deployed strategy, risk rule or admission state changes from these tests.

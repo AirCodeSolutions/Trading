@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed repository commit: `029227d` (PR #64). Backend/worker trading logic remains the PR #60 implementation (`99e2d30`); later PRs are research/docs/frontend-only.
+Current deployed repository commit: `f021b98` (PR #66). Trading decision/execution logic remains unchanged; the backend/worker intelligence layer now includes the causal Missed Opportunity Classifier v1.
 
 Operational services:
 
@@ -796,9 +796,9 @@ The panel remains research-only: the episode direction and magnitude are known
 from the future window and are therefore never used as live trade inputs.
 
 
-## Missed Opportunity Classifier v1 — development checkpoint
+## Missed Opportunity Classifier v1 — deployed
 
-Branch: `feat/missed-opportunity-classifier-v1`.
+Status: **MERGED + DEPLOYED** through PR #66 at `f021b98`.
 
 The Trading Intelligence layer now classifies each market-first episode from
 causal pre-move context and exposes a dashboard summary plus per-episode labels.
@@ -810,3 +810,30 @@ the future move (12 vs 16), while structural extreme/stretch was exactly split
 
 This work improves research triage only. The four current DEMO-collectable
 strategies remain frozen and unchanged.
+
+
+### Runtime proof after PR #66 deployment
+
+- deployed repository SHA: `f021b98`;
+- pre-deploy safety: 0 PAPER open, 0 Trading-New bridge position, 0 pending
+  open/close command;
+- session preflight after restart: **READY**, 5/5 retained symbols;
+- SHADOW worker heartbeat: **OK**, 22 scanners, 0 worker error;
+- Portfolio Manager remains `NO_TRADE` because no eligible PAPER trade is open;
+- no MT4 command was created by the deployment;
+- Trading Intelligence cache naturally rolled forward under the existing
+  five-minute throttle; no runtime artifact was deleted or forced;
+- deployed causal snapshot: 112 market-first episodes;
+- unclassified: 36 episodes / 31 missed;
+- directional displacement: 26 / 23 missed, 11 aligned vs 15 opposed;
+- compression state: 23 / 22 missed;
+- structural extreme + stretch: 13 / 9 missed, 8 aligned vs 5 opposed;
+- auction failure + reclaim: 9 / 5 missed, 6 aligned vs 3 opposed;
+- compression breakout: 4 / 4 missed, 0 aligned vs 4 opposed;
+- structural extreme only: 1 / 1 missed;
+- frontend returned HTTP 200 with the causal pattern dashboard source active;
+- full validation before merge: 183 backend tests, Ruff clean, frontend build
+  clean.
+
+These counts are a rolling 24 h research snapshot and will change as the window
+moves. They are not strategy admission evidence by themselves.

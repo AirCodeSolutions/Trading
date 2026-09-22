@@ -64,13 +64,15 @@ Last updated: 2026-09-22.
 | #62 | `b126510` | Market-first signature research tooling |
 | #63 | `539c410` | Record failed-auction event-chain research |
 | #64 | `029227d` | Expose missed market opportunities in dashboard |
+| #65 | `d39b7a9` | Refresh status through PR64 |
+| #66 | `f021b98` | Causal Missed Opportunity Classifier v1 |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current deployed repository: `029227d` through PR #64; backend/worker trading logic remains unchanged from PR #60 (`99e2d30`), while frontend/research/docs advanced through #64;
+- current deployed repository: `f021b98` through PR #66; trading decision/execution logic remains unchanged, while the backend/worker intelligence layer now includes the causal missed-opportunity classifier;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
@@ -681,7 +683,9 @@ Frontend-only intelligence improvement:
 No scanner, strategy, admission, risk, execution or bridge behavior changes.
 
 
-## In-flight — Missed Opportunity Classifier v1
+## PR #66 — Missed Opportunity Classifier v1
+
+Status: **MERGED + DEPLOYED** at `f021b98`.
 
 Branch: `feat/missed-opportunity-classifier-v1`.
 
@@ -713,3 +717,16 @@ Validation checkpoint:
 - Ruff clean;
 - frontend TypeScript/Vite build clean;
 - real 24 h classifier runtime remains ~0.44 s.
+
+
+### PR #66 runtime proof
+
+After merge, deployment was performed only after confirming 0 PAPER, 0
+Trading-New bridge position and 0 pending command.
+
+The first naturally refreshed post-deploy intelligence snapshot contained 112
+market-first episodes and non-empty causal pattern summaries. Runtime remained
+5/5 READY with 22 healthy SHADOW scans and no execution command.
+
+The causal classifier remains research-only and does not participate in
+scanner admission or broker order decisions.

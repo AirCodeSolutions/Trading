@@ -10,6 +10,9 @@ from app.domain.shadow import ShadowOpportunityDiagnostic, ShadowSignalState
 from app.domain.shadow_paper import PaperTradeStatus
 from app.services.blocked_probe import load_blocked_probe_state, load_closed_probes
 
+_CAPITAL_BLOCK_REASON = "minimum broker lot exceeds the risk budget"
+_EPSILON = 1e-12
+
 
 def build_opportunity_funnel(
     runtime_dir: Path,
@@ -17,48 +20,40 @@ def build_opportunity_funnel(
     now: datetime,
     window_hours: int = 24,
     symbols: tuple[str, ...] | None = None,
+    reference_capital_eur: float = 400.0,
+    base_risk_fraction: float = 0.01,
+    absolute_max_risk_fraction: float = 0.02,
 ) -> OpportunityFunnel:
     if window_hours <= 0:
         raise ValueError("window_hours must be positive")
+    if reference_capital_eur <= 0:
+        raise ValueError("reference_capital_eur must be positive")
+    if not 0 < base_risk_fraction <= 1:
+        raise ValueError("base_risk_fraction must be between 0 and 1")
+    if not 0 < absolute_max_risk_fraction <= 1:
+        raise ValueError("absolute_max_risk_fraction must be between 0 and 1")
+    if base_risk_fraction > absolute_max_risk_fraction:
+        raise ValueError("base risk cannot exceed absolute max risk")
 
+    base_risk_budget_eur = reference_capital_eur * base_risk_fraction
+    absolute_max_risk_budget_eur = (
+        reference_capital_eur * absolute_max_risk_fraction
+    )
     window_start = now - timedelta(hours=window_hours)
     allowed = {symbol.upper() for symbol in symbols} if symbols else None
 
-    signal_rows: list[ShadowOpportunityDiagnostic] = []
-    for path in sorted(runtime_dir.glob("*.jsonl")):
-        with path.open(encoding="utf-8") as handle:
-            for line in handle:
-                if not line.strip():
-                    continue
-                try:
-                    row = ShadowOpportunityDiagnostic.model_validate_json(line)
-                except ValueError:
-                    continue
-                if allowed is not None and row.symbol.upper() not in allowed:
-                    continue
-                if not (window_start <= row.evaluated_at <= now):
-                    continue
-                if row.state == ShadowSignalState.NO_SIGNAL:
-                    continue
-                signal_rows.append(row)
-
-    probes: list[BlockedOpportunityProbe] = []
-    for path in sorted(runtime_dir.glob("*_blocked_probes.jsonl")):
-        for probe in load_closed_probes(path):
-            if allowed is not None and probe.symbol.upper() not in allowed:
-                continue
-            if window_start <= probe.signal_at <= now:
-                probes.append(probe)
-
-    for state_path in sorted(runtime_dir.glob("*_blocked_probe_state.json")):
-        state = load_blocked_probe_state(state_path)
-        probe = state.open_probe
-        if probe is None:
-            continue
-        if allowed is not None and probe.symbol.upper() not in allowed:
-            continue
-        if window_start <= probe.signal_at <= now:
-            probes.append(probe)
+    signal_rows = _load_signal_rows(
+        runtime_dir,
+        window_start=window_start,
+        window_end=now,
+        allowed=allowed,
+    )
+    probes = _load_probes(
+        runtime_dir,
+        window_start=window_start,
+        window_end=now,
+        allowed=allowed,
+    )
 
     grouped_signals: dict[str, list[ShadowOpportunityDiagnostic]] = defaultdict(list)
     grouped_probes: dict[str, list[BlockedOpportunityProbe]] = defaultdict(list)
@@ -74,11 +69,7 @@ def build_opportunity_funnel(
         rows = grouped_signals[strategy_id]
         strategy_probes = grouped_probes[strategy_id]
         sample = rows[0] if rows else strategy_probes[0]
-        results = [
-            probe.result_r
-            for probe in strategy_probes
-            if probe.status != PaperTradeStatus.OPEN and probe.result_r is not None
-        ]
+        results = _resolved_results(strategy_probes)
         capitals = [
             probe.required_capital_base_risk_eur
             for probe in strategy_probes
@@ -90,6 +81,11 @@ def build_opportunity_funnel(
             if row.state == ShadowSignalState.SIGNAL_BLOCKED
             and row.base_risk is not None
             and row.base_risk.reason
+        )
+        capital_metrics = _capital_metrics(
+            strategy_probes,
+            base_risk_budget_eur=base_risk_budget_eur,
+            absolute_max_risk_budget_eur=absolute_max_risk_budget_eur,
         )
         strategies.append(
             OpportunityFunnelStrategy(
@@ -113,20 +109,38 @@ def build_opportunity_funnel(
                 blocked_total_r=sum(results),
                 blocked_expectancy_r=(sum(results) / len(results)) if results else 0.0,
                 blocked_feasible_under_max_risk=sum(
-                    probe.capital_granularity_feasible_under_max_risk
+                    probe.min_lot_loss_eur <= absolute_max_risk_budget_eur + _EPSILON
                     for probe in strategy_probes
                 ),
+                capital_limited_probes=capital_metrics["capital_limited_probes"],
+                capital_base_feasible_probes=capital_metrics[
+                    "capital_base_feasible_probes"
+                ],
+                capital_max_feasible_probes=capital_metrics[
+                    "capital_max_feasible_probes"
+                ],
+                capital_base_feasible_resolved_probes=capital_metrics[
+                    "capital_base_feasible_resolved_probes"
+                ],
+                capital_base_feasible_wins=capital_metrics[
+                    "capital_base_feasible_wins"
+                ],
+                capital_base_feasible_losses=capital_metrics[
+                    "capital_base_feasible_losses"
+                ],
+                capital_base_feasible_total_r=capital_metrics[
+                    "capital_base_feasible_total_r"
+                ],
+                capital_base_feasible_expectancy_r=capital_metrics[
+                    "capital_base_feasible_expectancy_r"
+                ],
                 min_required_capital_base_risk_eur=min(capitals) if capitals else None,
                 max_required_capital_base_risk_eur=max(capitals) if capitals else None,
                 block_reasons=dict(sorted(reasons.items())),
             )
         )
 
-    all_results = [
-        probe.result_r
-        for probe in probes
-        if probe.status != PaperTradeStatus.OPEN and probe.result_r is not None
-    ]
+    all_results = _resolved_results(probes)
     all_reasons = Counter(
         row.base_risk.reason
         for row in signal_rows
@@ -134,11 +148,19 @@ def build_opportunity_funnel(
         and row.base_risk is not None
         and row.base_risk.reason
     )
+    capital_metrics = _capital_metrics(
+        probes,
+        base_risk_budget_eur=base_risk_budget_eur,
+        absolute_max_risk_budget_eur=absolute_max_risk_budget_eur,
+    )
 
     return OpportunityFunnel(
         window_hours=window_hours,
         window_start=window_start,
         window_end=now,
+        reference_capital_eur=reference_capital_eur,
+        base_risk_budget_eur=base_risk_budget_eur,
+        absolute_max_risk_budget_eur=absolute_max_risk_budget_eur,
         signal_rows=len(signal_rows),
         blocked_signal_rows=sum(
             row.state == ShadowSignalState.SIGNAL_BLOCKED for row in signal_rows
@@ -158,8 +180,122 @@ def build_opportunity_funnel(
             sum(all_results) / len(all_results) if all_results else 0.0
         ),
         blocked_feasible_under_max_risk=sum(
-            probe.capital_granularity_feasible_under_max_risk for probe in probes
+            probe.min_lot_loss_eur <= absolute_max_risk_budget_eur + _EPSILON
+            for probe in probes
         ),
+        capital_limited_probes=capital_metrics["capital_limited_probes"],
+        capital_base_feasible_probes=capital_metrics[
+            "capital_base_feasible_probes"
+        ],
+        capital_max_feasible_probes=capital_metrics["capital_max_feasible_probes"],
+        capital_base_feasible_resolved_probes=capital_metrics[
+            "capital_base_feasible_resolved_probes"
+        ],
+        capital_base_feasible_wins=capital_metrics["capital_base_feasible_wins"],
+        capital_base_feasible_losses=capital_metrics["capital_base_feasible_losses"],
+        capital_base_feasible_total_r=capital_metrics[
+            "capital_base_feasible_total_r"
+        ],
+        capital_base_feasible_expectancy_r=capital_metrics[
+            "capital_base_feasible_expectancy_r"
+        ],
         block_reasons=dict(sorted(all_reasons.items())),
         strategies=strategies,
     )
+
+
+def _load_signal_rows(
+    runtime_dir: Path,
+    *,
+    window_start: datetime,
+    window_end: datetime,
+    allowed: set[str] | None,
+) -> list[ShadowOpportunityDiagnostic]:
+    signal_rows: list[ShadowOpportunityDiagnostic] = []
+    for path in sorted(runtime_dir.glob("*.jsonl")):
+        with path.open(encoding="utf-8") as handle:
+            for line in handle:
+                if not line.strip():
+                    continue
+                try:
+                    row = ShadowOpportunityDiagnostic.model_validate_json(line)
+                except ValueError:
+                    continue
+                if allowed is not None and row.symbol.upper() not in allowed:
+                    continue
+                if not (window_start <= row.evaluated_at <= window_end):
+                    continue
+                if row.state == ShadowSignalState.NO_SIGNAL:
+                    continue
+                signal_rows.append(row)
+    return signal_rows
+
+
+def _load_probes(
+    runtime_dir: Path,
+    *,
+    window_start: datetime,
+    window_end: datetime,
+    allowed: set[str] | None,
+) -> list[BlockedOpportunityProbe]:
+    probes: list[BlockedOpportunityProbe] = []
+    for path in sorted(runtime_dir.glob("*_blocked_probes.jsonl")):
+        for probe in load_closed_probes(path):
+            if allowed is not None and probe.symbol.upper() not in allowed:
+                continue
+            if window_start <= probe.signal_at <= window_end:
+                probes.append(probe)
+
+    for state_path in sorted(runtime_dir.glob("*_blocked_probe_state.json")):
+        state = load_blocked_probe_state(state_path)
+        probe = state.open_probe
+        if probe is None:
+            continue
+        if allowed is not None and probe.symbol.upper() not in allowed:
+            continue
+        if window_start <= probe.signal_at <= window_end:
+            probes.append(probe)
+    return probes
+
+
+def _resolved_results(probes: list[BlockedOpportunityProbe]) -> list[float]:
+    return [
+        probe.result_r
+        for probe in probes
+        if probe.status != PaperTradeStatus.OPEN and probe.result_r is not None
+    ]
+
+
+def _capital_metrics(
+    probes: list[BlockedOpportunityProbe],
+    *,
+    base_risk_budget_eur: float,
+    absolute_max_risk_budget_eur: float,
+) -> dict[str, int | float]:
+    capital_limited = [
+        probe for probe in probes if probe.block_reason == _CAPITAL_BLOCK_REASON
+    ]
+    base_feasible = [
+        probe
+        for probe in capital_limited
+        if probe.min_lot_loss_eur <= base_risk_budget_eur + _EPSILON
+    ]
+    max_feasible = [
+        probe
+        for probe in capital_limited
+        if probe.min_lot_loss_eur <= absolute_max_risk_budget_eur + _EPSILON
+    ]
+    base_results = _resolved_results(base_feasible)
+    base_total_r = sum(base_results)
+    return {
+        "capital_limited_probes": len(capital_limited),
+        "capital_base_feasible_probes": len(base_feasible),
+        "capital_max_feasible_probes": len(max_feasible),
+        "capital_base_feasible_resolved_probes": len(base_results),
+        "capital_base_feasible_wins": sum(result > 0 for result in base_results),
+        "capital_base_feasible_losses": sum(result < 0 for result in base_results),
+        "capital_base_feasible_total_r": base_total_r,
+        "capital_base_feasible_expectancy_r": (
+            base_total_r / len(base_results) if base_results else 0.0
+        ),
+    }

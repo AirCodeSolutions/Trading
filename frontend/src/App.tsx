@@ -324,6 +324,14 @@ type OpportunityFunnelStrategy = {
   blocked_total_r: number;
   blocked_expectancy_r: number;
   blocked_feasible_under_max_risk: number;
+  capital_limited_probes: number;
+  capital_base_feasible_probes: number;
+  capital_max_feasible_probes: number;
+  capital_base_feasible_resolved_probes: number;
+  capital_base_feasible_wins: number;
+  capital_base_feasible_losses: number;
+  capital_base_feasible_total_r: number;
+  capital_base_feasible_expectancy_r: number;
   min_required_capital_base_risk_eur: number | null;
   max_required_capital_base_risk_eur: number | null;
   block_reasons: Record<string, number>;
@@ -333,6 +341,9 @@ type OpportunityFunnel = {
   window_hours: number;
   window_start: string;
   window_end: string;
+  reference_capital_eur: number;
+  base_risk_budget_eur: number;
+  absolute_max_risk_budget_eur: number;
   signal_rows: number;
   blocked_signal_rows: number;
   executable_signal_rows: number;
@@ -344,6 +355,14 @@ type OpportunityFunnel = {
   blocked_total_r: number;
   blocked_expectancy_r: number;
   blocked_feasible_under_max_risk: number;
+  capital_limited_probes: number;
+  capital_base_feasible_probes: number;
+  capital_max_feasible_probes: number;
+  capital_base_feasible_resolved_probes: number;
+  capital_base_feasible_wins: number;
+  capital_base_feasible_losses: number;
+  capital_base_feasible_total_r: number;
+  capital_base_feasible_expectancy_r: number;
   block_reasons: Record<string, number>;
   strategies: OpportunityFunnelStrategy[];
 };
@@ -881,7 +900,10 @@ export default function App() {
         <div className="section-heading">
           <div>
             <p className="eyebrow">CAPITAL / EXECUTION FEASIBILITY · 1 ATR M15</p>
-            <h2>Quels marchés sont réellement tradables avec 200 € ?</h2>
+            <h2>
+              Quels marchés sont réellement tradables avec{" "}
+              {config ? `${config.reference_capital_eur.toFixed(0)} €` : "—"} ?
+            </h2>
           </div>
           <p>
             Référence structurelle, pas un signal : stop = 1 ATR M15 courant,
@@ -897,7 +919,9 @@ export default function App() {
             <span>Perte lot min</span>
             <span>Capital @1 %</span>
             <span>Capital @2 %</span>
-            <span>Risque min / 200 €</span>
+            <span>
+              Risque min / {config ? `${config.reference_capital_eur.toFixed(0)} €` : "—"}
+            </span>
             <span>1 %</span>
             <span>2 %</span>
             <span>Research</span>
@@ -930,7 +954,10 @@ export default function App() {
       <section className="portfolio-panel">
         <div className="shadow-heading">
           <div>
-            <p className="eyebrow">PORTFOLIO MANAGER · 200 € ÉCONOMIQUES</p>
+            <p className="eyebrow">
+              PORTFOLIO MANAGER ·{" "}
+              {config ? `${config.reference_capital_eur.toFixed(0)} € ÉCONOMIQUES` : "—"}
+            </p>
             <h2>{overview?.portfolio.action.replaceAll("_", " ").toUpperCase() ?? "—"}</h2>
           </div>
           <span className="badge">
@@ -1202,10 +1229,26 @@ export default function App() {
             <p>Uniquement probes contre-factuels résolus.</p>
           </div>
           <div className="gate-card">
-            <span className="label">Faisables sous plafond 2 %</span>
-            <strong>{opportunityFunnel?.blocked_feasible_under_max_risk ?? "—"}</strong>
+            <span className="label">Capital-limités faisables à 1 %</span>
+            <strong>{opportunityFunnel?.capital_base_feasible_probes ?? "—"}</strong>
             <p>
-              Le plafond 2 % reste une limite absolue, pas un sizing cible.
+              {opportunityFunnel
+                ? `${opportunityFunnel.capital_base_feasible_resolved_probes} résolus · ${opportunityFunnel.capital_base_feasible_total_r >= 0 ? "+" : ""}${opportunityFunnel.capital_base_feasible_total_r.toFixed(2)} R · exp. ${opportunityFunnel.capital_base_feasible_expectancy_r >= 0 ? "+" : ""}${opportunityFunnel.capital_base_feasible_expectancy_r.toFixed(2)} R`
+                : "—"}
+            </p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Capital-limités ≤ plafond 2 %</span>
+            <strong>
+              {opportunityFunnel
+                ? `${opportunityFunnel.capital_max_feasible_probes}/${opportunityFunnel.capital_limited_probes}`
+                : "—"}
+            </strong>
+            <p>
+              Plafond absolu de{" "}
+              {opportunityFunnel
+                ? `${opportunityFunnel.absolute_max_risk_budget_eur.toFixed(2)} €`
+                : "—"} ; jamais un sizing cible.
             </p>
           </div>
           <div className="gate-card">
@@ -1231,6 +1274,8 @@ export default function App() {
               <span>Probes</span>
               <span>Exp. bloquée</span>
               <span>Capital @1 %</span>
+              <span>Fit @1 % maintenant</span>
+              <span>R @1 % maintenant</span>
               <span>Blocage dominant</span>
             </div>
             {[...opportunityFunnel.strategies]
@@ -1277,6 +1322,26 @@ export default function App() {
                         : "—"}
                     </span>
                     <span>{capitalRange}</span>
+                    <span>
+                      {row.capital_base_feasible_probes
+                        ? `${row.capital_base_feasible_probes}/${row.capital_limited_probes}`
+                        : row.capital_limited_probes
+                          ? `${0}/${row.capital_limited_probes}`
+                          : "—"}
+                    </span>
+                    <span
+                      className={
+                        row.capital_base_feasible_resolved_probes
+                          ? row.capital_base_feasible_total_r >= 0
+                            ? "positive-text"
+                            : "negative-text"
+                          : ""
+                      }
+                    >
+                      {row.capital_base_feasible_resolved_probes
+                        ? `${row.capital_base_feasible_total_r >= 0 ? "+" : ""}${row.capital_base_feasible_total_r.toFixed(2)} R`
+                        : "—"}
+                    </span>
                     <span className="opportunity-reason">
                       {dominantBlock
                         ? `${dominantBlock[1]}× ${dominantBlock[0]}`
@@ -1325,6 +1390,14 @@ export default function App() {
               .map((row) => {
                 const latest =
                   row.summary.open_probe ?? row.summary.recent_probes[0] ?? null;
+                const currentMinimumRiskFraction =
+                  latest && config
+                    ? latest.min_lot_loss_eur / config.reference_capital_eur
+                    : null;
+                const currentMaxFeasible =
+                  currentMinimumRiskFraction != null && config
+                    ? currentMinimumRiskFraction <= config.absolute_max_risk_fraction
+                    : null;
                 return (
                   <div className="probe-row" key={row.strategy_id}>
                     <strong>{row.symbol} · {row.mechanism.replaceAll("_", " ")}</strong>
@@ -1339,9 +1412,21 @@ export default function App() {
                     <span>{latest ? `${latest.min_lot_loss_eur.toFixed(2)} €` : "—"}</span>
                     <span>{latest ? `${latest.required_capital_base_risk_eur.toFixed(0)} €` : "—"}</span>
                     <span>{latest ? `${latest.required_capital_max_risk_eur.toFixed(0)} €` : "—"}</span>
-                    <span>{latest ? `${(latest.minimum_feasible_risk_fraction * 100).toFixed(2)} %` : "—"}</span>
-                    <span className={latest?.capital_granularity_feasible_under_max_risk ? "positive-text" : "negative-text"}>
-                      {latest ? (latest.capital_granularity_feasible_under_max_risk ? "OUI" : "NON") : "—"}
+                    <span>
+                      {currentMinimumRiskFraction != null
+                        ? `${(currentMinimumRiskFraction * 100).toFixed(2)} %`
+                        : "—"}
+                    </span>
+                    <span
+                      className={
+                        currentMaxFeasible == null
+                          ? ""
+                          : currentMaxFeasible
+                            ? "positive-text"
+                            : "negative-text"
+                      }
+                    >
+                      {currentMaxFeasible == null ? "—" : currentMaxFeasible ? "OUI" : "NON"}
                     </span>
                     <span className="opportunity-reason">{latest?.block_reason ?? "—"}</span>
                   </div>

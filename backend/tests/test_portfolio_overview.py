@@ -11,7 +11,7 @@ from app.services.portfolio_overview import build_trading_overview
 TZ = ZoneInfo("Europe/Athens")
 
 
-def test_overview_keeps_demo_balance_separate_from_200_eur_reference(
+def test_overview_keeps_demo_balance_separate_from_400_eur_reference(
     tmp_path: Path,
 ) -> None:
     files_dir = tmp_path / "mt4"
@@ -43,7 +43,7 @@ def test_overview_keeps_demo_balance_separate_from_200_eur_reference(
 
     assert overview.broker is not None
     assert overview.broker.balance == 873900
-    assert overview.risk.reference_capital_eur == 200
+    assert overview.risk.reference_capital_eur == 400
     assert overview.portfolio.action == "no_trade"
     assert overview.qualifications == []
     assert overview.paper_strategies == []
@@ -98,7 +98,7 @@ def test_parallel_shadow_losses_do_not_consume_selected_portfolio_budget(
     assert overview.risk.research_paper_legacy_total_r == -1
     assert overview.risk.research_paper_legacy_trades == 1
     assert overview.risk.selected_daily_pnl_eur == 0
-    assert overview.risk.remaining_daily_loss_budget_eur == 6
+    assert overview.risk.remaining_daily_loss_budget_eur == 12
     assert overview.portfolio.action == "no_trade"
 
 

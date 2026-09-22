@@ -257,6 +257,9 @@ def shadow_opportunity_funnel(hours: int = 24) -> OpportunityFunnel:
         now=datetime.now(tz=_server_timezone()),
         window_hours=hours,
         symbols=settings.session_watch_symbols,
+        reference_capital_eur=settings.reference_capital_eur,
+        base_risk_fraction=settings.risk_per_trade_fraction,
+        absolute_max_risk_fraction=settings.absolute_max_risk_fraction,
     )
 
 

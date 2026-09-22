@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `f00da09` (PR #49).
+Current deployed main commit: `0ccdf3e` (PR #50).
 
 Operational services:
 
@@ -430,7 +430,7 @@ Current PAPER eligibility across the 22 runtime mechanisms:
 No strategy becomes ACTIVE. DEMO and LIVE remain disabled. The Portfolio Manager
 therefore remains `NO_TRADE` for broker execution.
 
-## Automatic execution visibility and strategy specialization — PR #50 in flight
+## Automatic execution visibility and strategy specialization — PR #50 deployed
 
 The runtime remains intentionally PAPER-only:
 
@@ -469,3 +469,28 @@ Recent fixed-hypothesis research rejected three attempted shortcuts:
   BTC train/validation improved but holdout was 3/3 losses, so it was rejected.
 
 No runtime trading threshold was changed from those tests.
+
+## Asia midpoint-reclaim research — rejected
+
+A fixed follow-up to `asia_range_sweep_reversal` was tested on EURUSD and
+GBPUSD to improve execution geometry without weakening the 15% spread/stop
+guard.
+
+Contract:
+
+- same completed Asia range and first qualifying sweep/reclaim;
+- no entry immediately after the sweep;
+- wait causally for a M5 close through the 50% midpoint of the Asia range in
+  the reversal direction before 13:00 Europe/Athens;
+- entry on the next M5;
+- preserve the original sweep structural stop, 1.5R target, 12-M5 horizon,
+  1% risk, macro and execution guards.
+
+Result:
+
+- EURUSD: train 11 trades / -0.116R expectancy; validation 4 / -0.471R;
+  holdout 1 / +0.254R;
+- GBPUSD: train 16 / +0.085R; validation 8 / -0.254R; holdout 3 / +0.100R.
+
+The hypothesis improves executability but not robust edge, so it is rejected
+and no runtime mechanism is added.

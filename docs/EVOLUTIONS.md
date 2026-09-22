@@ -495,3 +495,24 @@ The research/backtest history resolver remains unchanged and reproducible.
 Targeted RED/GREEN tests: 10 passed. Direct runtime-file proof before deployment
 showed all five retained symbols on the same current M5 close instead of
 BTC/XAG lagging by multiple bars.
+
+
+## In-flight — Portfolio waiting-state truth
+
+Branch: `feat/portfolio-waiting-reason`.
+
+No trading decision changes. The Portfolio Manager now distinguishes:
+
+- a collectable SHADOW PAPER trade that is open -> `DEMO_COLLECTION`;
+- no open PAPER but one or more PAPER-eligible SHADOW strategies waiting for a
+  signal -> `NO_TRADE` with an explicit waiting reason;
+- no broker-evaluable admission at all -> the generic no-admission reason.
+
+This removes the obsolete ACTIVE/SUPPORTS_DEMO-only explanation from the
+current DEMO-collection workflow.
+
+Research recorded with this change:
+
+- three EURUSD specialist hypotheses rejected;
+- BTCUSD break/retest 0.80 M15-ATR stop-floor variant rejected;
+- PR #55 closed as duplicate of merged/deployed PR #54.

@@ -583,3 +583,24 @@ opportunity among the four current DEMO-collectable strategies. The only
 eligible-strategy signal recorded was BTCUSD break/retest on 2026-09-20, and it
 was correctly blocked because spread/stop was ~24.8%, above the unchanged 15%
 ceiling.
+
+
+## Current strategy-development decision — 2026-09-22
+
+EURUSD remains research-only after three fixed specialist hypotheses failed
+independent windows. BTCUSD break/retest also keeps its existing stop geometry:
+a 0.80 M15-ATR minimum-stop variant improved recent execution but materially
+worsened train expectancy and drawdown.
+
+The fastest safe path to broker DEMO trading is therefore the four already
+PAPER-eligible / DEMO-collectable SHADOW pairs:
+
+- BTCUSD break/retest;
+- GBPUSD Asia sweep;
+- GBPUSD directional pullback;
+- XAUUSD break/retest.
+
+Runtime remains DEMO collection ON, bridge ON, LIVE OFF, with unchanged 1% base
+risk and 15% spread/stop ceiling.
+
+PR #55 was closed unmerged as an exact duplicate of already-merged PR #54.

@@ -857,3 +857,32 @@ No deployed strategy changes from this work.
 Next research focus: an **economic feasibility map** for missed opportunities,
 so research effort is concentrated only on structures that can actually be
 traded under the current broker and capital constraints.
+
+
+## Economic Feasibility Map — current chantier
+
+Branch: `research/economic-feasibility-map`.
+
+A historical map now measures whether missed market opportunities can actually
+be sized under the current broker and 400 EUR economic reference capital before
+more strategy logic is attempted.
+
+The strongest operational finding is XAGUSD: with the frozen 0.07 spread, the
+15% spread/stop guard requires a stop of at least ~0.467, while 1% risk at the
+0.01 minimum lot permits only ~0.08. No stop can satisfy both constraints.
+
+Even 2% risk would only raise the ceiling to ~0.16, still infeasible. XAG should
+therefore remain research-only unless broker spread/contract economics or the
+economic capital base materially change; risk must not be increased merely to
+force admission.
+
+The other assets retain a feasible stop interval, but the historically viable
+ATR width differs materially by asset. This reinforces per-asset strategy
+specialization.
+
+The report is now exposed through a cached, read-only API snapshot and a
+Dashboard **Economic Feasibility Map**. The UI shows FEASIBLE/INFEASIBLE,
+spread-imposed stop floor, minimum-lot risk ceiling, theoretical minimum
+capital, best tested ATR stop width and historical approval rate. These are
+execution-feasibility diagnostics only; they do not authorize higher risk or
+capital changes.

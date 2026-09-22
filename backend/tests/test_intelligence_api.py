@@ -188,3 +188,49 @@ def test_legacy_intelligence_cache_loads_with_causal_defaults(
         body["opportunities"][0]["causal_context"]["pattern"]
         == "unclassified"
     )
+
+
+def test_economic_feasibility_endpoint_reads_cached_snapshot(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from app.domain.economic_feasibility import EconomicFeasibilityReport
+    from app.services.economic_feasibility import (
+        ECONOMIC_FEASIBILITY_FILE,
+        write_economic_feasibility_report,
+    )
+
+    monkeypatch.setattr(settings, "shadow_ledger_dir", tmp_path)
+    report = EconomicFeasibilityReport(
+        generated_at=NOW,
+        reference_capital_eur=400,
+        risk_fraction=0.01,
+        max_spread_to_stop=0.15,
+        max_margin_fraction=0.25,
+        stop_atr_multiples=[0.5, 0.75, 1.0, 1.5],
+        assets=[],
+    )
+    write_economic_feasibility_report(
+        tmp_path / ECONOMIC_FEASIBILITY_FILE,
+        report,
+    )
+
+    response = TestClient(app).get(
+        "/api/v1/research/economic-feasibility"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["reference_capital_eur"] == 400
+
+
+def test_economic_feasibility_endpoint_is_404_without_snapshot(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "shadow_ledger_dir", tmp_path)
+
+    response = TestClient(app).get(
+        "/api/v1/research/economic-feasibility"
+    )
+
+    assert response.status_code == 404

@@ -501,6 +501,38 @@ type TradingIntelligence = {
   limitations: string[];
 };
 
+type EconomicFeasibilityReport = {
+  generated_at: string;
+  reference_capital_eur: number;
+  risk_fraction: number;
+  max_spread_to_stop: number;
+  max_margin_fraction: number;
+  stop_atr_multiples: number[];
+  assets: {
+    symbol: string;
+    frozen_spread: number;
+    min_lot: number;
+    min_lot_margin_eur: number;
+    spread_stop_floor_price: number;
+    risk_stop_ceiling_price: number;
+    feasible_stop_interval: boolean;
+    minimum_reference_capital_eur: number;
+    total_episodes: number;
+    stop_profiles: {
+      stop_atr_multiple: number;
+      episodes: number;
+      approved: number;
+      rejected_spread: number;
+      rejected_min_lot: number;
+      rejected_margin: number;
+      rejected_other: number;
+      approval_rate: number;
+      average_expected_loss_eur: number;
+      average_lots: number;
+    }[];
+  }[];
+};
+
 type DailyTradingReport = {
   report_date: string;
   generated_at: string;
@@ -682,6 +714,7 @@ export default function App() {
   const [blockedProbes, setBlockedProbes] = useState<BlockedProbeRuntime[]>([]);
   const [opportunityFunnel, setOpportunityFunnel] = useState<OpportunityFunnel | null>(null);
   const [intelligence, setIntelligence] = useState<TradingIntelligence | null>(null);
+  const [economicFeasibility, setEconomicFeasibility] = useState<EconomicFeasibilityReport | null>(null);
   const [dailyReport, setDailyReport] = useState<DailyTradingReport | null>(null);
   const [qualificationHistory, setQualificationHistory] = useState<QualificationHistoryEvent[]>([]);
   const [paper, setPaper] = useState<PaperSummary | null>(null);
@@ -727,6 +760,7 @@ export default function App() {
           blockedProbesResponse,
           opportunityFunnelResponse,
           intelligenceResponse,
+          economicFeasibilityResponse,
           dailyReportResponse,
           qualificationHistoryResponse
         ] = await Promise.all([
@@ -745,6 +779,7 @@ export default function App() {
           fetch("/api/v1/shadow/blocked-probes"),
           fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           fetch("/api/v1/intelligence/overview?hours=24"),
+          fetch("/api/v1/research/economic-feasibility"),
           fetch("/api/v1/reports/daily"),
           fetch("/api/v1/qualification/history?limit=50")
         ]);
@@ -777,6 +812,9 @@ export default function App() {
         const intelligencePayload = intelligenceResponse.ok
           ? await intelligenceResponse.json()
           : null;
+        const economicFeasibilityPayload = economicFeasibilityResponse.ok
+          ? await economicFeasibilityResponse.json()
+          : null;
         const dailyReportPayload = dailyReportResponse.ok
           ? await dailyReportResponse.json()
           : null;
@@ -800,6 +838,7 @@ export default function App() {
         setBlockedProbes(blockedProbesPayload);
         setOpportunityFunnel(opportunityFunnelPayload);
         setIntelligence(intelligencePayload);
+        setEconomicFeasibility(economicFeasibilityPayload);
         setDailyReport(dailyReportPayload);
         setQualificationHistory(qualificationHistoryPayload);
       } catch {
@@ -1551,6 +1590,49 @@ export default function App() {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="intelligence-subsection">
+          <h3>Economic Feasibility Map · 400 €</h3>
+          <p className="intelligence-note">
+            Faisabilité d’exécution uniquement : même moteur de sizing, spread gelé, lot minimum,
+            risque 1 % et marge 25 %. Une ligne INFEASIBLE n’autorise pas à augmenter le risque.
+          </p>
+          {economicFeasibility ? (
+            <div className="intelligence-table economic-feasibility-table">
+              <div className="intelligence-row economic-feasibility-row intelligence-head">
+                <span>Actif</span>
+                <span>Intervalle</span>
+                <span>Stop min spread</span>
+                <span>Stop max risque</span>
+                <span>Capital min théorique</span>
+                <span>Meilleur stop ATR</span>
+                <span>Approbation hist.</span>
+              </div>
+              {economicFeasibility.assets.map((asset) => {
+                const bestProfile = [...asset.stop_profiles].sort(
+                  (left, right) => right.approval_rate - left.approval_rate
+                )[0];
+                return (
+                  <div className="intelligence-row economic-feasibility-row" key={asset.symbol}>
+                    <strong>{asset.symbol}</strong>
+                    <span className={asset.feasible_stop_interval ? "positive-text" : "negative-text"}>
+                      {asset.feasible_stop_interval ? "FEASIBLE" : "INFEASIBLE"}
+                    </span>
+                    <span>{asset.spread_stop_floor_price.toPrecision(4)}</span>
+                    <span>{asset.risk_stop_ceiling_price.toPrecision(4)}</span>
+                    <span>{asset.minimum_reference_capital_eur.toFixed(0)} €</span>
+                    <span>{bestProfile ? bestProfile.stop_atr_multiple.toFixed(2) + " ATR" : "—"}</span>
+                    <span>
+                      {bestProfile ? (bestProfile.approval_rate * 100).toFixed(1) + " %" : "—"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="strategy-empty">Snapshot économique non généré.</p>
+          )}
         </div>
 
         <div className="intelligence-subsection">

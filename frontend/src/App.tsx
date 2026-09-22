@@ -309,6 +309,45 @@ type BlockedProbeRuntime = {
   };
 };
 
+type OpportunityFunnelStrategy = {
+  strategy_id: string;
+  symbol: string;
+  mechanism: string;
+  signal_rows: number;
+  blocked_signal_rows: number;
+  executable_signal_rows: number;
+  tracked_blocked_probes: number;
+  resolved_blocked_probes: number;
+  open_blocked_probes: number;
+  blocked_wins: number;
+  blocked_losses: number;
+  blocked_total_r: number;
+  blocked_expectancy_r: number;
+  blocked_feasible_under_max_risk: number;
+  min_required_capital_base_risk_eur: number | null;
+  max_required_capital_base_risk_eur: number | null;
+  block_reasons: Record<string, number>;
+};
+
+type OpportunityFunnel = {
+  window_hours: number;
+  window_start: string;
+  window_end: string;
+  signal_rows: number;
+  blocked_signal_rows: number;
+  executable_signal_rows: number;
+  tracked_blocked_probes: number;
+  resolved_blocked_probes: number;
+  open_blocked_probes: number;
+  blocked_wins: number;
+  blocked_losses: number;
+  blocked_total_r: number;
+  blocked_expectancy_r: number;
+  blocked_feasible_under_max_risk: number;
+  block_reasons: Record<string, number>;
+  strategies: OpportunityFunnelStrategy[];
+};
+
 type MarketQuote = {
   symbol: string;
   as_of: string;
@@ -432,6 +471,7 @@ export default function App() {
   const [shadow, setShadow] = useState<ShadowDiagnostic | null>(null);
   const [opportunities, setOpportunities] = useState<ShadowDiagnostic[]>([]);
   const [blockedProbes, setBlockedProbes] = useState<BlockedProbeRuntime[]>([]);
+  const [opportunityFunnel, setOpportunityFunnel] = useState<OpportunityFunnel | null>(null);
   const [paper, setPaper] = useState<PaperSummary | null>(null);
   const [quotes, setQuotes] = useState<MarketQuote[]>([]);
   const [universe, setUniverse] = useState<MarketUniverseAsset[]>([]);
@@ -464,7 +504,8 @@ export default function App() {
           demoResponse,
           preflightResponse,
           opportunitiesResponse,
-          blockedProbesResponse
+          blockedProbesResponse,
+          opportunityFunnelResponse
         ] = await Promise.all([
           fetch("/api/v1/health"),
           fetch("/api/v1/config"),
@@ -478,7 +519,8 @@ export default function App() {
           fetch("/api/v1/execution/demo/status"),
           fetch("/api/v1/session/preflight"),
           fetch("/api/v1/shadow/overview"),
-          fetch("/api/v1/shadow/blocked-probes")
+          fetch("/api/v1/shadow/blocked-probes"),
+          fetch("/api/v1/shadow/opportunity-funnel?hours=24")
         ]);
         if (!healthResponse.ok || !configResponse.ok) {
           throw new Error("backend unavailable");
@@ -503,6 +545,9 @@ export default function App() {
         const blockedProbesPayload = blockedProbesResponse.ok
           ? await blockedProbesResponse.json()
           : [];
+        const opportunityFunnelPayload = opportunityFunnelResponse.ok
+          ? await opportunityFunnelResponse.json()
+          : null;
 
         if (!active) return;
         setStatus(health.status === "ok" ? "Opérationnel" : "Dégradé");
@@ -518,6 +563,7 @@ export default function App() {
         setPreflight(preflightPayload);
         setOpportunities(opportunitiesPayload);
         setBlockedProbes(blockedProbesPayload);
+        setOpportunityFunnel(opportunityFunnelPayload);
       } catch {
         if (active) setStatus("Backend indisponible");
       } finally {
@@ -1091,6 +1137,156 @@ export default function App() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="gate-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">OPPORTUNITY FUNNEL · 24 H · READ-ONLY</p>
+            <h2>Où meurent les opportunités</h2>
+          </div>
+          <p>
+            Mesure les signaux détectés, les blocages économiques et le résultat
+            contre-factuel des probes. Ce panneau ne change aucun seuil et ne crée
+            aucun ordre.
+          </p>
+        </div>
+
+        <div className="gate-grid">
+          <div className="gate-card">
+            <span className="label">Signaux détectés</span>
+            <strong>{opportunityFunnel?.signal_rows ?? "—"}</strong>
+            <p>
+              {opportunityFunnel
+                ? `${opportunityFunnel.blocked_signal_rows} bloqués · ${opportunityFunnel.executable_signal_rows} exécutables`
+                : "Funnel indisponible."}
+            </p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Probes bloqués</span>
+            <strong>{opportunityFunnel?.tracked_blocked_probes ?? "—"}</strong>
+            <p>
+              {opportunityFunnel
+                ? `${opportunityFunnel.resolved_blocked_probes} résolus · ${opportunityFunnel.open_blocked_probes} ouverts`
+                : "—"}
+            </p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Résultat contre-factuel</span>
+            <strong
+              className={
+                opportunityFunnel
+                  ? opportunityFunnel.blocked_total_r >= 0
+                    ? "positive-text"
+                    : "negative-text"
+                  : ""
+              }
+            >
+              {opportunityFunnel
+                ? `${opportunityFunnel.blocked_total_r >= 0 ? "+" : ""}${opportunityFunnel.blocked_total_r.toFixed(2)} R`
+                : "—"}
+            </strong>
+            <p>
+              {opportunityFunnel
+                ? `Expectancy ${opportunityFunnel.blocked_expectancy_r >= 0 ? "+" : ""}${opportunityFunnel.blocked_expectancy_r.toFixed(2)} R`
+                : "—"}
+            </p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Wins / losses bloqués</span>
+            <strong>
+              {opportunityFunnel
+                ? `${opportunityFunnel.blocked_wins} / ${opportunityFunnel.blocked_losses}`
+                : "—"}
+            </strong>
+            <p>Uniquement probes contre-factuels résolus.</p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Faisables sous plafond 2 %</span>
+            <strong>{opportunityFunnel?.blocked_feasible_under_max_risk ?? "—"}</strong>
+            <p>
+              Le plafond 2 % reste une limite absolue, pas un sizing cible.
+            </p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Blocages</span>
+            <strong>{opportunityFunnel?.blocked_signal_rows ?? "—"}</strong>
+            <p>
+              {opportunityFunnel
+                ? Object.entries(opportunityFunnel.block_reasons)
+                    .map(([reason, count]) => `${count}× ${reason}`)
+                    .join(" · ") || "Aucun blocage dans la fenêtre."
+                : "—"}
+            </p>
+          </div>
+        </div>
+
+        {opportunityFunnel?.strategies.length ? (
+          <div className="funnel-table">
+            <div className="funnel-row funnel-head">
+              <span>Stratégie</span>
+              <span>Signaux</span>
+              <span>Bloqués</span>
+              <span>Exec.</span>
+              <span>Probes</span>
+              <span>Exp. bloquée</span>
+              <span>Capital @1 %</span>
+              <span>Blocage dominant</span>
+            </div>
+            {[...opportunityFunnel.strategies]
+              .sort(
+                (a, b) =>
+                  b.signal_rows - a.signal_rows ||
+                  b.tracked_blocked_probes - a.tracked_blocked_probes
+              )
+              .map((row) => {
+                const dominantBlock = Object.entries(row.block_reasons).sort(
+                  (a, b) => b[1] - a[1]
+                )[0];
+                const capitalRange =
+                  row.min_required_capital_base_risk_eur == null
+                    ? "—"
+                    : row.max_required_capital_base_risk_eur == null ||
+                        row.max_required_capital_base_risk_eur ===
+                          row.min_required_capital_base_risk_eur
+                      ? `${row.min_required_capital_base_risk_eur.toFixed(0)} €`
+                      : `${row.min_required_capital_base_risk_eur.toFixed(0)}–${row.max_required_capital_base_risk_eur.toFixed(0)} €`;
+                return (
+                  <div className="funnel-row" key={row.strategy_id}>
+                    <strong>
+                      {row.symbol} · {row.mechanism.replaceAll("_", " ")}
+                    </strong>
+                    <span>{row.signal_rows}</span>
+                    <span>{row.blocked_signal_rows}</span>
+                    <span>{row.executable_signal_rows}</span>
+                    <span>
+                      {row.resolved_blocked_probes}
+                      {row.open_blocked_probes ? ` +${row.open_blocked_probes} open` : ""}
+                    </span>
+                    <span
+                      className={
+                        row.resolved_blocked_probes
+                          ? row.blocked_expectancy_r >= 0
+                            ? "positive-text"
+                            : "negative-text"
+                          : ""
+                      }
+                    >
+                      {row.resolved_blocked_probes
+                        ? `${row.blocked_expectancy_r >= 0 ? "+" : ""}${row.blocked_expectancy_r.toFixed(2)} R`
+                        : "—"}
+                    </span>
+                    <span>{capitalRange}</span>
+                    <span className="opportunity-reason">
+                      {dominantBlock
+                        ? `${dominantBlock[1]}× ${dominantBlock[0]}`
+                        : "—"}
+                    </span>
+                  </div>
+                );
+              })}
+          </div>
+        ) : null}
       </section>
 
       <section className="blocked-probe-panel">

@@ -1,6 +1,6 @@
 # Evolutions and PR tracking
 
-Last updated: 2026-09-21.
+Last updated: 2026-09-22.
 
 ## Merged evolution history
 
@@ -293,3 +293,26 @@ prevent execution rather than a dead scanner:
 
 Next implementation: read-only opportunity funnel / blocked-opportunity outcome
 telemetry. No trading threshold or risk policy change is part of that work.
+
+
+## In-flight — PR #45 opportunity funnel telemetry
+
+Branch: `feat/opportunity-funnel`.
+
+Read-only engineering change. It does not alter signal geometry, sizing, risk,
+admission or broker execution.
+
+- new `/api/v1/shadow/opportunity-funnel?hours=24` endpoint;
+- counts blocked vs executable SHADOW signal rows over a rolling window;
+- aggregates closed and open blocked-opportunity probes;
+- exposes counterfactual wins/losses, total R and expectancy;
+- exposes minimum-lot capital requirements and dominant block reasons per strategy;
+- dashboard adds a 24 h opportunity funnel before the detailed probe table.
+
+Runtime data sampled during development over the trailing 24 h: 62 signal rows,
+61 blocked, 1 executable; 51 blocked probes tracked, 46 resolved; blocked-probe
+total -7.92R and expectancy -0.17R. The aggregate evidence argues against
+blindly relaxing guards: the purpose of this telemetry is to isolate mechanisms
+where economic feasibility and edge coexist.
+
+Targeted validation: 3 new tests passed, Ruff passed, frontend build passed.

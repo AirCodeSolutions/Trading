@@ -358,3 +358,24 @@ Observed since midnight Europe/Athens through the morning checkpoint:
 The next engineering step is a read-only opportunity funnel: detected signal →
 economic block reason → counterfactual outcome. This must expose where
 opportunities are lost without changing strategy thresholds, lots or risk.
+
+
+## Opportunity funnel implementation — PR #45 in flight
+
+The no-trade diagnosis is now encoded as read-only runtime telemetry rather than
+a manual log inspection. The funnel measures a rolling window of SHADOW signal
+rows and joins them with tracked blocked-opportunity probes.
+
+Development checkpoint over the trailing 24 h:
+
+- 62 signal rows: 61 blocked / 1 executable;
+- 51 blocked probes tracked: 46 resolved / 5 open;
+- resolved blocked probes: 15 wins / 31 losses;
+- blocked total: -7.92R; blocked expectancy: -0.17R;
+- block reasons: 39 spread/stop, 22 minimum-lot risk budget;
+- XAUUSD failed-auction blocked probes: +3.0R total / +0.43R expectancy across
+  7 resolved probes, while capital feasibility remains the key limitation;
+- XAGUSD post-shock blocked probes: negative expectancy in the same window.
+
+These observations are diagnostics, not activation criteria. Execution remains
+PAPER-only with DEMO and LIVE disabled while this work is developed.

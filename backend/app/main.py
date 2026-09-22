@@ -26,6 +26,7 @@ from app.domain.opportunity import (
     PortfolioResearchRequest,
     PortfolioResearchResult,
 )
+from app.domain.opportunity_funnel import OpportunityFunnel
 from app.domain.portfolio import MarketUniverseAsset, TradingOverview
 from app.domain.regime import RegimeSnapshot
 from app.domain.session import SessionPreflight
@@ -54,6 +55,7 @@ from app.services.mt4_live_bars import read_closed_bar_snapshot
 from app.services.mt4_live_quotes import read_live_market_quotes
 from app.services.mt4_specs import get_mt4_symbol_spec, list_mt4_symbol_specs
 from app.services.opportunity_backtester import run_opportunity_backtest
+from app.services.opportunity_funnel import build_opportunity_funnel
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.portfolio_overview import build_trading_overview
 from app.services.prospective_qualification import MIN_PROSPECTIVE_TRADES
@@ -239,6 +241,21 @@ def blocked_probe_overview() -> list[BlockedProbeRuntime]:
 def shadow_overview() -> list[ShadowOpportunityDiagnostic]:
     return load_shadow_overview(
         settings.shadow_ledger_dir,
+        symbols=settings.session_watch_symbols,
+    )
+
+
+@app.get(
+    f"{settings.api_prefix}/shadow/opportunity-funnel",
+    response_model=OpportunityFunnel,
+)
+def shadow_opportunity_funnel(hours: int = 24) -> OpportunityFunnel:
+    if hours < 1 or hours > 168:
+        raise HTTPException(status_code=422, detail="hours must be between 1 and 168")
+    return build_opportunity_funnel(
+        settings.shadow_ledger_dir,
+        now=datetime.now(tz=_server_timezone()),
+        window_hours=hours,
         symbols=settings.session_watch_symbols,
     )
 

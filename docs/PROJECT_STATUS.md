@@ -837,3 +837,23 @@ strategies remain frozen and unchanged.
 
 These counts are a rolling 24 h research snapshot and will change as the window
 moves. They are not strategy admission evidence by themselves.
+
+
+## Historical causal-pattern stability — current chantier
+
+Branch: `research/causal-pattern-stability`.
+
+The causal classifier from PR #66 is now being evaluated historically over the
+same frozen train / validation / holdout boundaries.
+
+The first full five-asset pass found no directional causal class with stable
+positive alignment across all windows. Compression breakout is consistently
+anti-aligned, but a fixed opposite-side reversal replay failed economic
+validation once broker spread, stop geometry, minimum lot and the 400 EUR risk
+budget were applied.
+
+No deployed strategy changes from this work.
+
+Next research focus: an **economic feasibility map** for missed opportunities,
+so research effort is concentrated only on structures that can actually be
+traded under the current broker and capital constraints.

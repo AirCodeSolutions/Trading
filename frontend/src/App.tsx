@@ -446,6 +446,26 @@ type TradingIntelligence = {
     move_atr: number;
     capture_state: "executable" | "blocked" | "missed";
     matching_strategies: string[];
+    causal_context: {
+      pattern:
+        | "auction_failure_reclaim"
+        | "compression_breakout"
+        | "directional_displacement"
+        | "structural_extreme_stretch"
+        | "compression_state"
+        | "structural_extreme"
+        | "unclassified";
+      side: "buy" | "sell" | null;
+      aligned_with_move: boolean | null;
+      range_position_24: number;
+      return_3_atr: number;
+      return_6_atr: number;
+      compression_6_24: number;
+      body_fraction: number;
+      sweep_atr: number;
+      reclaim_atr: number;
+      evidence: string[];
+    };
   }[];
   assets: {
     symbol: string;
@@ -461,6 +481,22 @@ type TradingIntelligence = {
     average_r_lost_while_waiting: number;
     average_mfe_r: number;
     average_mae_r: number;
+  }[];
+  causal_patterns: {
+    pattern:
+      | "auction_failure_reclaim"
+      | "compression_breakout"
+      | "directional_displacement"
+      | "structural_extreme_stretch"
+      | "compression_state"
+      | "structural_extreme"
+      | "unclassified";
+    episodes: number;
+    missed: number;
+    aligned: number;
+    opposed: number;
+    no_direction: number;
+    average_move_atr: number;
   }[];
   limitations: string[];
 };
@@ -1518,6 +1554,36 @@ export default function App() {
         </div>
 
         <div className="intelligence-subsection">
+          <h3>Patterns causaux observés au birth</h3>
+          <p className="intelligence-note">
+            Classification construite uniquement avec les barres disponibles au moment de la naissance
+            de l’épisode. L’alignement compare ensuite cette direction causale au mouvement futur.
+          </p>
+          <div className="intelligence-table causal-pattern-table">
+            <div className="intelligence-row causal-pattern-row intelligence-head">
+              <span>Pattern</span>
+              <span>Épisodes</span>
+              <span>Manqués</span>
+              <span>Alignés</span>
+              <span>Opposés</span>
+              <span>Neutres</span>
+              <span>Move moyen</span>
+            </div>
+            {(intelligence?.causal_patterns ?? []).map((row) => (
+              <div className="intelligence-row causal-pattern-row" key={row.pattern}>
+                <strong>{row.pattern.replaceAll("_", " ")}</strong>
+                <span>{row.episodes}</span>
+                <span>{row.missed}</span>
+                <span className={row.aligned > row.opposed ? "positive-text" : ""}>{row.aligned}</span>
+                <span className={row.opposed > row.aligned ? "negative-text" : ""}>{row.opposed}</span>
+                <span>{row.no_direction}</span>
+                <span>{row.average_move_atr.toFixed(2)} ATR</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="intelligence-subsection">
           <h3>Missed Opportunity Review · plus gros mouvements non capturés</h3>
           <p className="intelligence-note">
             Télémétrie rétrospective uniquement : ces épisodes montrent où le marché a bougé
@@ -1528,8 +1594,10 @@ export default function App() {
               <div className="intelligence-row missed-opportunity-row intelligence-head">
                 <span>Naissance</span>
                 <span>Actif</span>
-                <span>Sens</span>
+                <span>Sens futur</span>
                 <span>Mouvement</span>
+                <span>Pattern causal</span>
+                <span>Alignement</span>
                 <span>Référence</span>
                 <span>Horizon</span>
               </div>
@@ -1542,6 +1610,22 @@ export default function App() {
                   </span>
                   <span>
                     <strong>{episode.move_atr.toFixed(2)} ATR</strong>
+                  </span>
+                  <span>{episode.causal_context.pattern.replaceAll("_", " ")}</span>
+                  <span
+                    className={
+                      episode.causal_context.aligned_with_move === true
+                        ? "positive-text"
+                        : episode.causal_context.aligned_with_move === false
+                          ? "negative-text"
+                          : ""
+                    }
+                  >
+                    {episode.causal_context.aligned_with_move === true
+                      ? "ALIGNÉ"
+                      : episode.causal_context.aligned_with_move === false
+                        ? "OPPOSÉ"
+                        : "NEUTRE"}
                   </span>
                   <span>{episode.reference_price}</span>
                   <span>{new Date(episode.horizon_end_at).toLocaleTimeString("fr-FR")}</span>

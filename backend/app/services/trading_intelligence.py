@@ -14,6 +14,9 @@ from app.domain.trading_intelligence import (
     AssetIntelligence,
     MarketOpportunityEpisode,
     OpportunityCaptureState,
+    OpportunityCausalContext,
+    OpportunityCausalPattern,
+    OpportunityCausalPatternSummary,
     TradeIntelligence,
     TradingIntelligenceOverview,
 )
@@ -126,6 +129,7 @@ def build_trading_intelligence(
         trades=trade_rows,
         opportunities=opportunities,
     )
+    causal_patterns = _causal_pattern_summaries(opportunities)
     return TradingIntelligenceOverview(
         generated_at=now,
         window_hours=window_hours,
@@ -136,6 +140,7 @@ def build_trading_intelligence(
         trades=trade_rows[:100],
         opportunities=opportunities[:200],
         assets=assets,
+        causal_patterns=causal_patterns,
         limitations=[
             (
                 "Market opportunities are a retrospective research denominator: "
@@ -148,6 +153,10 @@ def build_trading_intelligence(
             (
                 "MFE/MAE are reconstructed from M5 OHLC bars; intrabar path ordering "
                 "cannot be recovered."
+            ),
+            (
+                "Causal-pattern labels use only bars available by episode birth. "
+                "Pattern alignment with the later move is retrospective research metadata."
             ),
         ],
     )
@@ -424,6 +433,167 @@ def _next_full_m5_bar_start(at: datetime) -> datetime:
     return minute_floor + timedelta(minutes=minutes)
 
 
+
+def _classify_causal_context(
+    *,
+    bars: list[MarketBar],
+    atr: list[float],
+    index: int,
+    episode_side: Side,
+) -> OpportunityCausalContext:
+    if index < 3 or index >= len(bars) or index >= len(atr):
+        return OpportunityCausalContext()
+
+    bar = bars[index]
+    current_atr = atr[index]
+    if current_atr <= 0:
+        return OpportunityCausalContext()
+
+    bar_range = bar.high - bar.low
+    body_fraction = (
+        (bar.close - bar.open) / bar_range if bar_range > 0 else 0.0
+    )
+    return_3_atr = (bar.close - bars[index - 3].close) / current_atr
+    return_6_atr = (
+        (bar.close - bars[index - 6].close) / current_atr
+        if index >= 6
+        else 0.0
+    )
+
+    prior_24 = bars[index - 24 : index] if index >= 24 else bars[:index]
+    prior_6 = bars[index - 6 : index] if index >= 6 else bars[:index]
+    if not prior_24:
+        return OpportunityCausalContext(
+            return_3_atr=return_3_atr,
+            return_6_atr=return_6_atr,
+            body_fraction=body_fraction,
+        )
+
+    prior_high = max(item.high for item in prior_24)
+    prior_low = min(item.low for item in prior_24)
+    range_24 = prior_high - prior_low
+    raw_position = (
+        (bar.close - prior_low) / range_24 if range_24 > 0 else 0.5
+    )
+    range_position_24 = min(1.0, max(0.0, raw_position))
+
+    compression_6_24 = 1.0
+    if prior_6 and range_24 > 0:
+        range_6 = max(item.high for item in prior_6) - min(
+            item.low for item in prior_6
+        )
+        compression_6_24 = max(0.0, range_6 / range_24)
+
+    pattern = OpportunityCausalPattern.UNCLASSIFIED
+    pattern_side: Side | None = None
+    sweep_atr = 0.0
+    reclaim_atr = 0.0
+    evidence: list[str] = []
+
+    upper_wick = (
+        bar.high - max(bar.open, bar.close) if bar_range > 0 else 0.0
+    )
+    lower_wick = (
+        min(bar.open, bar.close) - bar.low if bar_range > 0 else 0.0
+    )
+    close_location = (
+        (bar.close - bar.low) / bar_range if bar_range > 0 else 0.5
+    )
+
+    if index >= 24 and bar_range > 0:
+        if (
+            bar.high > prior_high + 0.10 * current_atr
+            and bar.close < prior_high - 0.02 * current_atr
+            and upper_wick / bar_range >= 0.35
+            and close_location <= 0.50
+        ):
+            pattern = OpportunityCausalPattern.AUCTION_FAILURE_RECLAIM
+            pattern_side = Side.SELL
+            sweep_atr = (bar.high - prior_high) / current_atr
+            reclaim_atr = (prior_high - bar.close) / current_atr
+            evidence.append("upper 24-M5 sweep reclaimed causally")
+        elif (
+            bar.low < prior_low - 0.10 * current_atr
+            and bar.close > prior_low + 0.02 * current_atr
+            and lower_wick / bar_range >= 0.35
+            and close_location >= 0.50
+        ):
+            pattern = OpportunityCausalPattern.AUCTION_FAILURE_RECLAIM
+            pattern_side = Side.BUY
+            sweep_atr = (prior_low - bar.low) / current_atr
+            reclaim_atr = (bar.close - prior_low) / current_atr
+            evidence.append("lower 24-M5 sweep reclaimed causally")
+
+    if (
+        pattern == OpportunityCausalPattern.UNCLASSIFIED
+        and index >= 24
+        and len(prior_6) >= 6
+        and compression_6_24 <= 0.35
+        and bar_range > 0
+    ):
+        prior_6_high = max(item.high for item in prior_6)
+        prior_6_low = min(item.low for item in prior_6)
+        if bar.close > prior_6_high and body_fraction >= 0.50:
+            pattern = OpportunityCausalPattern.COMPRESSION_BREAKOUT
+            pattern_side = Side.BUY
+            evidence.append("6/24-M5 compression released upward")
+        elif bar.close < prior_6_low and body_fraction <= -0.50:
+            pattern = OpportunityCausalPattern.COMPRESSION_BREAKOUT
+            pattern_side = Side.SELL
+            evidence.append("6/24-M5 compression released downward")
+
+    if pattern == OpportunityCausalPattern.UNCLASSIFIED:
+        if return_3_atr >= 0.50 and body_fraction >= 0.50:
+            pattern = OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT
+            pattern_side = Side.BUY
+            evidence.append("3-M5 bullish displacement")
+        elif return_3_atr <= -0.50 and body_fraction <= -0.50:
+            pattern = OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT
+            pattern_side = Side.SELL
+            evidence.append("3-M5 bearish displacement")
+
+    if pattern == OpportunityCausalPattern.UNCLASSIFIED and index >= 24:
+        if range_position_24 >= 0.80 and return_6_atr >= 1.0:
+            pattern = OpportunityCausalPattern.STRUCTURAL_EXTREME_STRETCH
+            pattern_side = Side.BUY
+            evidence.append("upper structural extreme after bullish stretch")
+        elif range_position_24 <= 0.20 and return_6_atr <= -1.0:
+            pattern = OpportunityCausalPattern.STRUCTURAL_EXTREME_STRETCH
+            pattern_side = Side.SELL
+            evidence.append("lower structural extreme after bearish stretch")
+
+    if (
+        pattern == OpportunityCausalPattern.UNCLASSIFIED
+        and index >= 24
+        and compression_6_24 <= 0.35
+    ):
+        pattern = OpportunityCausalPattern.COMPRESSION_STATE
+        evidence.append("6/24-M5 compression state")
+
+    if (
+        pattern == OpportunityCausalPattern.UNCLASSIFIED
+        and index >= 24
+        and (range_position_24 >= 0.80 or range_position_24 <= 0.20)
+    ):
+        pattern = OpportunityCausalPattern.STRUCTURAL_EXTREME
+        evidence.append("price at 24-M5 structural extreme")
+
+    aligned = pattern_side == episode_side if pattern_side is not None else None
+    return OpportunityCausalContext(
+        pattern=pattern,
+        side=pattern_side,
+        aligned_with_move=aligned,
+        range_position_24=range_position_24,
+        return_3_atr=return_3_atr,
+        return_6_atr=return_6_atr,
+        compression_6_24=compression_6_24,
+        body_fraction=body_fraction,
+        sweep_atr=max(0.0, sweep_atr),
+        reclaim_atr=max(0.0, reclaim_atr),
+        evidence=evidence,
+    )
+
+
 def _market_opportunity_episodes(
     *,
     symbol: str,
@@ -495,6 +665,12 @@ def _market_opportunity_episodes(
         strategies = sorted(
             {f"{row.symbol}:{row.mechanism.value}" for row in matches}
         )
+        causal_context = _classify_causal_context(
+            bars=bars,
+            atr=atr,
+            index=index,
+            episode_side=side,
+        )
         episodes.append(
             MarketOpportunityEpisode(
                 episode_id=f"{symbol}-{birth_at.isoformat()}-{side.value}",
@@ -507,6 +683,7 @@ def _market_opportunity_episodes(
                 move_atr=move_atr,
                 capture_state=capture_state,
                 matching_strategies=strategies,
+                causal_context=causal_context,
             )
         )
         index += horizon_bars
@@ -595,6 +772,47 @@ def _asset_summaries(
             )
         )
     return output
+
+
+def _causal_pattern_summaries(
+    opportunities: list[MarketOpportunityEpisode],
+) -> list[OpportunityCausalPatternSummary]:
+    grouped: dict[OpportunityCausalPattern, list[MarketOpportunityEpisode]] = (
+        defaultdict(list)
+    )
+    for row in opportunities:
+        grouped[row.causal_context.pattern].append(row)
+
+    summaries: list[OpportunityCausalPatternSummary] = []
+    for pattern, rows in grouped.items():
+        aligned = sum(
+            row.causal_context.aligned_with_move is True for row in rows
+        )
+        opposed = sum(
+            row.causal_context.aligned_with_move is False for row in rows
+        )
+        no_direction = sum(
+            row.causal_context.aligned_with_move is None for row in rows
+        )
+        summaries.append(
+            OpportunityCausalPatternSummary(
+                pattern=pattern,
+                episodes=len(rows),
+                missed=sum(
+                    row.capture_state == OpportunityCaptureState.MISSED
+                    for row in rows
+                ),
+                aligned=aligned,
+                opposed=opposed,
+                no_direction=no_direction,
+                average_move_atr=fmean(row.move_atr for row in rows),
+            )
+        )
+
+    return sorted(
+        summaries,
+        key=lambda row: (-row.episodes, row.pattern.value),
+    )
 
 
 INTELLIGENCE_FILE = "trading_intelligence_latest.json"

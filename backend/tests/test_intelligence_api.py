@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -141,3 +142,49 @@ def test_execution_quality_endpoint_is_empty_without_audit(
 
     assert response.status_code == 200
     assert response.json()["commands"] == 0
+
+
+def test_legacy_intelligence_cache_loads_with_causal_defaults(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "shadow_ledger_dir", tmp_path)
+    payload = {
+        "generated_at": NOW.isoformat(),
+        "window_hours": 24,
+        "window_start": NOW.replace(hour=0).isoformat(),
+        "window_end": NOW.isoformat(),
+        "market_move_threshold_atr": 1.5,
+        "market_move_horizon_bars": 12,
+        "trades": [],
+        "opportunities": [
+            {
+                "episode_id": "legacy-one",
+                "symbol": "BTCUSD",
+                "side": "buy",
+                "birth_at": NOW.isoformat(),
+                "horizon_end_at": NOW.replace(hour=13).isoformat(),
+                "reference_price": 65000,
+                "atr_m5": 100,
+                "move_atr": 2.0,
+                "capture_state": "missed",
+                "matching_strategies": [],
+            }
+        ],
+        "assets": [],
+        "limitations": ["legacy"],
+    }
+    (tmp_path / INTELLIGENCE_FILE).write_text(
+        json.dumps(payload),
+        encoding="utf-8",
+    )
+
+    response = TestClient(app).get("/api/v1/intelligence/overview?hours=24")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["causal_patterns"] == []
+    assert (
+        body["opportunities"][0]["causal_context"]["pattern"]
+        == "unclassified"
+    )

@@ -344,3 +344,68 @@ comments `TradingNew:manual_demo:<symbol>`. Only those tickets are eligible
 for the dashboard manual-close endpoint.
 
 LIVE execution is not enabled by this path.
+
+
+## Trading Intelligence layer
+
+Trading Intelligence is a read-only layer above runtime ledgers and below
+research decisions. It must never feed an entry/exit decision directly.
+
+Inputs:
+
+- SHADOW diagnostic ledgers;
+- PAPER states/trade ledgers;
+- blocked-opportunity probes;
+- recent causal MT4 M5 bars;
+- DEMO command/result audit;
+- prospective qualification state;
+- broker open positions.
+
+Outputs:
+
+- `TradingIntelligenceOverview`;
+- `DailyTradingReport`;
+- `qualification_history.jsonl`;
+- `demo_execution_audit.jsonl`;
+- `trading_intelligence_latest.json`;
+- `daily_report_latest.json` and one dated daily report.
+
+### Market-first denominator
+
+An opportunity episode is defined independently of a strategy:
+
+- causal birth reference = close of an M5 bar;
+- retrospective evaluation horizon = next 12 M5 bars;
+- episode exists when maximum directional excursion reaches at least 1.5 ATR M5;
+- overlapping births are deduplicated by the 12-bar horizon;
+- a matching same-direction SHADOW signal within ±3 M5 bars around episode
+  birth classifies the episode as executable or blocked; otherwise it is missed.
+
+This denominator is intentionally retrospective. It measures opportunity
+coverage and must not be used directly as a live signal.
+
+### Trade anatomy
+
+For PAPER and blocked probes the intelligence layer reconstructs MFE/MAE using
+M5 OHLC and the recorded entry spread. Intrabar path ordering is unknowable and
+is therefore not inferred.
+
+Waiting analysis currently begins at the engine's persisted signal timestamp.
+A separate persistent `first_seen` event will be required before the metric can
+cover pre-signal setup latency.
+
+### Execution audit
+
+Every AUTO/MANUAL DEMO open command and close command can be appended to the
+runtime audit. The worker pairs the latest bridge result once by `command_id`.
+Open-command expected entry and broker fill permit directional adverse-slippage
+measurement in price and R.
+
+### Qualification history
+
+Prospective qualification remains the existing 20-trade authority:
+COLLECTING / FAILED / SUPPORTS_DEMO. Trading Intelligence only records changes
+in evidence/state and does not alter thresholds or promote a strategy by itself.
+Separately, the existing prospective authority is now enforced as a defensive
+entry gate: `FAILED` freezes new PAPER/DEMO entries while already-open trades
+continue to resolution.

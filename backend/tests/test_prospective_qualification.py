@@ -37,3 +37,15 @@ def test_prospective_fails_negative_expectancy() -> None:
     result = assess_prospective("BTCUSD:test", summary(20, -0.1, 1.4, 3.0))
 
     assert result.state == "failed"
+
+
+def test_prospective_entry_allowed_blocks_failed_only() -> None:
+    from app.services.prospective_qualification import prospective_entry_allowed
+
+    collecting = assess_prospective("BTCUSD:test", summary(19, -0.5, 0.5, 5.0))
+    failed = assess_prospective("BTCUSD:test", summary(20, -0.1, 1.4, 3.0))
+    supports = assess_prospective("BTCUSD:test", summary(20, 0.2, 1.4, 3.0))
+
+    assert prospective_entry_allowed(collecting) is True
+    assert prospective_entry_allowed(failed) is False
+    assert prospective_entry_allowed(supports) is True

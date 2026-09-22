@@ -407,3 +407,74 @@ def test_open_rejected_shadow_never_enters_demo_collection(tmp_path: Path) -> No
     assert row.paper_entry_allowed is False
     assert overview.portfolio.action == "paper_only"
     assert overview.portfolio.selected_strategy_id == "XAUUSD:failed_auction_reversal"
+
+
+def test_prospective_failed_shadow_is_no_longer_effectively_paper_allowed(
+    tmp_path: Path,
+) -> None:
+    files_dir = tmp_path / "mt4"
+    runtime_dir = tmp_path / "runtime"
+    files_dir.mkdir()
+    runtime_dir.mkdir()
+
+    now = datetime(2026, 9, 22, 10, 0, tzinfo=TZ)
+    state_path = runtime_dir / "BTCUSD_break_retest_paper_state.json"
+    trades_path = runtime_dir / "BTCUSD_break_retest_paper_trades.jsonl"
+    state_path.write_text(ShadowPaperState().model_dump_json(), encoding="utf-8")
+
+    rows = []
+    for index in range(20):
+        opened_at = datetime(2026, 9, 21, 8, 0, tzinfo=TZ)
+        trade = ShadowPaperTrade(
+            trade_id=f"btc-negative-{index}",
+            symbol="BTCUSD",
+            mechanism=OpportunityMechanism.BREAK_RETEST_REACCEL,
+            side=Side.BUY,
+            signal_at=opened_at,
+            entry_bar_at=opened_at,
+            opened_at=opened_at,
+            entry_price=65000,
+            stop_price=64600,
+            target_price=65720,
+            spread_at_entry=24.5,
+            lots=0.01,
+            risk_eur=4.0,
+            risk_distance=400,
+            target_r=1.8,
+            max_holding_bars=12,
+            status=PaperTradeStatus.STOP,
+            exit_at=opened_at,
+            exit_price=64600,
+            result_r=-1.0,
+            pnl_eur=-4.0,
+            bars_held=1,
+        )
+        rows.append(trade.model_dump_json())
+    trades_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+    (runtime_dir / "strategy_admissions.json").write_text(
+        json.dumps(
+            {
+                "BTCUSD:break_retest_reaccel": {
+                    "strategy_id": "BTCUSD:break_retest_reaccel",
+                    "state": "shadow",
+                    "reason": "insufficient independent validation evidence",
+                    "weakest_expectancy_r": 0.24,
+                    "worst_drawdown_r": 3.0,
+                    "paper_collection_candidate": False,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    overview = build_trading_overview(files_dir, runtime_dir, now)
+
+    row = next(
+        item
+        for item in overview.paper_strategies
+        if item.strategy_id == "BTCUSD:break_retest_reaccel"
+    )
+    assert row.qualification.state == "failed"
+    assert row.paper_entry_allowed is False
+    assert overview.portfolio.action == "no_trade"

@@ -557,3 +557,51 @@ Validation so far:
 - Ruff passed;
 - frontend TypeScript/Vite build passed;
 - live EURUSD preview proof passed with no MT4 command written.
+
+
+## In-flight — Trading Intelligence v1 (8-step observability/research layer)
+
+Branch: `feat/trading-intelligence-v1`.
+
+No trading-policy change.
+
+Backend additions:
+
+- `/api/v1/intelligence/overview?hours=24`;
+- `/api/v1/execution/demo/quality`;
+- `/api/v1/qualification/history`;
+- `/api/v1/reports/daily`;
+- market-first opportunity capture telemetry;
+- trade/probe MFE/MAE + signal-to-entry waiting metrics;
+- persistent AUTO/MANUAL DEMO command/result audit;
+- persistent prospective-qualification history;
+- daily report writer;
+- per-asset research state;
+- bounded recent-MT4 CSV reader to keep intelligence snapshots cheap.
+
+Worker behavior:
+
+- command/result and qualification history are updated every cycle;
+- intelligence + daily report are generated at most every five minutes;
+- no strategy thresholds or broker guards are changed.
+
+Dashboard:
+
+- 24 h market-first opportunities / captured / missed;
+- daily PAPER result;
+- DEMO fill/refusal/slippage metrics;
+- prospective qualification counts;
+- research/collect state by asset;
+- recent MFE/MAE/waiting-cost table;
+- qualification timeline;
+- explicit data limitations.
+
+Validation checkpoint:
+
+- targeted intelligence/audit/API tests passed;
+- full backend suite: **177 passed**;
+- Ruff clean;
+- frontend TypeScript/Vite build clean;
+- real 24 h intelligence runtime: 113 market opportunities, 12 captured,
+  101 missed after ±3 M5 signal matching;
+- optimized snapshot runtime: ~0.43 s on the runtime host.

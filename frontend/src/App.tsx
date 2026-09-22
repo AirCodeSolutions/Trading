@@ -406,6 +406,118 @@ type OpportunityFunnel = {
   strategies: OpportunityFunnelStrategy[];
 };
 
+
+
+type TradeIntelligence = {
+  trade_id: string;
+  source: "paper" | "blocked_probe";
+  symbol: string;
+  mechanism: string;
+  side: "buy" | "sell";
+  signal_at: string;
+  opened_at: string;
+  exit_at: string | null;
+  status: string;
+  result_r: number | null;
+  pnl_eur: number | null;
+  mfe_r: number;
+  mae_r: number;
+  r_lost_while_waiting: number;
+  rr_at_signal: number | null;
+  rr_at_entry: number | null;
+  mfe_consumed_before_entry_r: number;
+  block_reason: string | null;
+};
+
+type TradingIntelligence = {
+  generated_at: string;
+  window_hours: number;
+  market_move_threshold_atr: number;
+  market_move_horizon_bars: number;
+  trades: TradeIntelligence[];
+  opportunities: {
+    episode_id: string;
+    symbol: string;
+    side: "buy" | "sell";
+    birth_at: string;
+    move_atr: number;
+    capture_state: "executable" | "blocked" | "missed";
+    matching_strategies: string[];
+  }[];
+  assets: {
+    symbol: string;
+    paper_closed_trades: number;
+    paper_total_r: number;
+    blocked_closed_probes: number;
+    blocked_total_r: number;
+    market_opportunities: number;
+    captured_executable: number;
+    captured_blocked: number;
+    missed_opportunities: number;
+    capture_rate: number;
+    average_r_lost_while_waiting: number;
+    average_mfe_r: number;
+    average_mae_r: number;
+  }[];
+  limitations: string[];
+};
+
+type DailyTradingReport = {
+  report_date: string;
+  generated_at: string;
+  reference_capital_eur: number;
+  execution_mode: string;
+  live_trading_enabled: boolean;
+  broker_is_demo: boolean;
+  portfolio_action: string;
+  portfolio_reason: string;
+  paper_closed_pnl_eur_today: number;
+  paper_closed_r_today: number;
+  paper_open_positions: number;
+  paper_open_risk_eur: number;
+  bridge_open_positions: number;
+  bridge_unrealized_pnl_eur: number;
+  broker_realized_pnl_eur_today: number | null;
+  market_opportunities_24h: number;
+  captured_opportunities_24h: number;
+  missed_opportunities_24h: number;
+  qualification_counts: Record<string, number>;
+  execution_quality: {
+    commands: number;
+    fills: number;
+    refused: number;
+    errors: number;
+    unpaired_results: number;
+    average_adverse_slippage_price: number;
+    max_adverse_slippage_price: number;
+    average_slippage_r: number;
+  };
+  assets: {
+    symbol: string;
+    state: "collect_prospective" | "degraded" | "research_only";
+    paper_eligible_strategies: string[];
+    qualification_states: Record<string, string>;
+    market_opportunities_24h: number;
+    captured_opportunities_24h: number;
+    missed_opportunities_24h: number;
+    capture_rate_24h: number;
+    blocked_expectancy_r_24h: number;
+    next_action: string;
+  }[];
+  limitations: string[];
+};
+
+type QualificationHistoryEvent = {
+  at: string;
+  strategy_id: string;
+  state: "collecting" | "failed" | "supports_demo";
+  closed_trades: number;
+  expectancy_r: number;
+  profit_factor: number;
+  max_drawdown_r: number;
+  reason: string;
+};
+
 type MarketQuote = {
   symbol: string;
   as_of: string;
@@ -530,6 +642,9 @@ export default function App() {
   const [opportunities, setOpportunities] = useState<ShadowDiagnostic[]>([]);
   const [blockedProbes, setBlockedProbes] = useState<BlockedProbeRuntime[]>([]);
   const [opportunityFunnel, setOpportunityFunnel] = useState<OpportunityFunnel | null>(null);
+  const [intelligence, setIntelligence] = useState<TradingIntelligence | null>(null);
+  const [dailyReport, setDailyReport] = useState<DailyTradingReport | null>(null);
+  const [qualificationHistory, setQualificationHistory] = useState<QualificationHistoryEvent[]>([]);
   const [paper, setPaper] = useState<PaperSummary | null>(null);
   const [quotes, setQuotes] = useState<MarketQuote[]>([]);
   const [universe, setUniverse] = useState<MarketUniverseAsset[]>([]);
@@ -571,7 +686,10 @@ export default function App() {
           preflightResponse,
           opportunitiesResponse,
           blockedProbesResponse,
-          opportunityFunnelResponse
+          opportunityFunnelResponse,
+          intelligenceResponse,
+          dailyReportResponse,
+          qualificationHistoryResponse
         ] = await Promise.all([
           fetch("/api/v1/health"),
           fetch("/api/v1/config"),
@@ -586,7 +704,10 @@ export default function App() {
           fetch("/api/v1/session/preflight"),
           fetch("/api/v1/shadow/overview"),
           fetch("/api/v1/shadow/blocked-probes"),
-          fetch("/api/v1/shadow/opportunity-funnel?hours=24")
+          fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
+          fetch("/api/v1/intelligence/overview?hours=24"),
+          fetch("/api/v1/reports/daily"),
+          fetch("/api/v1/qualification/history?limit=50")
         ]);
         if (!healthResponse.ok || !configResponse.ok) {
           throw new Error("backend unavailable");
@@ -614,6 +735,15 @@ export default function App() {
         const opportunityFunnelPayload = opportunityFunnelResponse.ok
           ? await opportunityFunnelResponse.json()
           : null;
+        const intelligencePayload = intelligenceResponse.ok
+          ? await intelligenceResponse.json()
+          : null;
+        const dailyReportPayload = dailyReportResponse.ok
+          ? await dailyReportResponse.json()
+          : null;
+        const qualificationHistoryPayload = qualificationHistoryResponse.ok
+          ? await qualificationHistoryResponse.json()
+          : [];
 
         if (!active) return;
         setStatus(health.status === "ok" ? "Opérationnel" : "Dégradé");
@@ -630,6 +760,9 @@ export default function App() {
         setOpportunities(opportunitiesPayload);
         setBlockedProbes(blockedProbesPayload);
         setOpportunityFunnel(opportunityFunnelPayload);
+        setIntelligence(intelligencePayload);
+        setDailyReport(dailyReportPayload);
+        setQualificationHistory(qualificationHistoryPayload);
       } catch {
         if (active) setStatus("Backend indisponible");
       } finally {
@@ -1246,6 +1379,196 @@ export default function App() {
                 <span className={(trade.result_r ?? 0) >= 0 ? "positive" : "negative"}>{trade.result_r == null ? "—" : (trade.result_r >= 0 ? "+" : "") + trade.result_r.toFixed(2) + " R"}</span>
               </div>
             ))}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="intelligence-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">TRADING INTELLIGENCE · 8 CHANTIERS</p>
+            <h2>Comprendre avant de modifier</h2>
+          </div>
+          <p>
+            Snapshot read-only 24 h : trades/probes, mouvements market-first,
+            attente, exécution broker, recherche par actif et qualification.
+          </p>
+        </div>
+
+        <div className="intelligence-grid">
+          <div className="intelligence-card">
+            <span className="label">Mouvements market-first</span>
+            <strong>{dailyReport?.market_opportunities_24h ?? "—"}</strong>
+            <p>≥ {intelligence?.market_move_threshold_atr ?? 1.5} ATR sur {intelligence?.market_move_horizon_bars ?? 12} M5.</p>
+          </div>
+          <div className="intelligence-card">
+            <span className="label">Capturés / manqués</span>
+            <strong>
+              {dailyReport
+                ? dailyReport.captured_opportunities_24h + " / " + dailyReport.missed_opportunities_24h
+                : "—"}
+            </strong>
+            <p>
+              Capture{" "}
+              {dailyReport && dailyReport.market_opportunities_24h
+                ? ((dailyReport.captured_opportunities_24h / dailyReport.market_opportunities_24h) * 100).toFixed(1) + " %"
+                : "—"}
+            </p>
+          </div>
+          <div className="intelligence-card">
+            <span className="label">PnL PAPER aujourd’hui</span>
+            <strong className={(dailyReport?.paper_closed_pnl_eur_today ?? 0) >= 0 ? "positive-text" : "negative-text"}>
+              {dailyReport
+                ? (dailyReport.paper_closed_pnl_eur_today >= 0 ? "+" : "") +
+                  dailyReport.paper_closed_pnl_eur_today.toFixed(2) +
+                  " €"
+                : "—"}
+            </strong>
+            <p>
+              {dailyReport
+                ? (dailyReport.paper_closed_r_today >= 0 ? "+" : "") +
+                  dailyReport.paper_closed_r_today.toFixed(2) +
+                  " R"
+                : "—"}
+            </p>
+          </div>
+          <div className="intelligence-card">
+            <span className="label">Qualité exécution DEMO</span>
+            <strong>{dailyReport?.execution_quality.fills ?? 0} fills</strong>
+            <p>
+              {dailyReport
+                ? dailyReport.execution_quality.refused +
+                  " refus · " +
+                  dailyReport.execution_quality.errors +
+                  " erreurs · slip " +
+                  dailyReport.execution_quality.average_slippage_r.toFixed(3) +
+                  "R"
+                : "—"}
+            </p>
+          </div>
+          <div className="intelligence-card">
+            <span className="label">Qualification prospective</span>
+            <strong>{dailyReport?.qualification_counts.supports_demo ?? 0} SUPPORTS_DEMO</strong>
+            <p>
+              {dailyReport?.qualification_counts.collecting ?? 0} collecting ·{" "}
+              {dailyReport?.qualification_counts.failed ?? 0} failed
+            </p>
+          </div>
+          <div className="intelligence-card">
+            <span className="label">Broker réalisé</span>
+            <strong>
+              {dailyReport?.broker_realized_pnl_eur_today == null
+                ? "UNKNOWN"
+                : dailyReport.broker_realized_pnl_eur_today.toFixed(2) + " €"}
+            </strong>
+            <p>Le bridge actuel n’exporte pas encore le PnL réalisé des tickets fermés.</p>
+          </div>
+        </div>
+
+        <div className="intelligence-subsection">
+          <h3>Recherche et couverture par actif</h3>
+          <div className="intelligence-table">
+            <div className="intelligence-row intelligence-head">
+              <span>Actif</span>
+              <span>État</span>
+              <span>Opp. 24 h</span>
+              <span>Capturées</span>
+              <span>Manquées</span>
+              <span>Capture</span>
+              <span>Exp. probes</span>
+              <span>Prochaine action</span>
+            </div>
+            {(dailyReport?.assets ?? []).map((asset) => (
+              <div className="intelligence-row" key={asset.symbol}>
+                <strong>{asset.symbol}</strong>
+                <span
+                  className={
+                    asset.state === "collect_prospective"
+                      ? "positive-text"
+                      : asset.state === "degraded"
+                        ? "negative-text"
+                        : ""
+                  }
+                >
+                  {asset.state === "collect_prospective"
+                    ? "COLLECT"
+                    : asset.state === "degraded"
+                      ? "DEGRADED"
+                      : "RESEARCH"}
+                </span>
+                <span>{asset.market_opportunities_24h}</span>
+                <span>{asset.captured_opportunities_24h}</span>
+                <span>{asset.missed_opportunities_24h}</span>
+                <span>{(asset.capture_rate_24h * 100).toFixed(1)} %</span>
+                <span className={asset.blocked_expectancy_r_24h >= 0 ? "positive-text" : "negative-text"}>
+                  {asset.blocked_expectancy_r_24h >= 0 ? "+" : ""}
+                  {asset.blocked_expectancy_r_24h.toFixed(2)} R
+                </span>
+                <span>{asset.next_action}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="intelligence-subsection">
+          <h3>Anatomie récente des trades / probes</h3>
+          <div className="intelligence-table trade-intelligence-table">
+            <div className="intelligence-row trade-intelligence-row intelligence-head">
+              <span>Source</span>
+              <span>Actif / mécanisme</span>
+              <span>Résultat</span>
+              <span>MFE</span>
+              <span>MAE</span>
+              <span>R perdu attente</span>
+              <span>RR signal → entrée</span>
+            </div>
+            {(intelligence?.trades ?? []).slice(0, 10).map((trade) => (
+              <div className="intelligence-row trade-intelligence-row" key={trade.trade_id}>
+                <span>{trade.source === "paper" ? "PAPER" : "BLOCKED"}</span>
+                <strong>{trade.symbol} · {trade.mechanism.replaceAll("_", " ")}</strong>
+                <span className={(trade.result_r ?? 0) >= 0 ? "positive-text" : "negative-text"}>
+                  {trade.result_r == null
+                    ? trade.status.toUpperCase()
+                    : (trade.result_r >= 0 ? "+" : "") + trade.result_r.toFixed(2) + " R"}
+                </span>
+                <span>{trade.mfe_r.toFixed(2)} R</span>
+                <span>{trade.mae_r.toFixed(2)} R</span>
+                <span className={trade.r_lost_while_waiting > 0 ? "negative-text" : "positive-text"}>
+                  {trade.r_lost_while_waiting >= 0 ? "+" : ""}
+                  {trade.r_lost_while_waiting.toFixed(2)} R
+                </span>
+                <span>
+                  {trade.rr_at_signal == null ? "—" : trade.rr_at_signal.toFixed(2)}
+                  {" → "}
+                  {trade.rr_at_entry == null ? "—" : trade.rr_at_entry.toFixed(2)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="intelligence-subsection">
+          <h3>Historique qualification automatique</h3>
+          {qualificationHistory.length ? (
+            <div className="qualification-timeline">
+              {qualificationHistory.slice(0, 10).map((event) => (
+                <div className="qualification-event" key={event.strategy_id + event.at + event.closed_trades}>
+                  <span className={"badge " + (event.state === "supports_demo" ? "gate-ready" : event.state === "failed" ? "gate-locked" : "")}>
+                    {event.state.replaceAll("_", " ").toUpperCase()}
+                  </span>
+                  <strong>{event.strategy_id}</strong>
+                  <span>{event.closed_trades} trades · E {event.expectancy_r >= 0 ? "+" : ""}{event.expectancy_r.toFixed(2)}R · PF {event.profit_factor.toFixed(2)} · DD {event.max_drawdown_r.toFixed(2)}R</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="strategy-empty">L’historique démarrera au prochain cycle du worker.</p>
+          )}
+        </div>
+
+        {dailyReport?.limitations.length ? (
+          <div className="intelligence-limitations">
+            {dailyReport.limitations.map((item) => <p key={item}>• {item}</p>)}
           </div>
         ) : null}
       </section>

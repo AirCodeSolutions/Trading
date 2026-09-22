@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -28,6 +28,7 @@ def advance_shadow_paper_book(
     evaluated_at: datetime,
     allow_new_entries: bool = True,
     evidence_cutover_at: datetime | None = None,
+    prospective_entry_guard: Callable[[ShadowPaperSummary], bool] | None = None,
 ) -> ShadowPaperSummary:
     state = load_shadow_paper_state(state_path)
 
@@ -39,9 +40,22 @@ def advance_shadow_paper_book(
         else:
             state.open_trade = resolved
 
+    save_shadow_paper_state(state_path, state)
+    pre_entry_summary = load_shadow_paper_summary(
+        state_path,
+        trades_path,
+        evidence_cutover_at=evidence_cutover_at,
+    )
+    prospective_allowed = (
+        prospective_entry_guard(pre_entry_summary)
+        if prospective_entry_guard is not None
+        else True
+    )
+
     signal_at = diagnostic.latest_closed_m5_at + timedelta(minutes=5)
     if (
         allow_new_entries
+        and prospective_allowed
         and state.open_trade is None
         and diagnostic.state == ShadowSignalState.SIGNAL_EXECUTABLE
         and diagnostic.side is not None

@@ -57,13 +57,14 @@ Last updated: 2026-09-22.
 | #55 | — | Closed unmerged as duplicate of #54 |
 | #56 | `0cd45a6` | Clarify Portfolio Manager waiting state |
 | #57 | `bf3fb3e` | Record PR56 deployment |
+| #58 | `b07ee23` | Guarded manual DEMO trading + Trade Blotter |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current deployed main: `bf3fb3e` through PR #57;
+- current deployed code: `b07ee23` through PR #58;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
@@ -523,7 +524,9 @@ Research recorded with this change:
 - PR #55 closed as duplicate of merged/deployed PR #54.
 
 
-## In-flight — manual DEMO trade dashboard + Trade Blotter
+## PR #58 — manual DEMO trade dashboard + Trade Blotter
+
+Status: **MERGED + DEPLOYED** at `b07ee23`.
 
 Branch: `feat/manual-demo-trade-dashboard`.
 

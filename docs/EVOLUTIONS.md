@@ -58,13 +58,15 @@ Last updated: 2026-09-22.
 | #56 | `0cd45a6` | Clarify Portfolio Manager waiting state |
 | #57 | `bf3fb3e` | Record PR56 deployment |
 | #58 | `b07ee23` | Guarded manual DEMO trading + Trade Blotter |
+| #59 | `dce7b52` | Record PR58 manual DEMO deployment |
+| #60 | `99e2d30` | Trading Intelligence v1 + prospective degradation safeguards |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current deployed code: `b07ee23` through PR #58;
+- current deployed code: `99e2d30` through PR #60;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
@@ -559,7 +561,9 @@ Validation so far:
 - live EURUSD preview proof passed with no MT4 command written.
 
 
-## In-flight — Trading Intelligence v1 (8-step observability/research layer)
+## PR #60 — Trading Intelligence v1 (8-step observability/research layer)
+
+Status: **MERGED + DEPLOYED** at `99e2d30`.
 
 Branch: `feat/trading-intelligence-v1`.
 
@@ -602,6 +606,6 @@ Validation checkpoint:
 - full backend suite: **177 passed**;
 - Ruff clean;
 - frontend TypeScript/Vite build clean;
-- real 24 h intelligence runtime: 113 market opportunities, 12 captured,
-  101 missed after ±3 M5 signal matching;
+- current real 24 h intelligence runtime: 113 market opportunities, 15 captured,
+  98 missed after ±3 M5 signal matching;
 - optimized snapshot runtime: ~0.43 s on the runtime host.

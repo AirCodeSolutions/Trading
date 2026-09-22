@@ -1053,3 +1053,8 @@ Recherche additionnelle du checkpoint : le croisement regime M15 + sequence M5
 execution-aware (longueur 2) a ete teste sur les quatre actifs economiquement
 faisables. Il ne produit aucune cellule `POSITIVE_STABLE`; aucun changement
 runtime n en decoule.
+
+Deux prototypes research-only supplementaires ont ete rejetes sans code runtime :
+modele causal continu sur les features OHLC existantes, puis extension avec
+impulsion de tick-volume MT4. Aucun ne generalise sur validation + holdout ;
+aucune dependance ML ni regle d execution n a ete ajoutee.

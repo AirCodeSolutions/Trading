@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed repository commit: `f021b98` (PR #66). Trading decision/execution logic remains unchanged; the backend/worker intelligence layer now includes the causal Missed Opportunity Classifier v1.
+Current deployed repository commit: `d9dca9c` (PR #69). Trading decision/execution logic remains unchanged; research/intelligence now includes causal classification, historical stability and the Economic Feasibility Map.
 
 Operational services:
 
@@ -839,9 +839,9 @@ These counts are a rolling 24 h research snapshot and will change as the window
 moves. They are not strategy admission evidence by themselves.
 
 
-## Historical causal-pattern stability — current chantier
+## Historical causal-pattern stability — PR #68 merged
 
-Branch: `research/causal-pattern-stability`.
+Status: **MERGED** at `172b8f3`.
 
 The causal classifier from PR #66 is now being evaluated historically over the
 same frozen train / validation / holdout boundaries.
@@ -854,14 +854,15 @@ budget were applied.
 
 No deployed strategy changes from this work.
 
-Next research focus: an **economic feasibility map** for missed opportunities,
-so research effort is concentrated only on structures that can actually be
-traded under the current broker and capital constraints.
+Next research focus: a **Causal × Economic Candidate Matrix** that intersects
+historical causal stability with broker/capital feasibility, so new mechanism
+replays are attempted only where both structural information and executable
+geometry coexist.
 
 
-## Economic Feasibility Map — current chantier
+## Economic Feasibility Map — PR #69 deployed
 
-Branch: `research/economic-feasibility-map`.
+Status: **MERGED + DEPLOYED** at `d9dca9c`.
 
 A historical map now measures whether missed market opportunities can actually
 be sized under the current broker and 400 EUR economic reference capital before
@@ -886,3 +887,20 @@ spread-imposed stop floor, minimum-lot risk ceiling, theoretical minimum
 capital, best tested ATR stop width and historical approval rate. These are
 execution-feasibility diagnostics only; they do not authorize higher risk or
 capital changes.
+
+
+### Runtime proof after PR #69 deployment
+
+- deployed repository SHA: `d9dca9c`;
+- pre-deploy safety: 0 PAPER open, 0 Trading-New bridge position,
+  0 pending open/close command;
+- session preflight: **READY**, 5/5 retained symbols;
+- SHADOW worker heartbeat: **OK**, 22 scanners, no worker error;
+- execution flags unchanged: DEMO mode, collection ON, bridge ON, LIVE OFF;
+- 4 PAPER-eligible / DEMO-collectable strategies unchanged;
+- `/api/v1/research/economic-feasibility`: HTTP 200;
+- dashboard port 5180: HTTP 200 with Economic Feasibility Map source active;
+- economic snapshot at 400 EUR / 1%:
+  BTC/EUR/GBP/XAU have a non-empty feasible stop interval;
+  XAG has no feasible interval;
+- no strategy, admission, risk, stop, target or bridge rule changed.

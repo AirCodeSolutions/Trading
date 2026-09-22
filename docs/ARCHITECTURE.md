@@ -295,3 +295,52 @@ research file from masking a fresher live MT4 CSV.
 
 Research/backtest code continues to use the frozen/versioned history resolver so
 historical admissions remain reproducible.
+
+
+## Manual DEMO execution
+
+Manual trading is intentionally a separate broker-DEMO path, not a fake
+strategy admission.
+
+The operator supplies:
+
+- one retained symbol;
+- BUY or SELL;
+- structural stop-loss;
+- take-profit;
+- requested risk fraction (1% default, 2% absolute maximum).
+
+The backend always uses the current live broker quote as market entry and
+reuses the same `size_position()` authority as automatic strategies. A manual
+preview therefore enforces:
+
+- reference capital 400 EUR;
+- requested risk <= absolute 2% policy;
+- spread/stop <= 15%;
+- broker minimum lot / lot-step;
+- margin <= 25% of reference capital;
+- expected loss <= remaining daily-loss budget;
+- broker free-margin availability;
+- live quote freshness;
+- macro blackout;
+- broker account confirmed DEMO;
+- bridge enabled and LIVE disabled;
+- no pending Trading-New command;
+- no open Trading-New bridge position;
+- no open PAPER trade, to prevent a race with automatic DEMO collection.
+
+The UI uses a two-step contract:
+
+1. `POST /execution/demo/manual/preview` — read-only sizing and guard result;
+2. explicit operator confirmation, followed by
+   `POST /execution/demo/manual/submit`.
+
+The submit endpoint recomputes the preview from the current quote before writing
+the MT4 command. A green preview can therefore still be refused if spread,
+macro, margin or runtime state changes before confirmation.
+
+Manual bridge positions use strategy ids `manual_demo:<symbol>` and MT4
+comments `TradingNew:manual_demo:<symbol>`. Only those tickets are eligible
+for the dashboard manual-close endpoint.
+
+LIVE execution is not enabled by this path.

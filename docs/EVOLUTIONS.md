@@ -56,13 +56,14 @@ Last updated: 2026-09-22.
 | #54 | `d758112` | Use freshest closed runtime bar source |
 | #55 | — | Closed unmerged as duplicate of #54 |
 | #56 | `0cd45a6` | Clarify Portfolio Manager waiting state |
+| #57 | `bf3fb3e` | Record PR56 deployment |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current deployed main: `0cd45a6` through PR #56;
+- current deployed main: `bf3fb3e` through PR #57;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
@@ -520,3 +521,36 @@ Research recorded with this change:
 - three EURUSD specialist hypotheses rejected;
 - BTCUSD break/retest 0.80 M15-ATR stop-floor variant rejected;
 - PR #55 closed as duplicate of merged/deployed PR #54.
+
+
+## In-flight — manual DEMO trade dashboard + Trade Blotter
+
+Branch: `feat/manual-demo-trade-dashboard`.
+
+Backend:
+
+- manual DEMO preview model/service;
+- manual DEMO submit with explicit confirmation;
+- manual-close endpoint restricted to `TradingNew:manual_demo:*` tickets;
+- same central risk engine as automatic trades;
+- no manual lot override;
+- no manual bypass of macro, daily-loss, spread/stop, margin or broker-demo
+  guards;
+- manual entry blocked while a PAPER or Trading-New bridge position is open.
+
+Frontend:
+
+- asset / side / SL / TP / risk form;
+- live Bid/Ask reference;
+- preview with calculated lot, expected loss, spread/stop, RR and margin;
+- explicit browser confirmation before submit;
+- Trade Blotter for broker DEMO positions and PAPER history;
+- close button only on manual Trading-New positions.
+
+Validation so far:
+
+- 9 manual-execution tests passed;
+- full backend suite: 161 tests passed;
+- Ruff passed;
+- frontend TypeScript/Vite build passed;
+- live EURUSD preview proof passed with no MT4 command written.

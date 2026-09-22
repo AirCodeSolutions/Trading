@@ -15,9 +15,14 @@ from app.domain.broker import (
     PositionSizeRequest,
     PositionSizeResult,
 )
-from app.domain.demo_execution import DemoExecutionStatus, DemoOrderCommand
+from app.domain.demo_execution import DemoCloseCommand, DemoExecutionStatus, DemoOrderCommand
 from app.domain.live_market import LiveMarketQuote
 from app.domain.macro import MacroGateStatus
+from app.domain.manual_demo import (
+    ManualDemoSubmitRequest,
+    ManualDemoTradePreview,
+    ManualDemoTradeRequest,
+)
 from app.domain.market import MarketBar, Timeframe
 from app.domain.opportunity import (
     Mt4OpportunityBacktestRequest,
@@ -46,6 +51,11 @@ from app.services.demo_execution import build_demo_status, submit_selected_demo_
 from app.services.execution_cost_history import summarize_execution_costs
 from app.services.live_market_quality import build_live_market_quality
 from app.services.macro_gate import load_macro_events, macro_gate_status
+from app.services.manual_demo import (
+    build_manual_demo_preview,
+    submit_manual_demo_close,
+    submit_manual_demo_order,
+)
 from app.services.market_quality import assess_market
 from app.services.market_store import MarketStore
 from app.services.market_universe import build_market_universe
@@ -430,6 +440,80 @@ def demo_execution_status() -> DemoExecutionStatus:
             )
         }
     )
+
+
+@app.post(
+    f"{settings.api_prefix}/execution/demo/manual/preview",
+    response_model=ManualDemoTradePreview,
+)
+def preview_manual_demo_execution(
+    request: ManualDemoTradeRequest,
+) -> ManualDemoTradePreview:
+    now = datetime.now(tz=_server_timezone())
+    files_dir = _mt4_files_dir()
+    overview = build_trading_overview(
+        files_dir,
+        settings.shadow_ledger_dir,
+        now,
+    )
+    macro = macro_gate_status(settings.macro_events_path, now)
+    return build_manual_demo_preview(
+        files_dir=files_dir,
+        overview=overview,
+        macro=macro,
+        request=request,
+        now=now,
+    )
+
+
+@app.post(
+    f"{settings.api_prefix}/execution/demo/manual/submit",
+    response_model=DemoOrderCommand,
+)
+def submit_manual_demo_execution(
+    request: ManualDemoSubmitRequest,
+) -> DemoOrderCommand:
+    now = datetime.now(tz=_server_timezone())
+    files_dir = _mt4_files_dir()
+    overview = build_trading_overview(
+        files_dir,
+        settings.shadow_ledger_dir,
+        now,
+    )
+    macro = macro_gate_status(settings.macro_events_path, now)
+    try:
+        return submit_manual_demo_order(
+            files_dir=files_dir,
+            overview=overview,
+            macro=macro,
+            request=request,
+            now=now,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post(
+    f"{settings.api_prefix}/execution/demo/manual/close/{{ticket}}",
+    response_model=DemoCloseCommand,
+)
+def close_manual_demo_execution(ticket: int) -> DemoCloseCommand:
+    now = datetime.now(tz=_server_timezone())
+    files_dir = _mt4_files_dir()
+    overview = build_trading_overview(
+        files_dir,
+        settings.shadow_ledger_dir,
+        now,
+    )
+    try:
+        return submit_manual_demo_close(
+            files_dir=files_dir,
+            overview=overview,
+            ticket=ticket,
+            now=now,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.post(

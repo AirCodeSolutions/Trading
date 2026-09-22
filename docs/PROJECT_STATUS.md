@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `0cd45a6` (PR #56).
+Current deployed main commit: `bf3fb3e` (PR #57).
 
 Operational services:
 
@@ -616,3 +616,47 @@ PR #55 was closed unmerged as an exact duplicate of already-merged PR #54.
 - Portfolio Manager: `NO_TRADE`;
 - current reason: `4 PAPER-eligible SHADOW strategies are waiting for an executable PAPER trade`;
 - 0 bridge positions and 0 pending broker commands.
+
+
+## Manual DEMO Trade + Trade Blotter — in development
+
+Branch: `feat/manual-demo-trade-dashboard`.
+
+The dashboard is gaining a dedicated manual broker-DEMO workflow without
+weakening the automatic system or allowing arbitrary lot entry.
+
+Manual workflow:
+
+- choose BTCUSD / EURUSD / GBPUSD / XAUUSD / XAGUSD;
+- choose BUY or SELL;
+- enter SL and TP;
+- enter risk percentage (1% default, 2% hard maximum);
+- preview uses the current Bid/Ask and the central capital/risk engine;
+- only an approved preview exposes the explicit `CONFIRMER DEMO` action;
+- submit recomputes all guards before creating the MT4 command;
+- manual positions can be closed from the dashboard only when their bridge
+  comment identifies them as `TradingNew:manual_demo:*`.
+
+A centralized Trade Blotter is also added:
+
+- open broker Trading-New positions, labelled MANUAL DEMO or AUTO DEMO;
+- PAPER positions shown separately;
+- pending bridge command;
+- latest bridge result;
+- recent PAPER history.
+
+Runtime proof during development used a **preview only** on live EURUSD data:
+
+- BUY market entry: 1.14523;
+- SL: 1.14423;
+- TP: 1.14723;
+- requested risk: 1%;
+- calculated lot: 0.04;
+- expected loss: 3.49 EUR;
+- spread/stop: 9.0%;
+- estimated margin: 4.00 EUR;
+- RR: 2.00;
+- preview APPROVED;
+- no `trading_demo_command.csv` was created.
+
+No real or DEMO order was sent by this validation.

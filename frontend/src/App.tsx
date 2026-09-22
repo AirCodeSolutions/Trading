@@ -237,8 +237,45 @@ type DemoExecutionStatus = {
     symbol: string;
     side: "buy" | "sell";
     lots: number;
+    open_price: number;
+    stop_loss: number;
+    take_profit: number;
     profit: number;
+    open_time: string;
+    strategy_comment: string;
   }[];
+};
+
+type ManualDemoPreview = {
+  at: string;
+  symbol: string;
+  side: "buy" | "sell";
+  bid: number;
+  ask: number;
+  entry_price: number;
+  stop_loss: number;
+  take_profit: number;
+  risk_fraction: number;
+  reward_distance: number;
+  reward_risk_ratio: number;
+  quote_age_seconds: number;
+  remaining_daily_loss_budget_eur: number;
+  approved: boolean;
+  reasons: string[];
+  sizing: {
+    approved: boolean;
+    reason: string;
+    risk_fraction: number;
+    risk_budget_eur: number;
+    stop_distance: number;
+    spread: number;
+    spread_to_stop: number;
+    raw_lots: number;
+    lots: number;
+    expected_loss_eur: number;
+    min_lot_loss_eur: number;
+    estimated_margin_eur: number;
+  } | null;
 };
 
 type SessionPreflight = {
@@ -503,6 +540,14 @@ export default function App() {
   const [demo, setDemo] = useState<DemoExecutionStatus | null>(null);
   const [preflight, setPreflight] = useState<SessionPreflight | null>(null);
   const [status, setStatus] = useState("Connexion au backend…");
+  const [manualSymbol, setManualSymbol] = useState("BTCUSD");
+  const [manualSide, setManualSide] = useState<"buy" | "sell">("buy");
+  const [manualStop, setManualStop] = useState("");
+  const [manualTarget, setManualTarget] = useState("");
+  const [manualRiskPct, setManualRiskPct] = useState("1");
+  const [manualPreview, setManualPreview] = useState<ManualDemoPreview | null>(null);
+  const [manualBusy, setManualBusy] = useState(false);
+  const [manualMessage, setManualMessage] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -677,6 +722,146 @@ export default function App() {
     const eligible = rows.filter((row) => row.paper_entry_allowed);
     return { symbol, rows, eligible };
   });
+  const selectedManualQuote = quotes.find((quote) => quote.symbol === manualSymbol) ?? null;
+  const recentPaperTrades = (overview?.paper_strategies ?? [])
+    .flatMap((row) =>
+      row.summary.recent_trades.map((trade) => ({
+        strategy_id: row.strategy_id,
+        symbol: row.symbol,
+        trade
+      }))
+    )
+    .sort(
+      (left, right) =>
+        new Date(right.trade.signal_at).getTime() - new Date(left.trade.signal_at).getTime()
+    )
+    .slice(0, 10);
+
+  const refreshExecutionState = async () => {
+    const [overviewResponse, demoResponse, preflightResponse] = await Promise.all([
+      fetch("/api/v1/portfolio/overview"),
+      fetch("/api/v1/execution/demo/status"),
+      fetch("/api/v1/session/preflight")
+    ]);
+    if (overviewResponse.ok) setOverview(await overviewResponse.json());
+    if (demoResponse.ok) setDemo(await demoResponse.json());
+    if (preflightResponse.ok) setPreflight(await preflightResponse.json());
+  };
+
+  const manualPayload = () => ({
+    symbol: manualSymbol,
+    side: manualSide,
+    stop_loss: Number(manualStop),
+    take_profit: Number(manualTarget),
+    risk_fraction: Number(manualRiskPct) / 100
+  });
+
+  const previewManualTrade = async () => {
+    const payload = manualPayload();
+    if (
+      !Number.isFinite(payload.stop_loss) ||
+      !Number.isFinite(payload.take_profit) ||
+      !Number.isFinite(payload.risk_fraction) ||
+      payload.stop_loss <= 0 ||
+      payload.take_profit <= 0 ||
+      payload.risk_fraction <= 0
+    ) {
+      setManualPreview(null);
+      setManualMessage("Renseigne un SL, un TP et un risque valides.");
+      return;
+    }
+
+    setManualBusy(true);
+    setManualMessage("");
+    try {
+      const response = await fetch("/api/v1/execution/demo/manual/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const preview = (await response.json()) as ManualDemoPreview;
+      if (!response.ok) throw new Error("Prévisualisation impossible.");
+      setManualPreview(preview);
+      setManualMessage(
+        preview.approved
+          ? "Preview validée. Vérifie les chiffres avant de confirmer."
+          : preview.reasons.join(" · ")
+      );
+    } catch (error) {
+      setManualPreview(null);
+      setManualMessage(error instanceof Error ? error.message : "Prévisualisation impossible.");
+    } finally {
+      setManualBusy(false);
+    }
+  };
+
+  const submitManualTrade = async () => {
+    if (!manualPreview?.approved) return;
+    const confirmation = window.confirm(
+      "Confirmer l’ordre DEMO " +
+        manualSide.toUpperCase() +
+        " " +
+        manualSymbol +
+        " ?\nSL " +
+        manualStop +
+        " · TP " +
+        manualTarget +
+        " · risque " +
+        manualRiskPct +
+        "%"
+    );
+    if (!confirmation) return;
+
+    setManualBusy(true);
+    setManualMessage("");
+    try {
+      const response = await fetch("/api/v1/execution/demo/manual/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...manualPayload(), confirmed: true })
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.detail ?? "Ordre DEMO refusé.");
+      }
+      setManualPreview(null);
+      setManualMessage(
+        "Commande DEMO envoyée : " +
+          String(payload.side).toUpperCase() +
+          " " +
+          payload.symbol +
+          " " +
+          Number(payload.lots).toFixed(2) +
+          " lot."
+      );
+      await refreshExecutionState();
+    } catch (error) {
+      setManualMessage(error instanceof Error ? error.message : "Ordre DEMO refusé.");
+    } finally {
+      setManualBusy(false);
+    }
+  };
+
+  const closeManualTrade = async (ticket: number) => {
+    if (!window.confirm("Fermer la position manuelle DEMO #" + ticket + " ?")) return;
+    setManualBusy(true);
+    setManualMessage("");
+    try {
+      const response = await fetch("/api/v1/execution/demo/manual/close/" + ticket, {
+        method: "POST"
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.detail ?? "Fermeture DEMO refusée.");
+      }
+      setManualMessage("Commande de fermeture envoyée pour le ticket #" + ticket + ".");
+      await refreshExecutionState();
+    } catch (error) {
+      setManualMessage(error instanceof Error ? error.message : "Fermeture DEMO refusée.");
+    } finally {
+      setManualBusy(false);
+    }
+  };
 
   return (
     <main className="shell">
@@ -930,6 +1115,139 @@ export default function App() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="manual-trade-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">MANUAL DEMO TRADE</p>
+            <h2>Ouvrir un trade manuel avec les mêmes garde-fous</h2>
+          </div>
+          <p>
+            Marché uniquement. Tu définis SL, TP et risque ; le système calcule le lot et refuse toute violation du contrat 400 €.
+          </p>
+        </div>
+
+        <div className="manual-trade-grid">
+          <label>
+            <span>Actif</span>
+            <select
+              value={manualSymbol}
+              onChange={(event) => { setManualSymbol(event.target.value); setManualPreview(null); }}
+            >
+              {retainedSymbols.map((symbol) => <option key={symbol}>{symbol}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Sens</span>
+            <div className="manual-side-toggle">
+              <button type="button" className={manualSide === "buy" ? "active" : ""} onClick={() => { setManualSide("buy"); setManualPreview(null); }}>BUY</button>
+              <button type="button" className={manualSide === "sell" ? "active" : ""} onClick={() => { setManualSide("sell"); setManualPreview(null); }}>SELL</button>
+            </div>
+          </label>
+          <label>
+            <span>Stop loss</span>
+            <input value={manualStop} onChange={(event) => { setManualStop(event.target.value); setManualPreview(null); }} inputMode="decimal" placeholder="Prix SL" />
+          </label>
+          <label>
+            <span>Take profit</span>
+            <input value={manualTarget} onChange={(event) => { setManualTarget(event.target.value); setManualPreview(null); }} inputMode="decimal" placeholder="Prix TP" />
+          </label>
+          <label>
+            <span>Risque %</span>
+            <input value={manualRiskPct} onChange={(event) => { setManualRiskPct(event.target.value); setManualPreview(null); }} inputMode="decimal" placeholder="1.0" />
+            <small>1 % recommandé · 2 % maximum absolu</small>
+          </label>
+          <div className="manual-live-quote">
+            <span>Cote broker live</span>
+            <strong>{selectedManualQuote ? formatPrice(manualSide === "buy" ? selectedManualQuote.ask : selectedManualQuote.bid, selectedManualQuote.digits) : "—"}</strong>
+            <small>{selectedManualQuote ? "spread " + formatPrice(selectedManualQuote.spread, selectedManualQuote.digits) + " · " + selectedManualQuote.status.toUpperCase() : "Cote indisponible"}</small>
+          </div>
+        </div>
+
+        <div className="manual-actions">
+          <button type="button" className="manual-preview-button" disabled={manualBusy || !demoTransportArmed} onClick={() => void previewManualTrade()}>
+            {manualBusy ? "CALCUL…" : "PRÉVISUALISER"}
+          </button>
+          {manualPreview?.approved ? (
+            <button type="button" className="manual-confirm-button" disabled={manualBusy} onClick={() => void submitManualTrade()}>
+              CONFIRMER DEMO
+            </button>
+          ) : null}
+        </div>
+
+        {manualPreview ? (
+          <div className={manualPreview.approved ? "manual-preview approved" : "manual-preview rejected"}>
+            <div><span>Décision</span><strong>{manualPreview.approved ? "APPROUVÉ" : "REFUSÉ"}</strong></div>
+            <div><span>Entrée marché</span><strong>{formatNumber(manualPreview.entry_price, selectedManualQuote?.digits ?? 5)}</strong></div>
+            <div><span>Lot calculé</span><strong>{manualPreview.sizing ? manualPreview.sizing.lots.toFixed(2) : "—"}</strong></div>
+            <div><span>Risque €</span><strong>{manualPreview.sizing ? manualPreview.sizing.expected_loss_eur.toFixed(2) + " €" : "—"}</strong></div>
+            <div><span>Spread / stop</span><strong>{manualPreview.sizing ? (manualPreview.sizing.spread_to_stop * 100).toFixed(1) + " %" : "—"}</strong></div>
+            <div><span>RR</span><strong>{manualPreview.reward_risk_ratio.toFixed(2)} R</strong></div>
+            <div><span>Marge estimée</span><strong>{manualPreview.sizing ? manualPreview.sizing.estimated_margin_eur.toFixed(2) + " €" : "—"}</strong></div>
+          </div>
+        ) : null}
+
+        {manualMessage ? <p className="manual-message">{manualMessage}</p> : null}
+        <p className="manual-warning">DEMO uniquement. Le manuel est bloqué si un PAPER ou une position Trading-New est déjà ouvert. LIVE reste verrouillé.</p>
+      </section>
+
+      <section className="trade-blotter-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">TRADE BLOTTER</p>
+            <h2>Positions et exécutions Trading-New</h2>
+          </div>
+          <p>Broker DEMO réel pour les positions bridge ; PAPER clairement séparé pour les simulations.</p>
+        </div>
+
+        <div className="blotter-group">
+          <h3>Positions broker Trading-New</h3>
+          {demo?.bridge_positions.length ? demo.bridge_positions.map((position) => (
+            <div className="blotter-row" key={position.ticket}>
+              <span className="badge gate-ready">{position.strategy_comment.startsWith("TradingNew:manual_demo:") ? "MANUAL DEMO" : "AUTO DEMO"}</span>
+              <strong>{position.symbol} · {position.side.toUpperCase()}</strong>
+              <span>{position.lots.toFixed(2)} lot</span>
+              <span>entrée {position.open_price}</span>
+              <span>SL {position.stop_loss}</span>
+              <span>TP {position.take_profit}</span>
+              <span className={position.profit >= 0 ? "positive" : "negative"}>{position.profit >= 0 ? "+" : ""}{position.profit.toFixed(2)} €</span>
+              {position.strategy_comment.startsWith("TradingNew:manual_demo:") ? <button type="button" disabled={manualBusy} onClick={() => void closeManualTrade(position.ticket)}>FERMER</button> : null}
+            </div>
+          )) : <p className="strategy-empty">Aucune position Trading-New ouverte chez le broker.</p>}
+        </div>
+
+        <div className="blotter-group">
+          <h3>PAPER ouverts</h3>
+          {openPaperRows.length ? openPaperRows.map((row) => (
+            <div className="blotter-row" key={row.strategy_id}>
+              <span className="badge">PAPER</span>
+              <strong>{row.symbol} · {row.summary.open_trade?.side.toUpperCase()}</strong>
+              <span>{row.strategy_id}</span>
+              <span>{row.summary.open_trade?.lots.toFixed(2)} lot</span>
+              <span>SL {row.summary.open_trade?.stop_price}</span>
+              <span>TP {row.summary.open_trade?.target_price}</span>
+            </div>
+          )) : <p className="strategy-empty">Aucun PAPER ouvert.</p>}
+        </div>
+
+        {demo?.pending_command ? <p className="manual-message">Commande broker en attente : {demo.pending_command.side.toUpperCase()} {demo.pending_command.symbol} {demo.pending_command.lots.toFixed(2)} lot.</p> : null}
+        {demo?.latest_result ? <p className="manual-message">Dernier résultat bridge : {demo.latest_result.status.toUpperCase()} · ticket {demo.latest_result.ticket || "—"} · fill {demo.latest_result.fill_price || "—"}.</p> : null}
+
+        {recentPaperTrades.length ? (
+          <div className="paper-history">
+            <div className="paper-row paper-row-head"><span>Signal</span><span>Stratégie</span><span>Side</span><span>Sortie</span><span>R</span></div>
+            {recentPaperTrades.map(({ strategy_id, symbol, trade }) => (
+              <div className="paper-row" key={strategy_id + trade.trade_id}>
+                <span>{new Date(trade.signal_at).toLocaleString("fr-FR")}</span>
+                <span>{symbol} · {strategy_id.split(":")[1]}</span>
+                <span>{trade.side.toUpperCase()}</span>
+                <span>{trade.status.toUpperCase()}</span>
+                <span className={(trade.result_r ?? 0) >= 0 ? "positive" : "negative"}>{trade.result_r == null ? "—" : (trade.result_r >= 0 ? "+" : "") + trade.result_r.toFixed(2) + " R"}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="strategy-map-panel">

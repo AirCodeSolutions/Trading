@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current repository served: `17a1bbb` (PR #77). The frontend Command Center UX is active, execution-aware sequence research is merged, and the BTC structural displacement sequence is deployed as SHADOW/PAPER-only evidence collection. LIVE remains locked.
+Current repository served: `92ce5c6` (PR #78). The frontend Command Center UX is active, execution-aware sequence research is merged, the BTC structural displacement sequence is deployed as SHADOW/PAPER-only evidence collection, and the SHADOW worker is singleton-protected. LIVE remains locked.
 
 Operational services:
 
@@ -1044,7 +1044,9 @@ admission contract.
 Deployment completed after CI and a 0-open-position / 0-pending-command safety check. The mechanism remains SHADOW/PAPER-only; no ACTIVE or LIVE authority was created.
 
 
-## Shadow worker singleton hardening — current operational fix
+## Shadow worker singleton hardening — PR #78 deployed
+
+Status: **MERGED + DEPLOYED** at `92ce5c6`.
 
 A duplicate Trading-New SHADOW worker was detected on 2026-09-22 while the
 runtime had 0 open PAPER trades, 0 Trading-New bridge positions and 0 pending
@@ -1064,3 +1066,20 @@ unchanged.
 
 Validation on the PR branch: 211 backend tests passed, Ruff clean,
 `start_trading.sh` syntax clean and frontend build clean.
+
+
+### Runtime proof after PR #78 deployment
+
+- pre-restart safety: 0 PAPER open, 0 Trading-New bridge position,
+  0 pending broker command;
+- one canonical SHADOW worker remains;
+- worker lock file points to the active worker PID;
+- a deliberate second-worker launch exits immediately with
+  `shadow worker already running`;
+- session preflight: **READY**, 5/5 retained symbols;
+- SHADOW heartbeat: **OK**, 23 scanners, 0 worker error;
+- 5 PAPER-eligible SHADOW collectors:
+  BTC break/retest, BTC structural displacement sequence,
+  GBP Asia sweep, GBP directional pullback and XAU break/retest;
+- frontend Command Center remains active on port 5180;
+- LIVE remains OFF.

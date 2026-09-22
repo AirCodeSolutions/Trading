@@ -98,6 +98,7 @@ def advance_demo_collection(
                         ticket=position.ticket,
                         strategy_id=state.strategy_id or closed.mechanism.value,
                         now=now,
+                        audit_path=runtime_dir / "demo_execution_audit.jsonl",
                     )
                 except ValueError as exc:
                     state.last_error = str(exc)
@@ -142,6 +143,7 @@ def advance_demo_collection(
             macro=macro,
             proposal=proposal,
             now=now,
+            audit_path=runtime_dir / "demo_execution_audit.jsonl",
         )
     except ValueError as exc:
         state.last_error = str(exc)

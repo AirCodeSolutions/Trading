@@ -56,3 +56,7 @@ def _failed(
         max_drawdown_r=summary.max_drawdown_r,
         reason=reason,
     )
+
+
+def prospective_entry_allowed(qualification: ProspectiveQualification) -> bool:
+    return qualification.state != ProspectiveQualificationState.FAILED

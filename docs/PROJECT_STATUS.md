@@ -677,3 +677,62 @@ No real or DEMO order was sent by this validation.
 - Portfolio Manager remained NO_TRADE because no collectable PAPER was open.
 
 The manual panel is therefore deployed and ready for operator use in broker DEMO.
+
+
+## Trading Intelligence v1 — 8-step development in flight
+
+Branch: `feat/trading-intelligence-v1`.
+
+The four currently DEMO-collectable mechanisms remain frozen. This work is
+observability/research infrastructure and does not change entries, stops,
+targets, admissions or risk.
+
+The eight requested steps are implemented as follows:
+
+1. **Trade understanding** — PAPER and blocked-probe episodes are reconstructed
+   with MFE, MAE, result R, PnL when known, time-to-MFE and RR at signal/entry.
+2. **Missed opportunities** — independent market-first denominator: a movement
+   of at least 1.5 ATR M5 inside the following 12 M5 bars, deduplicated by the
+   same horizon, then classified executable / blocked / missed.
+3. **Value of waiting** — signal-to-entry delay, R lost while waiting,
+   RR at signal vs entry, and MFE consumed before entry. A true pre-signal
+   `first_seen` timestamp is not yet persisted and is explicitly reported as
+   a limitation.
+4. **DEMO execution quality** — persistent command/result audit for AUTO and
+   MANUAL DEMO, with fills/refusals/errors and fill slippage in price/R.
+5. **Dashboard intelligence** — consolidated 24 h intelligence panel and per-
+   asset coverage table, plus recent trade/probe anatomy and qualification
+   timeline.
+6. **Research by asset** — each symbol is classified `COLLECT_PROSPECTIVE`,
+   `DEGRADED` or `RESEARCH_ONLY` from current admission/prospective evidence, with market
+   opportunities/capture/misses and next research action.
+7. **Automatic qualification / degradation** — the worker records a history
+   event whenever prospective evidence changes. Existing thresholds remain
+   unchanged; once a strategy becomes `FAILED`, no new PAPER/DEMO entry is
+   allowed, while any already-open trade continues normally to resolution.
+8. **Daily report** — atomic `daily_report_latest.json` plus dated report with
+   PAPER daily result, open risk, bridge latent PnL, market capture,
+   qualification, execution quality and asset research state.
+
+Real read-only development checkpoint over the latest 24 h:
+
+- market-first opportunities: **113**;
+- captured by any same-direction SHADOW signal within ±3 M5 of episode birth: **12**;
+- fully missed: **101**;
+- BTCUSD: 23 opportunities, 1 captured, 22 missed (4.3%);
+- EURUSD: 23 / 3 / 20 (13.0%);
+- GBPUSD: 23 / 2 / 21 (8.7%);
+- XAUUSD: 22 / 3 / 19 (13.6%);
+- XAGUSD: 22 / 3 / 19 (13.6%).
+
+The market-first denominator is retrospective research telemetry, not a trading
+signal. Its purpose is to quantify coverage before creating new mechanisms.
+
+Performance was hardened before worker integration with a bounded recent-bar
+reader. The current real 24 h calculation completes in about **0.43 s** on the
+runtime host. Worker snapshots are throttled to one every five minutes.
+
+Known limitation: the current Trading-New bridge exports open-position PnL but
+does not provide reliable realized PnL for closed bridge tickets. The daily
+report therefore exposes broker realized PnL as `UNKNOWN` rather than
+fabricating it.

@@ -28,6 +28,9 @@ from app.services.demo_execution import (
     read_pending_command,
     submit_demo_close_order,
 )
+from app.services.execution_audit import (
+    append_open_command_event,
+)
 from app.services.mt4_live_quotes import read_live_market_quotes
 from app.services.mt4_specs import get_mt4_symbol_spec
 
@@ -157,6 +160,7 @@ def submit_manual_demo_order(
     macro: MacroGateStatus,
     request: ManualDemoSubmitRequest,
     now: datetime,
+    audit_path: Path | None = None,
 ) -> DemoOrderCommand:
     if not request.confirmed:
         raise ValueError("manual demo trade requires explicit confirmation")
@@ -194,6 +198,15 @@ def submit_manual_demo_order(
         proposal_status=ProposalStatus.AUTHORIZED,
     )
     _write_command(files_dir / COMMAND_FILE, command)
+    if audit_path is not None:
+        try:
+            append_open_command_event(
+                audit_path,
+                command,
+                reference_entry_price=preview.entry_price,
+            )
+        except OSError:
+            pass
     return command
 
 
@@ -203,6 +216,7 @@ def submit_manual_demo_close(
     overview: TradingOverview,
     ticket: int,
     now: datetime,
+    audit_path: Path | None = None,
 ) -> DemoCloseCommand:
     position = next(
         (item for item in read_demo_positions(files_dir / POSITIONS_FILE) if item.ticket == ticket),
@@ -219,4 +233,5 @@ def submit_manual_demo_close(
         ticket=ticket,
         strategy_id=position.strategy_comment,
         now=now,
+        audit_path=audit_path,
     )

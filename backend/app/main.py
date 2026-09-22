@@ -15,7 +15,9 @@ from app.domain.broker import (
     PositionSizeRequest,
     PositionSizeResult,
 )
+from app.domain.daily_report import DailyTradingReport
 from app.domain.demo_execution import DemoCloseCommand, DemoExecutionStatus, DemoOrderCommand
+from app.domain.execution_audit import ExecutionQualitySummary
 from app.domain.live_market import LiveMarketQuote
 from app.domain.macro import MacroGateStatus
 from app.domain.manual_demo import (
@@ -33,10 +35,12 @@ from app.domain.opportunity import (
 )
 from app.domain.opportunity_funnel import OpportunityFunnel
 from app.domain.portfolio import MarketUniverseAsset, TradingOverview
+from app.domain.qualification_history import QualificationHistoryEvent
 from app.domain.regime import RegimeSnapshot
 from app.domain.session import SessionPreflight
 from app.domain.shadow import ShadowCollectionResult, ShadowOpportunityDiagnostic
 from app.domain.shadow_paper import ShadowPaperSummary
+from app.domain.trading_intelligence import TradingIntelligenceOverview
 from app.services.admission import (
     MIN_HOLDOUT_TRADES,
     MIN_VALIDATION_TRADES,
@@ -46,8 +50,13 @@ from app.services.approval_gate import ApprovalGate
 from app.services.blocked_probe_registry import load_blocked_probe_registry
 from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
 from app.services.capital_risk import size_position
+from app.services.daily_report import (
+    build_daily_trading_report,
+    load_daily_trading_report,
+)
 from app.services.demo_collection import load_demo_collection_state
 from app.services.demo_execution import build_demo_status, submit_selected_demo_order
+from app.services.execution_audit import AUDIT_FILE, build_execution_quality_summary
 from app.services.execution_cost_history import summarize_execution_costs
 from app.services.live_market_quality import build_live_market_quality
 from app.services.macro_gate import load_macro_events, macro_gate_status
@@ -69,6 +78,7 @@ from app.services.opportunity_funnel import build_opportunity_funnel
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.portfolio_overview import build_trading_overview
 from app.services.prospective_qualification import MIN_PROSPECTIVE_TRADES
+from app.services.qualification_history import load_qualification_history
 from app.services.regime import classify_regime
 from app.services.research_execution_model import (
     apply_research_execution_model,
@@ -79,6 +89,11 @@ from app.services.session_preflight import build_session_preflight
 from app.services.shadow_collector import collect_btc_break_retest_once
 from app.services.shadow_overview import load_shadow_overview
 from app.services.shadow_paper import load_shadow_paper_summary
+from app.services.trading_intelligence import (
+    INTELLIGENCE_FILE,
+    build_trading_intelligence,
+    load_trading_intelligence,
+)
 
 app = FastAPI(title=settings.app_name, version="0.4.0")
 market_store = MarketStore()
@@ -270,6 +285,68 @@ def shadow_opportunity_funnel(hours: int = 24) -> OpportunityFunnel:
         reference_capital_eur=settings.reference_capital_eur,
         base_risk_fraction=settings.risk_per_trade_fraction,
         absolute_max_risk_fraction=settings.absolute_max_risk_fraction,
+    )
+
+
+@app.get(
+    f"{settings.api_prefix}/intelligence/overview",
+    response_model=TradingIntelligenceOverview,
+)
+def trading_intelligence_overview(hours: int = 24) -> TradingIntelligenceOverview:
+    if hours < 1 or hours > 168:
+        raise HTTPException(status_code=422, detail="hours must be between 1 and 168")
+    cached = load_trading_intelligence(
+        settings.shadow_ledger_dir / INTELLIGENCE_FILE
+    )
+    if cached is not None and cached.window_hours == hours:
+        return cached
+    return build_trading_intelligence(
+        _mt4_files_dir(),
+        settings.shadow_ledger_dir,
+        now=datetime.now(tz=_server_timezone()),
+        window_hours=hours,
+        symbols=settings.session_watch_symbols,
+    )
+
+
+@app.get(
+    f"{settings.api_prefix}/execution/demo/quality",
+    response_model=ExecutionQualitySummary,
+)
+def demo_execution_quality() -> ExecutionQualitySummary:
+    return build_execution_quality_summary(
+        settings.shadow_ledger_dir / AUDIT_FILE
+    )
+
+
+@app.get(
+    f"{settings.api_prefix}/qualification/history",
+    response_model=list[QualificationHistoryEvent],
+)
+def qualification_history(limit: int = 100) -> list[QualificationHistoryEvent]:
+    if limit < 1 or limit > 1000:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 1000")
+    rows = load_qualification_history(
+        settings.shadow_ledger_dir / "qualification_history.jsonl"
+    )
+    return rows[-limit:][::-1]
+
+
+@app.get(
+    f"{settings.api_prefix}/reports/daily",
+    response_model=DailyTradingReport,
+)
+def daily_trading_report() -> DailyTradingReport:
+    latest = load_daily_trading_report(
+        settings.shadow_ledger_dir / "daily_report_latest.json"
+    )
+    if latest is not None:
+        return latest
+    now = datetime.now(tz=_server_timezone())
+    return build_daily_trading_report(
+        _mt4_files_dir(),
+        settings.shadow_ledger_dir,
+        now=now,
     )
 
 
@@ -488,6 +565,7 @@ def submit_manual_demo_execution(
             macro=macro,
             request=request,
             now=now,
+            audit_path=settings.shadow_ledger_dir / "demo_execution_audit.jsonl",
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -511,6 +589,7 @@ def close_manual_demo_execution(ticket: int) -> DemoCloseCommand:
             overview=overview,
             ticket=ticket,
             now=now,
+            audit_path=settings.shadow_ledger_dir / "demo_execution_audit.jsonl",
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -539,6 +618,7 @@ def submit_selected_demo_execution(proposal_id: str) -> DemoOrderCommand:
             macro=macro,
             proposal=proposal,
             now=now,
+            audit_path=settings.shadow_ledger_dir / "demo_execution_audit.jsonl",
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

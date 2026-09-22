@@ -17,6 +17,10 @@ from app.domain.demo_execution import (
 from app.domain.macro import MacroGateStatus
 from app.domain.portfolio import PortfolioAction, TradingOverview
 from app.domain.trading import Side
+from app.services.execution_audit import (
+    append_close_command_event,
+    append_open_command_event,
+)
 
 COMMAND_FILE = "trading_demo_command.csv"
 CLOSE_COMMAND_FILE = "trading_demo_close_command.csv"
@@ -87,6 +91,7 @@ def submit_selected_demo_order(
     macro: MacroGateStatus,
     proposal: ExecutionProposal,
     now: datetime,
+    audit_path: Path | None = None,
 ) -> DemoOrderCommand:
     bridge_positions = read_demo_positions(files_dir / POSITIONS_FILE)
     guard = build_demo_guard(
@@ -140,6 +145,15 @@ def submit_selected_demo_order(
         proposal_status=proposal.status,
     )
     _write_command(command_path, command)
+    if audit_path is not None:
+        try:
+            append_open_command_event(
+                audit_path,
+                command,
+                reference_entry_price=trade.entry_price,
+            )
+        except OSError:
+            pass
     return command
 
 
@@ -174,6 +188,7 @@ def submit_demo_close_order(
     ticket: int,
     strategy_id: str,
     now: datetime,
+    audit_path: Path | None = None,
 ) -> DemoCloseCommand:
     if settings.live_trading_enabled:
         raise ValueError("live trading flag must remain disabled for demo execution")
@@ -208,6 +223,11 @@ def submit_demo_close_order(
         slippage_points=settings.demo_max_slippage_points,
     )
     _write_close_command(close_path, command)
+    if audit_path is not None:
+        try:
+            append_close_command_event(audit_path, command)
+        except OSError:
+            pass
     return command
 
 

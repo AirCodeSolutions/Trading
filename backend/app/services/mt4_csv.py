@@ -1,4 +1,5 @@
 import csv
+from collections import deque
 from datetime import UTC, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -105,3 +106,34 @@ def summarize_mt4_csv(path: Path, symbol: str, timeframe: Timeframe) -> dict[str
         "first_bar": bars[0].timestamp,
         "last_bar": bars[-1].timestamp,
     }
+
+
+def read_recent_mt4_csv(
+    path: Path,
+    symbol: str,
+    timeframe: Timeframe,
+    *,
+    limit: int,
+) -> list[MarketBar]:
+    if limit <= 0:
+        raise ValueError("limit must be positive")
+
+    server_timezone = _server_timezone()
+    recent_rows: deque[list[str]] = deque(maxlen=limit + 8)
+    with path.open(newline="", encoding="utf-8-sig") as handle:
+        for row in csv.reader(handle):
+            recent_rows.append(row)
+
+    by_timestamp: dict[datetime, MarketBar] = {}
+    for row in recent_rows:
+        bar = _parse_bar_row(
+            row,
+            symbol=symbol,
+            timeframe=timeframe,
+            server_timezone=server_timezone,
+        )
+        if bar is not None:
+            by_timestamp[bar.timestamp] = bar
+
+    bars = [by_timestamp[key] for key in sorted(by_timestamp)]
+    return bars[-limit:]

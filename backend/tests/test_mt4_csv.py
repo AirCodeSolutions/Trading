@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from app.domain.market import Timeframe
-from app.services.mt4_csv import read_mt4_csv, summarize_mt4_csv
+from app.services.mt4_csv import read_mt4_csv, read_recent_mt4_csv, summarize_mt4_csv
 
 
 def test_reader_handles_header_reverse_order_and_duplicates(tmp_path: Path) -> None:
@@ -50,3 +50,19 @@ def test_reader_preserves_mt4_server_wall_clock_for_epoch_export(tmp_path: Path)
     assert len(bars) == 2
     assert bars[0].timestamp.isoformat() == "2026-09-19T12:30:00+03:00"
     assert bars[1].timestamp.isoformat() == "2026-09-19T12:35:00+03:00"
+
+
+def test_recent_reader_keeps_only_latest_rows(tmp_path: Path) -> None:
+    path = tmp_path / "EURUSD-M5.csv"
+    lines = [
+        f"20260918,{10 + index // 12:02d}:{(index % 12) * 5:02d}:00,"
+        f"1.{index:04d},1.9,1.0,1.{index:04d},10"
+        for index in range(24)
+    ]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    bars = read_recent_mt4_csv(path, "EURUSD", Timeframe.M5, limit=5)
+
+    assert len(bars) == 5
+    assert bars[0].timestamp.isoformat() == "2026-09-18T11:35:00+03:00"
+    assert bars[-1].timestamp.isoformat() == "2026-09-18T11:55:00+03:00"

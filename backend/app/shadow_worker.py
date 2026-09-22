@@ -4,13 +4,29 @@ from datetime import datetime
 from pathlib import Path
 
 from app.core.config import settings
+from app.domain.portfolio import TradingOverview
 from app.domain.session import ShadowWorkerHeartbeat
+from app.services.daily_report import (
+    build_daily_trading_report,
+    write_daily_trading_report,
+)
 from app.services.demo_collection import advance_demo_collection
+from app.services.demo_execution import RESULT_FILE, read_demo_result
+from app.services.execution_audit import (
+    AUDIT_FILE,
+    append_bridge_result_if_new,
+)
 from app.services.execution_cost_history import collect_execution_cost_snapshot
 from app.services.macro_gate import macro_gate_status
 from app.services.mt4_csv import _server_timezone
 from app.services.multi_shadow_collector import collect_all_shadow_once
 from app.services.portfolio_overview import build_trading_overview
+from app.services.qualification_history import record_qualification_history
+from app.services.trading_intelligence import (
+    INTELLIGENCE_FILE,
+    build_trading_intelligence,
+    write_trading_intelligence,
+)
 
 
 def main() -> None:
@@ -19,6 +35,9 @@ def main() -> None:
 
     costs_path = settings.shadow_ledger_dir / "execution_costs.jsonl"
     heartbeat_path = settings.shadow_ledger_dir / "worker_heartbeat.json"
+    audit_path = settings.shadow_ledger_dir / AUDIT_FILE
+    qualification_path = settings.shadow_ledger_dir / "qualification_history.jsonl"
+    intelligence_path = settings.shadow_ledger_dir / INTELLIGENCE_FILE
     while True:
         now = datetime.now(tz=_server_timezone())
         try:
@@ -33,18 +52,33 @@ def main() -> None:
                 settings.shadow_ledger_dir,
                 now,
             )
+            overview = build_trading_overview(
+                settings.mt4_files_dir,
+                settings.shadow_ledger_dir,
+                now,
+            )
+            macro = macro_gate_status(settings.macro_events_path, now)
             if settings.demo_collection_enabled:
-                overview = build_trading_overview(
-                    settings.mt4_files_dir,
-                    settings.shadow_ledger_dir,
-                    now,
-                )
                 advance_demo_collection(
                     settings.mt4_files_dir,
                     settings.shadow_ledger_dir,
                     overview,
-                    macro_gate_status(settings.macro_events_path, now),
+                    macro,
                     now,
+                )
+            observability_errors = _update_observability(
+                audit_path=audit_path,
+                qualification_path=qualification_path,
+                intelligence_path=intelligence_path,
+                overview=overview,
+                now=now,
+            )
+            if observability_errors:
+                print(
+                    json.dumps(
+                        {"shadow_worker_observability_errors": observability_errors}
+                    ),
+                    flush=True,
                 )
             signals = sum(
                 item.diagnostic.state != "no_signal"
@@ -92,6 +126,58 @@ def main() -> None:
         time.sleep(settings.shadow_collection_interval_seconds)
 
 
+def _update_observability(
+    *,
+    audit_path: Path,
+    qualification_path: Path,
+    intelligence_path: Path,
+    overview: TradingOverview,
+    now: datetime,
+) -> list[str]:
+    errors: list[str] = []
+
+    try:
+        append_bridge_result_if_new(
+            audit_path,
+            read_demo_result(settings.mt4_files_dir / RESULT_FILE),
+            at=now,
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        errors.append(f"execution_audit: {exc!r}")
+
+    try:
+        record_qualification_history(
+            qualification_path,
+            overview,
+            at=now,
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        errors.append(f"qualification_history: {exc!r}")
+
+    if _snapshot_due(intelligence_path):
+        try:
+            intelligence = build_trading_intelligence(
+                settings.mt4_files_dir,
+                settings.shadow_ledger_dir,
+                now=now,
+                window_hours=24,
+                symbols=settings.session_watch_symbols,
+            )
+            write_trading_intelligence(intelligence_path, intelligence)
+            report = build_daily_trading_report(
+                settings.mt4_files_dir,
+                settings.shadow_ledger_dir,
+                now=now,
+                overview=overview,
+                intelligence=intelligence,
+            )
+            write_daily_trading_report(settings.shadow_ledger_dir, report)
+        except (OSError, TypeError, ValueError) as exc:
+            errors.append(f"intelligence_snapshot: {exc!r}")
+
+    return errors
+
+
 def _write_heartbeat(
     path: Path,
     heartbeat: ShadowWorkerHeartbeat,
@@ -103,6 +189,15 @@ def _write_heartbeat(
         encoding="utf-8",
     )
     temporary.replace(path)
+
+
+def _snapshot_due(path: Path, max_age_seconds: float = 300.0) -> bool:
+    if not path.is_file():
+        return True
+    try:
+        return time.time() - path.stat().st_mtime >= max_age_seconds
+    except OSError:
+        return True
 
 
 if __name__ == "__main__":

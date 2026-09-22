@@ -10,6 +10,10 @@ from app.services.blocked_probe import advance_blocked_probe_book
 from app.services.market_universe import build_market_universe
 from app.services.mt4_market_data import load_closed_market_bars
 from app.services.mt4_specs import get_mt4_symbol_spec
+from app.services.prospective_qualification import (
+    assess_prospective,
+    prospective_entry_allowed,
+)
 from app.services.runtime_admission_registry import load_research_admissions
 from app.services.shadow_ledger import append_shadow_observation
 from app.services.shadow_paper import advance_shadow_paper_book
@@ -87,6 +91,11 @@ def collect_all_shadow_once(
                 evaluated_at=evaluated_at,
                 allow_new_entries=allow_new_entries,
                 evidence_cutover_at=settings.paper_evidence_cutover_at,
+                prospective_entry_guard=lambda summary, strategy_id=strategy_id: (
+                    prospective_entry_allowed(
+                        assess_prospective(strategy_id, summary)
+                    )
+                ),
             )
             advance_blocked_probe_book(
                 diagnostic=diagnostic,

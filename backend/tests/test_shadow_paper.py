@@ -306,3 +306,46 @@ def test_summary_separates_legacy_and_post_cutover_evidence(
     assert summary.legacy_total_r == -1.0
     assert summary.legacy_pnl_eur == -2.0
     assert [trade.trade_id for trade in summary.recent_trades] == ["post-cutover"]
+
+
+def test_prospective_guard_blocks_only_new_paper_entry(tmp_path: Path) -> None:
+    state_path = tmp_path / "state.json"
+    trades_path = tmp_path / "trades.jsonl"
+    diag = diagnostic()
+
+    blocked = advance_shadow_paper_book(
+        diagnostic=diag,
+        spec=spec(),
+        bars_m5=[],
+        state_path=state_path,
+        trades_path=trades_path,
+        evaluated_at=diag.evaluated_at,
+        prospective_entry_guard=lambda summary: False,
+    )
+
+    assert blocked.open_trade is None
+
+    allowed = advance_shadow_paper_book(
+        diagnostic=diag,
+        spec=spec(),
+        bars_m5=[],
+        state_path=state_path,
+        trades_path=trades_path,
+        evaluated_at=diag.evaluated_at + timedelta(seconds=30),
+        prospective_entry_guard=lambda summary: True,
+    )
+
+    assert allowed.open_trade is not None
+
+    still_open = advance_shadow_paper_book(
+        diagnostic=diag,
+        spec=spec(),
+        bars_m5=[],
+        state_path=state_path,
+        trades_path=trades_path,
+        evaluated_at=diag.evaluated_at + timedelta(seconds=60),
+        prospective_entry_guard=lambda summary: False,
+    )
+
+    assert still_open.open_trade is not None
+    assert still_open.open_trade.trade_id == allowed.open_trade.trade_id

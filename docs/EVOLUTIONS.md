@@ -1027,3 +1027,34 @@ Validation:
 - Ruff clean;
 - `bash -n ops/start_trading.sh` clean;
 - frontend TypeScript/Vite build passed.
+
+
+## 2026-09-22 — checkpoint de reprise apres PR #79
+
+Etat reel relu avant reprise du developpement :
+
+- #73 est deja **MERGED + FRONTEND ACTIVE** ; aucun redeploiement ni restart
+  backend/worker n etait necessaire ;
+- #74 a finalise le filtrage des sequences sur toutes les occurrences ;
+- #76 a introduit le screening execution-aware ;
+- #77 a ajoute le seul candidat survivant, BTC structural displacement
+  sequence, en SHADOW/PAPER uniquement ;
+- #78/#79 ont securise le singleton worker et documente son deploiement.
+
+Nettoyage operationnel : le worktree temporaire `Trading-dashboard`, propre et
+non utilise par le process frontend actif, a ete supprime.
+
+Revalidation ciblee : 17 tests passent sur causal sequence, execution-aware et
+parite structural displacement sequence.
+
+Aucune modification de strategie ou d execution n est associee a ce checkpoint.
+
+Recherche additionnelle du checkpoint : le croisement regime M15 + sequence M5
+execution-aware (longueur 2) a ete teste sur les quatre actifs economiquement
+faisables. Il ne produit aucune cellule `POSITIVE_STABLE`; aucun changement
+runtime n en decoule.
+
+Deux prototypes research-only supplementaires ont ete rejetes sans code runtime :
+modele causal continu sur les features OHLC existantes, puis extension avec
+impulsion de tick-volume MT4. Aucun ne generalise sur validation + holdout ;
+aucune dependance ML ni regle d execution n a ete ajoutee.

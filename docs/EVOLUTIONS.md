@@ -609,3 +609,30 @@ Validation checkpoint:
 - current real 24 h intelligence runtime: 113 market opportunities, 15 captured,
   98 missed after ±3 M5 signal matching;
 - optimized snapshot runtime: ~0.43 s on the runtime host.
+
+
+## In-flight — Market-First Signature Research tooling
+
+Branch: `research/btc-missed-opportunity-signatures`.
+
+Research-only additions:
+
+- reusable `market_first_signatures.py` service;
+- CLI `scripts/analyze_market_first_signatures.py`;
+- fixed causal feature extraction over frozen train / validation / holdout;
+- semantic archetype summaries across all five retained assets;
+- dedicated tests.
+
+No runtime scanner, admission, execution, sizing, risk, stop or target is changed.
+
+Research outcome from the first pass:
+
+- BTC generic reversal / continuation / compression signatures rejected;
+- BTC failed-auction pre-stretch and 96-M5 structural-extreme significance
+  hypotheses rejected;
+- GBP compression and early-displacement variants rejected;
+- XAU early-displacement continuation rejected;
+- stable market-first signature prevalence is not sufficient evidence of edge.
+
+Next research direction: event-chain significance rather than static-bar
+patterns.

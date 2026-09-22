@@ -761,3 +761,18 @@ fabricating it.
 The intelligence layer is observability/research infrastructure. The market-first
 episodes are retrospective coverage telemetry and must not be interpreted as
 98 immediately tradable profitable setups.
+
+
+## Market-First Signature Research — current status
+
+A reusable offline signature analyzer is being added on branch
+`research/btc-missed-opportunity-signatures`. It does not alter the deployed
+runtime or the four current DEMO-collectable mechanisms.
+
+The first cross-asset pass found stable pre-move signature frequencies, but
+causal replay rejected the obvious static mechanisms on BTC, GBP and XAU.
+Therefore no new runtime strategy is being promoted from this pass.
+
+The next research focus is event-chain structure, especially meaningful failed
+auction / transition sequences, rather than further threshold tuning of generic
+M5 momentum or compression patterns.

@@ -993,9 +993,9 @@ No runtime change is authorized from PR #74. Automatic DEMO collection remains
 limited to the existing four PAPER-eligible strategies.
 
 
-## Execution-Aware Sequence Research — current chantier
+## Execution-Aware Sequence Research — PR #76 merged
 
-Branch: `research/execution-aware-sequences`.
+Status: **MERGED** at `3251b41`.
 
 Broker/capital economics are now moved inside the sequence-discovery stage rather
 than applied only after statistical selection.
@@ -1018,3 +1018,28 @@ minimums. Therefore no execution activation is authorized.
 
 If implemented next, it must be a BTC-only SHADOW/PAPER collector with explicit
 runtime/backtest parity tests and unchanged LIVE lock.
+
+
+## BTC structural displacement sequence — current implementation chantier
+
+Branch: `feat/btc-structural-displacement-sequence`.
+
+The execution-aware research candidate from PR #76 is now implemented as a
+separate BTC-only mechanism, not as a modification of an existing family.
+
+Expected deployed impact after merge and safe admission refresh:
+
+- SHADOW scanners: 22 -> **23**;
+- runtime scope: exactly one additional scanner, BTCUSD only;
+- admission: **SHADOW**;
+- PAPER collection candidate: **yes**;
+- ACTIVE: **no**;
+- LIVE: unchanged / locked.
+
+Backtest/runtime parity is enforced through a common causal-sequence detector.
+Unit tests also lock BTC-only scope, registry parsing, no-future-bar behavior,
+1.5 ATR stop geometry, 1R target, 12-M5 horizon and the under-sampled SHADOW
+admission contract.
+
+No deployment is authorized until full tests and CI pass and the runtime is
+rechecked for 0 open Trading-New PAPER/bridge positions.

@@ -7,8 +7,10 @@ from app.domain.market import MarketBar
 from app.domain.opportunity import OpportunityCandidate, OpportunityMechanism
 from app.domain.regime import MarketRegime, RegimeSnapshot
 from app.domain.trading import Side
+from app.domain.trading_intelligence import OpportunityCausalPattern
 from app.services.replay import RegimeReplay
 from app.services.session_continuity import reopen_warmup_remaining
+from app.services.trading_intelligence import _classify_causal_context
 
 ATHENS = ZoneInfo("Europe/Athens")
 ASIA_RANGE_START_HOUR = 2
@@ -83,6 +85,16 @@ def generate_candidates(
 
         if mechanism == OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL:
             candidate = _asia_range_sweep_candidate(
+                bars_m5,
+                atr_m5,
+                index,
+            )
+            if candidate is not None:
+                candidates.append(candidate)
+            continue
+
+        if mechanism == OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE:
+            candidate = _structural_displacement_sequence_candidate(
                 bars_m5,
                 atr_m5,
                 index,
@@ -303,6 +315,111 @@ def _asia_range_sweep_signal(
         reclaim,
         close_location,
         "completed Athens Asia range sweep with causal reclaim",
+    )
+
+
+def _structural_displacement_sequence_side(
+    bars: Sequence[MarketBar],
+    atr: Sequence[float],
+    index: int,
+) -> Side | None:
+    if index < 26 or index >= len(bars) or index >= len(atr):
+        return None
+    if bars[index].symbol.upper() != "BTCUSD":
+        return None
+
+    contexts = [
+        _classify_causal_context(
+            bars=bars,  # type: ignore[arg-type]
+            atr=atr,  # type: ignore[arg-type]
+            index=context_index,
+            episode_side=Side.BUY,
+        )
+        for context_index in range(index - 2, index + 1)
+    ]
+    patterns = tuple(context.pattern for context in contexts)
+    if patterns != (
+        OpportunityCausalPattern.STRUCTURAL_EXTREME,
+        OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+        OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+    ):
+        return None
+    return contexts[-1].side
+
+
+def _structural_displacement_sequence_candidate(
+    bars: Sequence[MarketBar],
+    atr: Sequence[float],
+    index: int,
+) -> OpportunityCandidate | None:
+    if index + 1 >= len(bars):
+        return None
+    side = _structural_displacement_sequence_side(bars, atr, index)
+    if side is None:
+        return None
+
+    atr_value = atr[index]
+    if atr_value <= 0:
+        return None
+    entry = bars[index + 1]
+    stop_distance = 1.50 * atr_value
+    stop = (
+        entry.open - stop_distance
+        if side == Side.BUY
+        else entry.open + stop_distance
+    )
+    if stop <= 0:
+        return None
+
+    signal = bars[index]
+    return OpportunityCandidate(
+        symbol=signal.symbol,
+        mechanism=OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE,
+        side=side,
+        signal_at=signal.timestamp + timedelta(minutes=5),
+        entry_at=entry.timestamp,
+        signal_index=index,
+        entry_index=index + 1,
+        structural_stop=stop,
+        target_r=1.0,
+        max_holding_bars=12,
+        reason=(
+            "24-M5 structural extreme followed by two causal M5 "
+            "directional-displacement states"
+        ),
+    )
+
+
+def _structural_displacement_sequence_signal(
+    bars: Sequence[MarketBar],
+    atr: Sequence[float],
+):
+    if len(bars) < 27:
+        return None
+    index = len(bars) - 1
+    side = _structural_displacement_sequence_side(bars, atr, index)
+    if side is None:
+        return None
+
+    atr_value = atr[index]
+    if atr_value <= 0:
+        return None
+    bar = bars[index]
+    raw_stop = bar.low if side == Side.BUY else bar.high
+    return (
+        side,
+        raw_stop,
+        1.0,
+        12,
+        1.50 * atr_value,
+        None,
+        None,
+        None,
+        None,
+        (
+            "24-M5 structural extreme followed by two causal M5 "
+            "directional-displacement states"
+        ),
     )
 
 

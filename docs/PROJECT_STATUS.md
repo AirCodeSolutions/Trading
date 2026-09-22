@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `7dd72bd` (PR #46).
+Current deployed main commit: `130ef7e` (PR #48).
 
 Operational services:
 
@@ -192,20 +192,24 @@ trades and frequently blocked by minimum-lot capital granularity.
 Existing paper trades are not force-closed by this policy.
 
 
-## Deployed PAPER eligibility after PR #36
+## Current PAPER eligibility after the 400 EUR refresh
 
-The frozen admission registry now exposes exactly three PAPER-eligible
-couples:
+The admission registry was regenerated under the 400 EUR economic contract on
+2026-09-22 after PR #48 aligned PAPER admission semantics. The current runtime
+decision exposes four PAPER-eligible SHADOW strategies:
 
-- `GBPUSD:directional_pullback_resumption` — eligible because train and
-  validation are positive while the holdout is only one trade;
-- `XAUUSD:failed_auction_reversal` — eligible because weakest independent
-  expectancy is positive, though live execution is often blocked by minimum-lot
-  capital granularity;
-- `GBPUSD:asia_range_sweep_reversal` — eligible because train and validation
-  expectancy are positive while holdout evidence is still empty.
+- `BTCUSD:break_retest_reaccel` — eligible because weakest independent
+  expectancy is positive, despite negative train expectancy;
+- `GBPUSD:directional_pullback_resumption` — eligible through the
+  train+validation-positive under-sampled collection rule;
+- `GBPUSD:asia_range_sweep_reversal` — eligible through the same
+  train+validation-positive under-sampled collection rule;
+- `XAUUSD:break_retest_reaccel` — eligible for prospective collection because
+  train and validation are positive while holdout remains very small.
 
-No BTCUSD or EURUSD mechanism is PAPER-eligible.
+`XAUUSD:failed_auction_reversal` is now **REJECTED** at 400 EUR because the
+larger executable sample reveals negative holdout expectancy. It is no longer
+PAPER eligible. No strategy is ACTIVE.
 
 
 ## Deployed candidate — GBP Asia range sweep
@@ -408,22 +412,20 @@ activation rule. The current research priority is to select positive-edge
 subsets that are now economically executable at 400 EUR.
 
 
-## 400 EUR historical-admission preview — 2026-09-22
+## 400 EUR historical-admission refresh — 2026-09-22
 
-A paired frozen-data replay shows that the current 200 EUR admission registry is
-now stale relative to the 400 EUR economic contract. No registry refresh has
-been applied yet at this checkpoint.
+The paired frozen-data replay was applied to the runtime admission registry after
+PR #48 corrected PAPER admission semantics. The live
+`strategy_admissions.json` was regenerated on 2026-09-22 and now reflects the
+400 EUR economic contract.
 
-Expected PAPER eligibility after a 400 EUR refresh, limited to the 22 mechanisms
-actually enabled by runtime:
+Current PAPER eligibility across the 22 runtime mechanisms:
 
-- BTCUSD `break_retest_reaccel` — newly PAPER eligible, still SHADOW;
-- GBPUSD `asia_range_sweep_reversal` — remains PAPER eligible;
-- GBPUSD `directional_pullback_resumption` — remains PAPER eligible;
-- XAUUSD `break_retest_reaccel` — newly PAPER eligible, still SHADOW;
-- XAUUSD `failed_auction_reversal` — removed from eligibility because the larger
-  executable sample makes historical admission REJECTED.
+- BTCUSD `break_retest_reaccel` — PAPER eligible, SHADOW;
+- GBPUSD `asia_range_sweep_reversal` — PAPER eligible, SHADOW;
+- GBPUSD `directional_pullback_resumption` — PAPER eligible, SHADOW;
+- XAUUSD `break_retest_reaccel` — PAPER eligible, SHADOW;
+- XAUUSD `failed_auction_reversal` — REJECTED and PAPER ineligible.
 
-No strategy becomes ACTIVE. DEMO and LIVE remain disabled. The admission registry
-must only be refreshed after PR #48 has corrected the contradictory
-REJECTED/candidate flag semantics.
+No strategy becomes ACTIVE. DEMO and LIVE remain disabled. The Portfolio Manager
+therefore remains `NO_TRADE` for broker execution.

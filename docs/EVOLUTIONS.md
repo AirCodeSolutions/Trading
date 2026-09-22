@@ -46,13 +46,15 @@ Last updated: 2026-09-22.
 | #44 | `eb3578b` | No-trade runtime status + dashboard state clarity |
 | #45 | `fd00652` | Read-only opportunity funnel telemetry |
 | #46 | `7dd72bd` | Economic reference capital 400 EUR + capital-aware funnel |
+| #47 | `f9be5e4` | Record deployed 400 EUR runtime state |
+| #48 | `130ef7e` | Align PAPER admission semantics and refresh 400 EUR admissions |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current deployed main: `7dd72bd` through PR #46;
+- current deployed main: `130ef7e` through PR #48;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
@@ -371,9 +373,9 @@ justify enabling all newly feasible setups. Edge selection remains necessary.
 - execution remains PAPER-only, DEMO collection OFF, DEMO bridge OFF, LIVE OFF.
 
 
-## In-flight — PR #48 PAPER admission semantics after 400 EUR replay
+## PR #48 — PAPER admission semantics after 400 EUR replay
 
-Branch: `fix/paper-admission-semantics`.
+Status: **MERGED + DEPLOYED** at `130ef7e`.
 
 The controlled 200/400 frozen-matrix comparison exposed a semantic inconsistency:
 a strategy could be historically REJECTED while retaining
@@ -391,11 +393,13 @@ PR #48:
 - dashboard shows `PAPER ELIGIBLE` from the real runtime decision, not from the
   special train+validation flag.
 
-Preview of a 400 EUR admission refresh on the 22 runtime scanners:
+The 400 EUR admission refresh has now been applied to the 22 runtime scanners:
 
-- add PAPER eligibility: BTCUSD break/retest, XAUUSD break/retest;
-- remove PAPER eligibility: XAUUSD failed auction (now REJECTED);
-- keep: GBPUSD Asia sweep and GBPUSD directional pullback;
+- PAPER eligible: BTCUSD break/retest, GBPUSD Asia sweep,
+  GBPUSD directional pullback, XAUUSD break/retest;
+- PAPER ineligible / REJECTED: XAUUSD failed auction;
 - ACTIVE strategies: none.
 
-No broker execution flag is changed by this PR.
+The runtime registry was regenerated after merge. No broker execution flag was
+changed: PAPER mode remains enabled for evidence collection while DEMO and LIVE
+remain OFF.

@@ -74,15 +74,18 @@ Last updated: 2026-09-22.
 | #72 | `9c2c80a` | Record matrix-guided reversal replays |
 | #73 | `cf05e90` | Dashboard Command Center UX |
 | #74 | `b5388e4` | Causal Sequence Research v1 |
+| #75 | `998ddc8` | Refresh status through PR74 |
+| #76 | `3251b41` | Execution-aware sequence research |
+| #77 | `17a1bbb` | BTC structural displacement sequence SHADOW |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current repository served: `b5388e4` through PR #74; frontend Command Center UX is active, causal-sequence research is merged, while backend/worker trading decision and execution behavior remains unchanged from PR #69;
+- current repository served: `17a1bbb` through PR #77; frontend Command Center UX is active and BTC structural displacement sequence is deployed SHADOW/PAPER-only;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
-- runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
+- runtime: 23 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep + BTC structural displacement sequence;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
 - current Portfolio Manager: `NO_TRADE`;
 - first clean post-cutover paper result remains GBP failed-auction **+1.5R / +2.7329 EUR**;
@@ -949,9 +952,9 @@ Result:
 No runtime strategy is added in this branch.
 
 
-## In-flight — BTC structural displacement sequence
+## PR #77 — BTC structural displacement sequence
 
-Branch: `feat/btc-structural-displacement-sequence`.
+Status: **MERGED + DEPLOYED** at `17a1bbb`.
 
 Single trading hypothesis:
 
@@ -989,3 +992,37 @@ Runtime dry-run in `/tmp`:
 
 Temporary full admission refresh also confirms the new BTC strategy as SHADOW and
 PAPER-eligible, with no ACTIVE strategy created.
+
+
+## In-flight — Shadow worker singleton hardening
+
+Branch: `fix/shadow-worker-singleton`.
+
+Operational incident observed on 2026-09-22:
+
+- two Trading-New `app.shadow_worker` processes were running against the same
+  runtime directory;
+- no PAPER trade, Trading-New broker position or pending broker command existed
+  at the checkpoint;
+- the orphan worker was stopped and the canonical PID metadata was repaired;
+- runtime remained 5/5 READY.
+
+Hardening:
+
+- `app.shadow_worker` now acquires an OS-level non-blocking `flock` for the
+  full worker lifetime;
+- a second worker exits immediately instead of sharing the ledger/runtime;
+- `ops/start_trading.sh` now waits up to 5 seconds for an unhealthy old worker
+  to stop;
+- if the old PID remains alive, startup aborts instead of spawning a duplicate;
+- lock PID is written to `shadow/worker.lock` for operational inspection.
+
+No strategy, admission, sizing, risk, stop/target or bridge semantics change.
+
+Validation:
+
+- 211 backend tests passed;
+- dedicated singleton tests passed;
+- Ruff clean;
+- `bash -n ops/start_trading.sh` clean;
+- frontend TypeScript/Vite build passed.

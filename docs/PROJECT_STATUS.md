@@ -28,14 +28,14 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current repository served: `b5388e4` (PR #74). The frontend Command Center UX is active and causal-sequence research is merged; backend/worker trading decision and execution behavior remains unchanged from PR #69.
+Current repository served: `17a1bbb` (PR #77). The frontend Command Center UX is active, execution-aware sequence research is merged, and the BTC structural displacement sequence is deployed as SHADOW/PAPER-only evidence collection. LIVE remains locked.
 
 Operational services:
 
 - frontend: port 5180
 - backend: port 8020
-- SHADOW worker: 22 active scanners
-- 22 active SHADOW scanners: 5 markets × 4 baseline mechanisms + GBPUSD directional pullback + GBPUSD Asia range sweep
+- SHADOW worker: 23 active scanners
+- 23 active SHADOW scanners: 5 markets × 4 baseline mechanisms + GBPUSD directional pullback + GBPUSD Asia range sweep + BTCUSD structural displacement sequence
 - 5/5 retained markets are PAPER-ready with live MT4 quote, M5/M15 data and broker specs
 - PAPER entries remain evidence-gated; broker capital/risk feasibility is still enforced
 - MT4 DEMO transport was runtime-proven across five symbol-scoped bridge instances
@@ -51,7 +51,7 @@ Latest runtime checkpoint:
 - MT4 DEMO bridge: 0 bridge positions, 0 pending commands;
 - DEMO transport proof: five symbol-scoped bridge snapshots refresh correctly and a fake-symbol routing probe was not consumed by any bridge;
 - current runtime flags: `execution_mode=demo`, `demo_collection=true`, `demo_execution_bridge=true`, `live_trading=false`;
-- latest checked state: 22 scanners, 5/5 READY, 0 worker error, 0 PAPER open, 0 Trading-New command/position; DEMO guard waits only for a portfolio-selected collectable PAPER trade.
+- latest checked state: 23 scanners, 5/5 READY, 0 worker error, 0 PAPER open, 0 Trading-New command/position; DEMO guard waits only for a portfolio-selected collectable PAPER trade.
 
 No strategy currently satisfies both:
 
@@ -1020,14 +1020,14 @@ If implemented next, it must be a BTC-only SHADOW/PAPER collector with explicit
 runtime/backtest parity tests and unchanged LIVE lock.
 
 
-## BTC structural displacement sequence — current implementation chantier
+## BTC structural displacement sequence — PR #77 deployed
 
-Branch: `feat/btc-structural-displacement-sequence`.
+Status: **MERGED + DEPLOYED** at `17a1bbb`.
 
 The execution-aware research candidate from PR #76 is now implemented as a
 separate BTC-only mechanism, not as a modification of an existing family.
 
-Expected deployed impact after merge and safe admission refresh:
+Observed deployed impact:
 
 - SHADOW scanners: 22 -> **23**;
 - runtime scope: exactly one additional scanner, BTCUSD only;
@@ -1041,5 +1041,26 @@ Unit tests also lock BTC-only scope, registry parsing, no-future-bar behavior,
 1.5 ATR stop geometry, 1R target, 12-M5 horizon and the under-sampled SHADOW
 admission contract.
 
-No deployment is authorized until full tests and CI pass and the runtime is
-rechecked for 0 open Trading-New PAPER/bridge positions.
+Deployment completed after CI and a 0-open-position / 0-pending-command safety check. The mechanism remains SHADOW/PAPER-only; no ACTIVE or LIVE authority was created.
+
+
+## Shadow worker singleton hardening — current operational fix
+
+A duplicate Trading-New SHADOW worker was detected on 2026-09-22 while the
+runtime had 0 open PAPER trades, 0 Trading-New bridge positions and 0 pending
+broker commands. The orphan process was stopped immediately; the remaining
+canonical worker stayed healthy and the session remained 5/5 READY.
+
+The runtime is being hardened with two independent protections:
+
+1. the worker holds an OS-level `flock` for its entire process lifetime, so a
+   second worker cannot operate on the same shadow ledger;
+2. the startup watchdog refuses to spawn a replacement if the prior worker PID
+   does not actually terminate.
+
+This is an operational safety fix only. The deployed 23-scanner strategy scope,
+five PAPER-eligible SHADOW collectors, 400 EUR risk contract and LIVE lock are
+unchanged.
+
+Validation on the PR branch: 211 backend tests passed, Ruff clean,
+`start_trading.sh` syntax clean and frontend build clean.

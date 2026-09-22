@@ -1,7 +1,10 @@
+import fcntl
 import json
+import os
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import TextIO
 
 from app.core.config import settings
 from app.domain.portfolio import TradingOverview
@@ -33,6 +36,9 @@ def main() -> None:
     if settings.mt4_files_dir is None:
         raise SystemExit("TRADING_MT4_FILES_DIR is required")
 
+    _worker_lock = _acquire_worker_lock(
+        settings.shadow_ledger_dir / "worker.lock"
+    )
     costs_path = settings.shadow_ledger_dir / "execution_costs.jsonl"
     heartbeat_path = settings.shadow_ledger_dir / "worker_heartbeat.json"
     audit_path = settings.shadow_ledger_dir / AUDIT_FILE
@@ -124,6 +130,25 @@ def main() -> None:
                 flush=True,
             )
         time.sleep(settings.shadow_collection_interval_seconds)
+
+
+def _acquire_worker_lock(path: Path) -> TextIO:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle = path.open("a+", encoding="utf-8")
+    try:
+        fcntl.flock(
+            handle.fileno(),
+            fcntl.LOCK_EX | fcntl.LOCK_NB,
+        )
+    except BlockingIOError as exc:
+        handle.close()
+        raise SystemExit("shadow worker already running") from exc
+
+    handle.seek(0)
+    handle.truncate()
+    handle.write(f"{os.getpid()}\n")
+    handle.flush()
+    return handle
 
 
 def _update_observability(

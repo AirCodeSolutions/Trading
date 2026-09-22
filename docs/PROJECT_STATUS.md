@@ -991,3 +991,30 @@ sequence-screening stage itself.
 
 No runtime change is authorized from PR #74. Automatic DEMO collection remains
 limited to the existing four PAPER-eligible strategies.
+
+
+## Execution-Aware Sequence Research — current chantier
+
+Branch: `research/execution-aware-sequences`.
+
+Broker/capital economics are now moved inside the sequence-discovery stage rather
+than applied only after statistical selection.
+
+The first strict pass leaves one implementation candidate:
+
+- BTCUSD;
+- causal sequence:
+  `structural_extreme -> directional_displacement ->
+  directional_displacement`;
+- fixed stop: 1.5 ATR M5;
+- target: 1.0R;
+- horizon: 12 M5;
+- next-M5 entry;
+- unchanged frozen spread/slippage, 400 EUR / 1% sizing, macro and broker guards.
+
+The sequential replay stays positive on train / validation / holdout, but train
+edge is marginal and independent sample sizes remain below ACTIVE admission
+minimums. Therefore no execution activation is authorized.
+
+If implemented next, it must be a BTC-only SHADOW/PAPER collector with explicit
+runtime/backtest parity tests and unchanged LIVE lock.

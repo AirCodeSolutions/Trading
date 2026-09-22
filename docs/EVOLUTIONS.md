@@ -917,3 +917,33 @@ Planned scope:
 - replay only sequences that remain positive after this execution-aware screen;
 - do not add a runtime strategy without independent positive train,
   validation and holdout evidence.
+
+
+## In-flight — Execution-Aware Sequence Research
+
+Branch: `research/execution-aware-sequences`.
+
+Research-only additions:
+
+- execution-aware sequence report models;
+- per-asset economically preferred ATR stop geometry;
+- next-M5 entry + fixed 1R screening target + 12-M5 horizon;
+- exact frozen spread/slippage and existing `size_position()` reuse;
+- macro/min-lot/margin/spread-stop rejection attribution;
+- train / validation / holdout baseline expectancy;
+- sequence expectancy delta versus asset baseline;
+- strict 30 / 10 / 5 minimum executable support;
+- CLI `scripts/analyze_execution_aware_sequences.py`;
+- dedicated consistency tests.
+
+Result:
+
+- three-state screen: exactly one POSITIVE_STABLE cell,
+  BTCUSD `structural_extreme -> directional_displacement ->
+  directional_displacement`;
+- independent screen expectancy +0.037R / +0.138R / +0.202R;
+- sequential no-overlap replay remains positive at
+  +0.012R / +0.138R / +0.202R on 39 / 15 / 9 trades;
+- four-state extension yields zero POSITIVE_STABLE cells.
+
+No runtime strategy is added in this branch.

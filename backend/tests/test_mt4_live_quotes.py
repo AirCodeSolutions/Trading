@@ -135,3 +135,41 @@ def test_symbol_scoped_demo_bridge_snapshot_adds_live_quote(tmp_path: Path) -> N
     assert quotes[0].bid == 1.34
     assert quotes[0].ask == 1.34011
     assert quotes[0].status == MarketFeedStatus.LIVE
+
+
+def test_live_quote_prefers_fresher_legacy_m5_over_stale_json_snapshot(
+    tmp_path: Path,
+) -> None:
+    write_quote(tmp_path / "mt4_data_BTCUSD.json", 1789822200)
+    (tmp_path / "mt4_bars_BTCUSD_M5.json").write_text(
+        json.dumps(
+            {
+                "symbol": "BTCUSD",
+                "timeframe": "M5",
+                "first_shift": "1",
+                "bars": {
+                    "0": {
+                        "timestamp": "1789821000",
+                        "open": "81397.92",
+                        "high": "81425.61",
+                        "low": "81249.73",
+                        "close": "81295.77",
+                        "volume": "1931",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / "BTCUSD-M5.csv").write_text(
+        "20260919,12:35:00,81295.71,81305.66,81246.84,81300.10,1931\n"
+        "20260919,12:40:00,81300.10,81340.00,81280.00,81330.00,2000\n",
+        encoding="utf-8",
+    )
+    now = datetime(2026, 9, 19, 12, 51, 0, tzinfo=TZ)
+
+    quote = read_live_market_quotes(tmp_path, now, symbols=("BTCUSD",))[0]
+
+    assert quote.last_closed_m5_at is not None
+    assert quote.last_closed_m5_at.isoformat() == "2026-09-19T12:40:00+03:00"
+    assert quote.recent_m5_closes[-1] == 81330.0

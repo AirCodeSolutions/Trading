@@ -730,3 +730,31 @@ market-first episodes and non-empty causal pattern summaries. Runtime remained
 
 The causal classifier remains research-only and does not participate in
 scanner admission or broker order decisions.
+
+
+## In-flight — Historical Causal Pattern Stability report
+
+Branch: `research/causal-pattern-stability`.
+
+Research-only additions:
+
+- typed historical causal-pattern report models;
+- reusable stability analyzer over frozen train / validation / holdout;
+- CLI `scripts/analyze_causal_pattern_stability.py`;
+- same market-first denominator and same causal classifier as PR #66;
+- alignment rate, aligned/opposed counts and average move ATR by asset/pattern;
+- dedicated tests.
+
+First economic follow-up from the report:
+
+- cross-asset compression-breakout anti-alignment was tested as one fixed
+  false-breakout reversal mechanism;
+- the mechanism failed train economics on BTC/EUR/GBP, failed all three windows
+  on XAU and was fully infeasible on XAG;
+- no runtime strategy is promoted.
+
+Validation:
+
+- 185 backend tests passed;
+- Ruff clean;
+- runtime trading code and dashboard are unchanged by this branch.

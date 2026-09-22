@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `6bc4db7` (PR #51).
+Current deployed main commit: `6a7e8e6` (PR #52).
 
 Operational services:
 
@@ -492,7 +492,7 @@ The hypothesis improves executability but not robust edge, so it is rejected
 and no runtime mechanism is added.
 
 
-## DEMO collection eligibility expansion — PR #52 in flight
+## DEMO collection eligibility expansion — PR #52 deployed
 
 The isolated broker DEMO transport is now **armed** while LIVE remains disabled.
 The pre-deploy runtime check showed:
@@ -524,3 +524,17 @@ Current DEMO-collectable SHADOW set under the 400 EUR registry:
 EURUSD and XAGUSD remain research-only. XAUUSD failed-auction remains REJECTED.
 No risk percentage, lot floor, spread/stop threshold, stop geometry or target is
 changed by this PR.
+
+
+### Runtime proof after PR #52 deployment
+
+- backend/worker restarted only after confirming 0 PAPER open, 0 Trading-New
+  bridge position and 0 pending open/close command;
+- execution flags preserved: DEMO mode, DEMO collection ON, DEMO bridge ON,
+  LIVE OFF;
+- first complete worker cycle: 22 scanners, 5/5 retained symbols READY,
+  worker error null;
+- 0 Trading-New bridge position, 0 pending open/close/result command;
+- Portfolio Manager remains NO_TRADE only because no collectable PAPER is open;
+- PAPER-eligible / DEMO-collectable SHADOW set now includes BTCUSD break/retest,
+  GBPUSD Asia sweep, GBPUSD directional pullback and XAUUSD break/retest.

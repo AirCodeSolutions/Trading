@@ -48,13 +48,14 @@ Last updated: 2026-09-22.
 | #46 | `7dd72bd` | Economic reference capital 400 EUR + capital-aware funnel |
 | #47 | `f9be5e4` | Record deployed 400 EUR runtime state |
 | #48 | `130ef7e` | Align PAPER admission semantics and refresh 400 EUR admissions |
+| #49 | `f00da09` | Refresh deployed 400 EUR admission/runtime documentation |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current deployed main: `130ef7e` through PR #48;
+- current deployed main: `f00da09` through PR #49;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
@@ -403,3 +404,20 @@ The 400 EUR admission refresh has now been applied to the 22 runtime scanners:
 The runtime registry was regenerated after merge. No broker execution flag was
 changed: PAPER mode remains enabled for evidence collection while DEMO and LIVE
 remain OFF.
+
+## In-flight — PR #50 automatic-execution clarity + per-asset strategy map
+
+Branch: `feat/dashboard-auto-execution-map`.
+
+Frontend-only execution clarity plus documentation/architecture updates:
+
+- prominent `AUTO TRADING` state: PAPER-only / DEMO armed / LIVE;
+- explicit five-step DEMO-order path based on the real runtime contract;
+- separates PAPER eligibility from `paper_collection_candidate` DEMO collection;
+- per-asset strategy map generated from the live admission registry;
+- no activation button is added, so the UI cannot silently enable broker orders;
+- architecture records `symbol × mechanism` as the admission unit;
+- documentation records rejected fixed-hypothesis tests rather than reopening
+  them later.
+
+No risk, signal, stop, target, admission threshold or execution flag is changed.

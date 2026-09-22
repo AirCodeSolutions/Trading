@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `130ef7e` (PR #48).
+Current deployed main commit: `f00da09` (PR #49).
 
 Operational services:
 
@@ -370,7 +370,7 @@ economic block reason → counterfactual outcome. This must expose where
 opportunities are lost without changing strategy thresholds, lots or risk.
 
 
-## Opportunity funnel implementation — PR #45 in flight
+## Opportunity funnel implementation — PR #45 deployed
 
 The no-trade diagnosis is now encoded as read-only runtime telemetry rather than
 a manual log inspection. The funnel measures a rolling window of SHADOW signal
@@ -429,3 +429,43 @@ Current PAPER eligibility across the 22 runtime mechanisms:
 
 No strategy becomes ACTIVE. DEMO and LIVE remain disabled. The Portfolio Manager
 therefore remains `NO_TRADE` for broker execution.
+
+## Automatic execution visibility and strategy specialization — PR #50 in flight
+
+The runtime remains intentionally PAPER-only:
+
+- reference capital 400 EUR;
+- DEMO collection OFF;
+- DEMO bridge OFF;
+- LIVE OFF;
+- Portfolio Manager currently `NO_TRADE`;
+- 5/5 retained symbols READY.
+
+The dashboard is being changed so this is impossible to confuse with active
+broker trading. It will show a dedicated automatic-execution state and the
+actual path required before a DEMO order can be emitted.
+
+Strategy policy is also made explicit: infrastructure is shared, but evidence is
+admitted per `symbol × mechanism`. Current PAPER-eligible pairs are:
+
+- BTCUSD: `break_retest_reaccel`;
+- GBPUSD: `asia_range_sweep_reversal`, `directional_pullback_resumption`;
+- XAUUSD: `break_retest_reaccel`;
+- EURUSD: none;
+- XAGUSD: none.
+
+Only SHADOW rows marked `paper_collection_candidate` can currently trigger
+isolated DEMO collection before ACTIVE/SUPPORTS_DEMO qualification. PAPER
+eligibility and DEMO-collection eligibility are therefore displayed separately.
+
+Recent fixed-hypothesis research rejected three attempted shortcuts:
+
+- EURUSD Asia sweep with a wider stop buffer: validation/holdout setups require
+  a median buffer near 0.91 ATR merely to satisfy spread/stop, which deforms the
+  setup;
+- directional pullback with stop anchored to the last closed M15 extreme:
+  worsened GBP edge and did not repair EUR/BTC;
+- post-shock continuation restricted to prior same-direction M15 trend:
+  BTC train/validation improved but holdout was 3/3 losses, so it was rejected.
+
+No runtime trading threshold was changed from those tests.

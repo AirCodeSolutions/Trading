@@ -652,6 +652,31 @@ export default function App() {
     : demoTransportArmed
       ? "DEMO COLLECTION ARMÉE"
       : "PAPER / RESEARCH ONLY";
+  const automaticTradingLabel = config?.live_trading_enabled
+    ? "LIVE ACTIF"
+    : demoTransportArmed
+      ? "DEMO AUTO ARMÉ"
+      : "OFF · PAPER ONLY";
+  const openPaperRows =
+    overview?.paper_strategies.filter((row) => row.summary.open_trade != null) ?? [];
+  const eligibleOpenPaperRows = openPaperRows.filter((row) => row.paper_entry_allowed);
+  const demoCollectionCandidates =
+    overview?.paper_strategies.filter(
+      (row) =>
+        row.historical_state === "shadow" &&
+        row.paper_collection_candidate
+    ) ?? [];
+  const openDemoCollectionCandidates = openPaperRows.filter(
+    (row) =>
+      row.historical_state === "shadow" &&
+      row.paper_collection_candidate
+  );
+  const retainedSymbols = ["BTCUSD", "EURUSD", "GBPUSD", "XAUUSD", "XAGUSD"];
+  const strategyByAsset = retainedSymbols.map((symbol) => {
+    const rows = overview?.paper_strategies.filter((row) => row.symbol === symbol) ?? [];
+    const eligible = rows.filter((row) => row.paper_entry_allowed);
+    return { symbol, rows, eligible };
+  });
 
   return (
     <main className="shell">
@@ -790,6 +815,175 @@ export default function App() {
         </article>
       </section>
 
+
+      <section className="execution-panel">
+        <div className="shadow-heading">
+          <div>
+            <p className="eyebrow">AUTOMATIC EXECUTION · ÉTAT BROKER</p>
+            <h2>{automaticTradingLabel}</h2>
+          </div>
+          <span
+            className={
+              config?.live_trading_enabled || demoTransportArmed
+                ? "badge gate-ready"
+                : "badge gate-locked"
+            }
+          >
+            {overview?.broker?.is_demo ? "BROKER DEMO" : "BROKER NON CONFIRMÉ"}
+          </span>
+        </div>
+
+        <p className="execution-explainer">
+          {demoTransportArmed
+            ? "Le transport DEMO est armé. Un ordre ne part que si un PAPER sélectionné devient DEMO_COLLECTION / DEMO_ELIGIBLE et que tous les guards restent verts."
+            : "Aucun ordre MT4 Trading-New ne peut partir actuellement : le runtime est en PAPER et le transport DEMO est désarmé. Les scanners et PAPER continuent à collecter les preuves."}
+        </p>
+
+        <div className="gate-grid">
+          <div className="gate-card">
+            <span className="label">Mode runtime</span>
+            <strong>{config?.execution_mode.toUpperCase() ?? "—"}</strong>
+            <p>Le mode PAPER simule les trades admissibles sans ordre broker.</p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Transport DEMO</span>
+            <strong>{demoTransportArmed ? "ARMED" : "OFF"}</strong>
+            <p>
+              collection={config?.demo_collection_enabled ? "ON" : "OFF"} · bridge=
+              {config?.demo_execution_bridge_enabled ? "ON" : "OFF"}
+            </p>
+          </div>
+          <div className="gate-card">
+            <span className="label">PAPER ouverts</span>
+            <strong>{openPaperRows.length}</strong>
+            <p>{eligibleOpenPaperRows.length} ouvert(s) et PAPER-éligible(s).</p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Portfolio Manager</span>
+            <strong>{overview?.portfolio.action.replaceAll("_", " ").toUpperCase() ?? "—"}</strong>
+            <p>{overview?.portfolio.reason ?? "Décision indisponible."}</p>
+          </div>
+          <div className="gate-card">
+            <span className="label">LIVE broker</span>
+            <strong>{config?.live_trading_enabled ? "ACTIF" : "VERROUILLÉ"}</strong>
+            <p>
+              {overview?.portfolio.historical_active &&
+              overview?.portfolio.prospective_supports_demo
+                ? "Les preuves portefeuille sont présentes ; le flag LIVE reste un verrou séparé."
+                : "Aucune stratégie n’a encore simultanément admission ACTIVE et preuve prospective SUPPORTS_DEMO."}
+            </p>
+          </div>
+        </div>
+
+        <div className="execution-path">
+          <div className="execution-step">
+            <span className={demoCollectionCandidates.length ? "step-dot step-ok" : "step-dot"} />
+            <div>
+              <strong>1 · Stratégie autorisée à la collecte DEMO</strong>
+              <p>
+                {demoCollectionCandidates.length} SHADOW actuellement marqué(s)
+                paper_collection_candidate ; {paperCandidates.length} mécanisme(s)
+                peuvent ouvrir du PAPER au total.
+              </p>
+            </div>
+          </div>
+          <div className="execution-step">
+            <span className={openDemoCollectionCandidates.length ? "step-dot step-ok" : "step-dot"} />
+            <div>
+              <strong>2 · Signal exécutable → PAPER collectable ouvert</strong>
+              <p>
+                {openDemoCollectionCandidates.length
+                  ? "Un PAPER candidat à la collecte DEMO est ouvert."
+                  : "Aucun PAPER candidat à la collecte DEMO n’est ouvert maintenant."}
+              </p>
+            </div>
+          </div>
+          <div className="execution-step">
+            <span
+              className={
+                overview?.portfolio.action === "demo_collection" ||
+                overview?.portfolio.action === "demo_eligible"
+                  ? "step-dot step-ok"
+                  : "step-dot"
+              }
+            />
+            <div>
+              <strong>3 · Portfolio sélectionne le trade</strong>
+              <p>Le Portfolio Manager doit passer à DEMO_COLLECTION ou DEMO_ELIGIBLE.</p>
+            </div>
+          </div>
+          <div className="execution-step">
+            <span className={demoTransportArmed ? "step-dot step-ok" : "step-dot"} />
+            <div>
+              <strong>4 · Transport DEMO armé</strong>
+              <p>Mode DEMO + collection ON + bridge ON, avec LIVE toujours OFF.</p>
+            </div>
+          </div>
+          <div className="execution-step">
+            <span className={demo?.guard.ready ? "step-dot step-ok" : "step-dot"} />
+            <div>
+              <strong>5 · Guards finaux</strong>
+              <p>
+                Broker DEMO confirmé, macro claire, budget journalier disponible,
+                aucun ticket Trading-New déjà ouvert.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="strategy-map-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">STRATEGY MAP · SPÉCIALISATION PAR ACTIF</p>
+            <h2>Chaque actif ne doit pas trader la même chose</h2>
+          </div>
+          <p>
+            Le moteur partage l’infrastructure, mais l’admission se fait par couple
+            actif × mécanisme. Un mécanisme n’est collecté en PAPER que là où son
+            évidence le justifie.
+          </p>
+        </div>
+        <div className="strategy-map-grid">
+          {strategyByAsset.map(({ symbol, eligible }) => (
+            <article className="strategy-asset-card" key={symbol}>
+              <div className="strategy-asset-head">
+                <strong>{symbol}</strong>
+                <span className={eligible.length ? "feed-status feed-live" : "feed-status feed-stale"}>
+                  {eligible.length ? eligible.length + " PAPER" : "RESEARCH ONLY"}
+                </span>
+              </div>
+              {eligible.length ? (
+                <div className="strategy-list">
+                  {eligible.map((row) => (
+                    <div className="strategy-line" key={row.strategy_id}>
+                      <strong>{row.mechanism.replaceAll("_", " ")}</strong>
+                      <span>
+                        {row.historical_state?.toUpperCase() ?? "—"} · weakest{" "}
+                        {row.historical_weakest_expectancy_r == null
+                          ? "—"
+                          : (row.historical_weakest_expectancy_r >= 0 ? "+" : "") +
+                            row.historical_weakest_expectancy_r.toFixed(3) +
+                            "R"}
+                      </span>
+                      <span>
+                        prospectif {row.summary.closed_trades}/{prospectiveTarget} ·{" "}
+                        {row.qualification.state.replaceAll("_", " ")}
+                        {row.paper_collection_candidate ? " · DEMO COLLECTION CANDIDATE" : ""}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="strategy-empty">
+                  Aucun mécanisme PAPER-éligible actuellement. SHADOW continue à
+                  chercher sans envoyer d’ordre.
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="gate-panel">
         <div className="shadow-heading">

@@ -238,6 +238,10 @@ def test_overview_exposes_positive_weakest_shadow_as_paper_eligible(
     assert row.paper_collection_candidate is False
     assert row.historical_weakest_expectancy_r == 0.24
     assert row.paper_entry_allowed is True
+    assert overview.portfolio.action == "no_trade"
+    assert overview.portfolio.reason == (
+        "1 PAPER-eligible SHADOW strategies are waiting for an executable PAPER trade"
+    )
 
 
 def test_overview_never_marks_rejected_admission_as_paper_entry_allowed(
@@ -341,6 +345,10 @@ def test_open_positive_weakest_shadow_can_enter_demo_collection(
     assert row.paper_collection_candidate is False
     assert overview.portfolio.action == "demo_collection"
     assert overview.portfolio.selected_strategy_id == "BTCUSD:break_retest_reaccel"
+    assert overview.portfolio.reason == (
+        "PAPER-eligible SHADOW has an executable paper trade; "
+        "eligible for isolated broker DEMO collection"
+    )
     assert overview.risk.selected_open_risk_eur == 4.0
 
 

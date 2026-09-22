@@ -52,13 +52,15 @@ Last updated: 2026-09-22.
 | #50 | `0ccdf3e` | Automatic-execution clarity + per-asset strategy map |
 | #51 | `6bc4db7` | Record PR50 deployment + reject Asia midpoint variant |
 | #52 | `6a7e8e6` | Collect every PAPER-eligible SHADOW strategy in isolated DEMO |
+| #53 | `c487190` | Record PR52 deployment |
+| #54 | `d758112` | Use freshest closed runtime bar source |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current deployed main: `6a7e8e6` through PR #52;
+- current deployed main: `d758112` through PR #54;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
@@ -459,7 +461,9 @@ Targeted validation before PR: 17 admission/portfolio tests passed; frontend
 build passed.
 
 
-## In-flight — PR #54 freshest runtime bar source
+## PR #54 — freshest runtime bar source
+
+Status: **MERGED + DEPLOYED** at `d758112`.
 
 Branch: `fix/runtime-freshest-bar-source`.
 
@@ -491,3 +495,24 @@ The research/backtest history resolver remains unchanged and reproducible.
 Targeted RED/GREEN tests: 10 passed. Direct runtime-file proof before deployment
 showed all five retained symbols on the same current M5 close instead of
 BTC/XAG lagging by multiple bars.
+
+
+## In-flight — Portfolio waiting-state truth
+
+Branch: `feat/portfolio-waiting-reason`.
+
+No trading decision changes. The Portfolio Manager now distinguishes:
+
+- a collectable SHADOW PAPER trade that is open -> `DEMO_COLLECTION`;
+- no open PAPER but one or more PAPER-eligible SHADOW strategies waiting for a
+  signal -> `NO_TRADE` with an explicit waiting reason;
+- no broker-evaluable admission at all -> the generic no-admission reason.
+
+This removes the obsolete ACTIVE/SUPPORTS_DEMO-only explanation from the
+current DEMO-collection workflow.
+
+Research recorded with this change:
+
+- three EURUSD specialist hypotheses rejected;
+- BTCUSD break/retest 0.80 M15-ATR stop-floor variant rejected;
+- PR #55 closed as duplicate of merged/deployed PR #54.

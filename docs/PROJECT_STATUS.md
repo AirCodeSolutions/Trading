@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `6a7e8e6` (PR #52).
+Current deployed main commit: `d758112` (PR #54).
 
 Operational services:
 
@@ -540,7 +540,7 @@ changed by this PR.
   GBPUSD Asia sweep, GBPUSD directional pullback and XAUUSD break/retest.
 
 
-## Runtime market-data freshness incident — PR #54 in flight
+## Runtime market-data freshness incident — PR #54 deployed
 
 After the DEMO collector was armed, session preflight degraded BTCUSD and
 XAGUSD as `m5_stalled`. Quotes/specs were live, but the API exposed a last
@@ -564,3 +564,43 @@ Pre-PR direct proof against the real MT4 directory with the patched loader:
 
 This fix is required before further strategy work because stale runtime bars can
 suppress or distort otherwise valid opportunities.
+
+
+### Runtime proof after PR #54 deployment
+
+- backend/worker restart was performed only after reconfirming 0 PAPER open,
+  0 Trading-New bridge position and 0 pending command;
+- execution flags remained DEMO collection ON / bridge ON / LIVE OFF;
+- first complete worker cycle: 22 scanners, 5/5 retained symbols READY,
+  worker error null;
+- BTCUSD, EURUSD, GBPUSD, XAUUSD and XAGUSD all exposed the same current
+  closed-M5 timestamp through the live API;
+- session preflight returned READY with no degraded symbols;
+- 0 Trading-New bridge position and no phantom open/close/result command.
+
+Eligible-signal audit since the causal cutover found no missed executable PAPER
+opportunity among the four current DEMO-collectable strategies. The only
+eligible-strategy signal recorded was BTCUSD break/retest on 2026-09-20, and it
+was correctly blocked because spread/stop was ~24.8%, above the unchanged 15%
+ceiling.
+
+
+## Current strategy-development decision — 2026-09-22
+
+EURUSD remains research-only after three fixed specialist hypotheses failed
+independent windows. BTCUSD break/retest also keeps its existing stop geometry:
+a 0.80 M15-ATR minimum-stop variant improved recent execution but materially
+worsened train expectancy and drawdown.
+
+The fastest safe path to broker DEMO trading is therefore the four already
+PAPER-eligible / DEMO-collectable SHADOW pairs:
+
+- BTCUSD break/retest;
+- GBPUSD Asia sweep;
+- GBPUSD directional pullback;
+- XAUUSD break/retest.
+
+Runtime remains DEMO collection ON, bridge ON, LIVE OFF, with unchanged 1% base
+risk and 15% spread/stop ceiling.
+
+PR #55 was closed unmerged as an exact duplicate of already-merged PR #54.

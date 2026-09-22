@@ -69,6 +69,11 @@ def build_trading_overview(
         and row.qualification.state == ProspectiveQualificationState.SUPPORTS_DEMO
     ]
 
+    collectable_rows = [
+        row
+        for row in paper_rows
+        if demo_collection_allowed(admissions.get(row.strategy_id))
+    ]
     collection_rows = [
         row
         for row in open_rows
@@ -112,7 +117,7 @@ def build_trading_overview(
             == ProspectiveQualificationState.SUPPORTS_DEMO
         )
         reason = (
-            "paper-collection candidate has an executable paper trade; "
+            "PAPER-eligible SHADOW has an executable paper trade; "
             "eligible for isolated broker DEMO collection"
         )
     elif open_rows:
@@ -140,10 +145,16 @@ def build_trading_overview(
             == ProspectiveQualificationState.SUPPORTS_DEMO
             for row in paper_rows
         )
-        reason = (
-            "no strategy satisfies both historical ACTIVE admission and "
-            "prospective paper qualification"
-        )
+        if collectable_rows:
+            reason = (
+                f"{len(collectable_rows)} PAPER-eligible SHADOW strategies are "
+                "waiting for an executable PAPER trade"
+            )
+        else:
+            reason = (
+                "no strategy satisfies historical/prospective admission for "
+                "broker evaluation"
+            )
 
     selected_daily_pnl = selected_row.daily_pnl_eur if selected_row else 0.0
     selected_daily_r = selected_row.daily_r if selected_row else 0.0

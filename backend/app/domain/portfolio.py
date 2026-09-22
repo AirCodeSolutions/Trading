@@ -53,7 +53,9 @@ class PaperStrategyRuntime(BaseModel):
     summary: ShadowPaperSummary
     qualification: ProspectiveQualification
     historical_state: AdmissionState | None = None
+    historical_weakest_expectancy_r: float | None = None
     paper_collection_candidate: bool = False
+    paper_entry_allowed: bool = False
     daily_pnl_eur: float = 0.0
     daily_r: float = 0.0
 

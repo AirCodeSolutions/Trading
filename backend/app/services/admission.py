@@ -14,7 +14,7 @@ def assess_strategy(evidence: StrategyEvidence) -> AdmissionDecision:
     windows = (evidence.validation, evidence.holdout)
     weakest_expectancy = min(window.expectancy_r for window in windows)
     worst_drawdown = max(window.max_drawdown_r for window in windows)
-    paper_collection_candidate = (
+    shadow_collection_candidate = (
         evidence.train.expectancy_r > 0
         and evidence.validation.expectancy_r > 0
     )
@@ -29,7 +29,7 @@ def assess_strategy(evidence: StrategyEvidence) -> AdmissionDecision:
             reason="insufficient independent validation evidence",
             weakest_expectancy_r=weakest_expectancy,
             worst_drawdown_r=worst_drawdown,
-            paper_collection_candidate=paper_collection_candidate,
+            paper_collection_candidate=shadow_collection_candidate,
         )
 
     if any(window.expectancy_r <= 0 for window in windows):
@@ -39,7 +39,7 @@ def assess_strategy(evidence: StrategyEvidence) -> AdmissionDecision:
             reason="non-positive expectancy in validation or holdout",
             weakest_expectancy_r=weakest_expectancy,
             worst_drawdown_r=worst_drawdown,
-            paper_collection_candidate=paper_collection_candidate,
+            paper_collection_candidate=False,
         )
 
     if any(window.profit_factor < MIN_PROFIT_FACTOR for window in windows):
@@ -49,7 +49,7 @@ def assess_strategy(evidence: StrategyEvidence) -> AdmissionDecision:
             reason="profit factor fails independent evidence floor",
             weakest_expectancy_r=weakest_expectancy,
             worst_drawdown_r=worst_drawdown,
-            paper_collection_candidate=paper_collection_candidate,
+            paper_collection_candidate=False,
         )
 
     if worst_drawdown > MAX_DRAWDOWN_R:
@@ -59,7 +59,7 @@ def assess_strategy(evidence: StrategyEvidence) -> AdmissionDecision:
             reason="drawdown exceeds admission policy",
             weakest_expectancy_r=weakest_expectancy,
             worst_drawdown_r=worst_drawdown,
-            paper_collection_candidate=paper_collection_candidate,
+            paper_collection_candidate=False,
         )
 
     return AdmissionDecision(
@@ -68,5 +68,16 @@ def assess_strategy(evidence: StrategyEvidence) -> AdmissionDecision:
         reason="validation and holdout satisfy the initial admission contract",
         weakest_expectancy_r=weakest_expectancy,
         worst_drawdown_r=worst_drawdown,
-        paper_collection_candidate=paper_collection_candidate,
+        paper_collection_candidate=False,
+    )
+
+
+def paper_entry_allowed(admission: AdmissionDecision | None) -> bool:
+    if admission is None or admission.state == AdmissionState.REJECTED:
+        return False
+    if admission.state == AdmissionState.ACTIVE:
+        return True
+    return (
+        admission.weakest_expectancy_r > 0
+        or admission.paper_collection_candidate
     )

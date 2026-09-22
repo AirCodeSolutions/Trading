@@ -81,3 +81,31 @@ def test_sparse_negative_holdout_can_still_collect_paper_when_train_validation_p
     assert result.state == AdmissionState.SHADOW
     assert result.paper_collection_candidate is True
     assert result.weakest_expectancy_r == -0.24
+
+
+def test_rejected_strategy_is_never_marked_as_paper_collection_candidate() -> None:
+    result = assess_strategy(
+        StrategyEvidence(
+            strategy_id="candidate",
+            train=window(200, 0.2),
+            validation=window(60, 0.1),
+            holdout=window(30, -0.01),
+        )
+    )
+
+    assert result.state == AdmissionState.REJECTED
+    assert result.paper_collection_candidate is False
+
+
+def test_active_strategy_does_not_need_shadow_collection_candidate_flag() -> None:
+    result = assess_strategy(
+        StrategyEvidence(
+            strategy_id="candidate",
+            train=window(200, 0.2),
+            validation=window(60, 0.08, profit_factor=1.18, drawdown=6),
+            holdout=window(30, 0.05, profit_factor=1.11, drawdown=7),
+        )
+    )
+
+    assert result.state == AdmissionState.ACTIVE
+    assert result.paper_collection_candidate is False

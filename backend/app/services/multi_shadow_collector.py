@@ -2,10 +2,10 @@ from datetime import datetime
 from pathlib import Path
 
 from app.core.config import settings
-from app.domain.admission import AdmissionDecision, AdmissionState
 from app.domain.market import Timeframe
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.shadow import ShadowCollectionResult
+from app.services.admission import paper_entry_allowed
 from app.services.blocked_probe import advance_blocked_probe_book
 from app.services.market_universe import build_market_universe
 from app.services.mt4_market_data import load_closed_market_bars
@@ -106,20 +106,6 @@ def collect_all_shadow_once(
             )
 
     return results
-
-
-
-def paper_entry_allowed(
-    admission: AdmissionDecision | None,
-) -> bool:
-    if admission is None or admission.state == AdmissionState.REJECTED:
-        return False
-    if admission.state == AdmissionState.ACTIVE:
-        return True
-    return (
-        admission.weakest_expectancy_r > 0
-        or admission.paper_collection_candidate
-    )
 
 
 

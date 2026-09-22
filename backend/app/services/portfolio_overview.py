@@ -11,6 +11,7 @@ from app.domain.portfolio import (
     ProspectiveQualificationState,
     TradingOverview,
 )
+from app.services.admission import paper_entry_allowed
 from app.services.broker_account import read_broker_demo_snapshot
 from app.services.paper_registry import load_paper_registry
 from app.services.runtime_admission_registry import load_research_admissions
@@ -31,9 +32,15 @@ def build_trading_overview(
         row.model_copy(
             update={
                 "historical_state": admissions[row.strategy_id].state,
+                "historical_weakest_expectancy_r": admissions[
+                    row.strategy_id
+                ].weakest_expectancy_r,
                 "paper_collection_candidate": admissions[
                     row.strategy_id
                 ].paper_collection_candidate,
+                "paper_entry_allowed": paper_entry_allowed(
+                    admissions[row.strategy_id]
+                ),
             }
         )
         if row.strategy_id in admissions

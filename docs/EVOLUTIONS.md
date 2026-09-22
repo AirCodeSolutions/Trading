@@ -369,3 +369,33 @@ justify enabling all newly feasible setups. Edge selection remains necessary.
 - 0 pending open/close/result command;
 - frontend HTTP 200;
 - execution remains PAPER-only, DEMO collection OFF, DEMO bridge OFF, LIVE OFF.
+
+
+## In-flight — PR #48 PAPER admission semantics after 400 EUR replay
+
+Branch: `fix/paper-admission-semantics`.
+
+The controlled 200/400 frozen-matrix comparison exposed a semantic inconsistency:
+a strategy could be historically REJECTED while retaining
+`paper_collection_candidate=true`. Runtime entry safety already rejected such
+strategies, but the registry and dashboard could display a contradictory state.
+
+PR #48:
+
+- defines the special `paper_collection_candidate` flag only for SHADOW;
+- REJECTED and ACTIVE decisions store that special flag as false;
+- centralizes `paper_entry_allowed()` so collector and portfolio UI share one
+  policy implementation;
+- exposes historical weakest expectancy and actual PAPER-entry eligibility in
+  the portfolio overview;
+- dashboard shows `PAPER ELIGIBLE` from the real runtime decision, not from the
+  special train+validation flag.
+
+Preview of a 400 EUR admission refresh on the 22 runtime scanners:
+
+- add PAPER eligibility: BTCUSD break/retest, XAUUSD break/retest;
+- remove PAPER eligibility: XAUUSD failed auction (now REJECTED);
+- keep: GBPUSD Asia sweep and GBPUSD directional pullback;
+- ACTIVE strategies: none.
+
+No broker execution flag is changed by this PR.

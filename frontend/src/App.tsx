@@ -571,6 +571,20 @@ export default function App() {
   );
   const prospectiveTarget = config?.prospective_min_trades ?? 20;
   const prospectiveProgress = bestProspective?.summary.closed_trades ?? 0;
+  const demoTransportArmed =
+    config?.execution_mode === "demo" &&
+    config.demo_collection_enabled &&
+    config.demo_execution_bridge_enabled;
+  const demoBridgeLabel = demo?.guard.ready
+    ? "READY"
+    : demoTransportArmed
+      ? "ARMED"
+      : "DISARMED";
+  const demoRoadmapTitle = demo?.guard.ready
+    ? "DEMO ORDER READY"
+    : demoTransportArmed
+      ? "DEMO COLLECTION ARMÉE"
+      : "PAPER / RESEARCH ONLY";
 
   return (
     <main className="shell">
@@ -703,8 +717,8 @@ export default function App() {
         </article>
         <article className="card">
           <span className="label">Bridge DEMO</span>
-          <strong className={demo?.guard.ready ? "positive-text" : ""}>
-            {demo ? (demo.guard.ready ? "READY" : "LOCKED") : "—"}
+          <strong className={demo?.guard.ready || demoTransportArmed ? "positive-text" : ""}>
+            {demo ? demoBridgeLabel : "—"}
           </strong>
         </article>
       </section>
@@ -714,7 +728,7 @@ export default function App() {
         <div className="shadow-heading">
           <div>
             <p className="eyebrow">ROAD TO BROKER DEMO · ÉTAT RÉEL</p>
-            <h2>{demo?.guard.ready ? "DEMO READY" : "QUALIFICATION EN COURS"}</h2>
+            <h2>{demoRoadmapTitle}</h2>
           </div>
           <span className={`badge ${demo?.guard.ready ? "gate-ready" : "gate-locked"}`}>
             LIVE {config?.live_trading_enabled ? "ACTIF" : "VERROUILLÉ"}
@@ -749,11 +763,13 @@ export default function App() {
           </div>
           <div className="gate-card">
             <span className="label">Auto DEMO collection</span>
-            <strong>{config?.demo_collection_enabled ? "ENABLED" : "DISABLED"}</strong>
+            <strong>{demoTransportArmed ? "ARMED" : "DISARMED"}</strong>
             <p>
               {demo?.collection_state?.paper_trade_id
                 ? `${demo.collection_state.strategy_id ?? "—"} · ticket ${demo.collection_state.ticket ?? "en attente"}`
-                : demo?.collection_state?.last_error || "Aucun trade Trading-New en cours."}
+                : demoTransportArmed
+                  ? demo?.collection_state?.last_error || "Armée, en attente d’un PAPER candidat exécutable."
+                  : "Exécution broker désarmée ; SHADOW et PAPER continuent en observation."}
             </p>
           </div>
           <div className="gate-card">

@@ -28,25 +28,29 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `587cae7` (PR #38).
+Current deployed main commit: `7764ec7` (PR #43).
 
 Operational services:
 
 - frontend: port 5180
 - backend: port 8020
-- SHADOW worker: 22 active scanners; watchdog hardening is in progress on `fix/runtime-five-asset-watchdog`
+- SHADOW worker: 22 active scanners
 - 22 active SHADOW scanners: 5 markets × 4 baseline mechanisms + GBPUSD directional pullback + GBPUSD Asia range sweep
-- PAPER entries are limited to ACTIVE, positive-weakest SHADOW, or SHADOW with positive train + validation evidence
-- MT4 DEMO bridge: present but locked
+- 5/5 retained markets are PAPER-ready with live MT4 quote, M5/M15 data and broker specs
+- PAPER entries remain evidence-gated; broker capital/risk feasibility is still enforced
+- MT4 DEMO transport was runtime-proven across five symbol-scoped bridge instances
+- **current execution state (2026-09-22): PAPER only; DEMO collection disabled by explicit no-trade instruction**
 - live trading: locked
 
-Latest runtime checkpoint after PR #36 deployment:
+Latest runtime checkpoint:
 
 - Portfolio Manager: **NO_TRADE**;
 - first clean post-cutover paper trade closed:
   `GBPUSD:failed_auction_reversal`, BUY, target hit, **+1.5R / +2.7329 EUR**;
 - no post-cutover paper position is currently open;
-- MT4 DEMO bridge: 0 bridge positions, 0 pending commands, still locked.
+- MT4 DEMO bridge: 0 bridge positions, 0 pending commands;
+- DEMO transport proof: five symbol-scoped bridge snapshots refresh correctly and a fake-symbol routing probe was not consumed by any bridge;
+- current no-trade runtime flags: `execution_mode=paper`, `demo_collection=false`, `demo_execution_bridge=false`, `live_trading=false`.
 
 No strategy currently satisfies both:
 
@@ -330,3 +334,27 @@ without altering legacy `mt4_data_*` account or position files.
 The intended delivery condition is 5/5 READY, zero Trading-New bridge positions,
 no pending open/close command, live trading disabled, then DEMO_COLLECTION may be
 re-armed. Validation before PR: 14 targeted tests, Ruff and MetaEditor 0/0.
+
+
+## No-trade diagnostic checkpoint — 2026-09-22
+
+Execution is intentionally disarmed while development continues. The worker remains
+healthy and scans 22 mechanisms across the five retained markets.
+
+Observed since midnight Europe/Athens through the morning checkpoint:
+
+- 15 signal rows were emitted by the SHADOW scanners;
+- no Trading-New broker order or PAPER position is open;
+- XAGUSD signals are predominantly blocked because live spread consumes too much
+  of the structural stop distance;
+- BTCUSD directional-transition / failed-auction examples were only marginally
+  above the 1% base-risk budget at the broker minimum lot (~2.18–2.19 EUR stop
+  loss versus a 2 EUR base-risk budget on 200 EUR);
+- XAUUSD produced economically interesting blocked probes, including a
+  failed-auction +1.5R counterfactual, but its 0.01 minimum lot would have risked
+  ~6.16 EUR at the structural stop, above the 4 EUR absolute cap;
+- no risk limit is relaxed to convert these blocked opportunities into trades.
+
+The next engineering step is a read-only opportunity funnel: detected signal →
+economic block reason → counterfactual outcome. This must expose where
+opportunities are lost without changing strategy thresholds, lots or risk.

@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `bf3fb3e` (PR #57).
+Current deployed code commit: `b07ee23` (PR #58).
 
 Operational services:
 
@@ -618,11 +618,11 @@ PR #55 was closed unmerged as an exact duplicate of already-merged PR #54.
 - 0 bridge positions and 0 pending broker commands.
 
 
-## Manual DEMO Trade + Trade Blotter — in development
+## Manual DEMO Trade + Trade Blotter — deployed
 
 Branch: `feat/manual-demo-trade-dashboard`.
 
-The dashboard is gaining a dedicated manual broker-DEMO workflow without
+The dashboard now exposes a dedicated manual broker-DEMO workflow without
 weakening the automatic system or allowing arbitrary lot entry.
 
 Manual workflow:
@@ -660,3 +660,20 @@ Runtime proof during development used a **preview only** on live EURUSD data:
 - no `trading_demo_command.csv` was created.
 
 No real or DEMO order was sent by this validation.
+
+
+### Runtime proof after PR #58 deployment
+
+- deployed code SHA: `b07ee23`;
+- backend + SHADOW worker restarted only after confirming 0 PAPER open,
+  0 Trading-New bridge position and 0 pending open/close command;
+- 5/5 retained symbols READY after restart;
+- DEMO mode, DEMO collection ON, DEMO bridge ON, LIVE OFF;
+- manual preview endpoint validated over HTTP against the live EURUSD quote;
+- post-deploy preview: entry 1.14485, calculated lot 0.04,
+  expected loss 3.49 EUR, spread/stop 12.0%, RR 2.00, APPROVED;
+- preview created no MT4 open/close command;
+- dashboard port 5180 returned HTTP 200;
+- Portfolio Manager remained NO_TRADE because no collectable PAPER was open.
+
+The manual panel is therefore deployed and ready for operator use in broker DEMO.

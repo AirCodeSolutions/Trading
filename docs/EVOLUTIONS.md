@@ -919,9 +919,9 @@ Planned scope:
   validation and holdout evidence.
 
 
-## In-flight — Execution-Aware Sequence Research
+## PR #76 — Execution-Aware Sequence Research
 
-Branch: `research/execution-aware-sequences`.
+Status: **MERGED** at `3251b41`.
 
 Research-only additions:
 
@@ -947,3 +947,45 @@ Result:
 - four-state extension yields zero POSITIVE_STABLE cells.
 
 No runtime strategy is added in this branch.
+
+
+## In-flight — BTC structural displacement sequence
+
+Branch: `feat/btc-structural-displacement-sequence`.
+
+Single trading hypothesis:
+
+`BTCUSD structural_extreme -> directional_displacement ->
+directional_displacement`
+
+Implementation contract:
+
+- BTCUSD only;
+- side = latest directional causal state in the three-M5 sequence;
+- next-M5 entry in historical replay / current broker quote in SHADOW runtime;
+- stop = 1.50 ATR M5;
+- target = 1.00R;
+- max holding = 12 M5;
+- frozen research spread/slippage unchanged;
+- runtime live spread, 400 EUR / 1% sizing, macro, min-lot and margin guards unchanged;
+- LIVE remains OFF.
+
+Official application backtest reproduces the research replay exactly:
+
+- 139 candidates / 63 executed;
+- train 39 trades, +0.0122R expectancy, PF 1.031, DD 5.046R;
+- validation 15, +0.1384R, PF 1.372, DD 1.200R;
+- holdout 9, +0.2015R, PF 1.605, DD 2.000R;
+- official admission: SHADOW / insufficient independent evidence;
+- `paper_collection_candidate=true`.
+
+Runtime dry-run in `/tmp`:
+
+- 23 scanners total;
+- exactly one new `structural_displacement_sequence` scanner;
+- symbol = BTCUSD only;
+- current state at validation checkpoint = NO_SIGNAL;
+- no runtime or MT4 artifact modified by the dry-run.
+
+Temporary full admission refresh also confirms the new BTC strategy as SHADOW and
+PAPER-eligible, with no ACTIVE strategy created.

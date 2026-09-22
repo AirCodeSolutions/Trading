@@ -5,6 +5,7 @@ from app.domain.market import Timeframe
 from app.domain.opportunity import (
     OpportunityBacktestConfig,
     OpportunityBacktestResult,
+    OpportunityMechanism,
     PortfolioResearchRequest,
     PortfolioResearchResult,
 )
@@ -78,6 +79,11 @@ def run_mt4_portfolio_research(
             continue
 
         for mechanism in request.mechanisms:
+            if (
+                mechanism == OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE
+                and symbol != "BTCUSD"
+            ):
+                continue
             config = OpportunityBacktestConfig(
                 spec=spec,
                 mechanism=mechanism,

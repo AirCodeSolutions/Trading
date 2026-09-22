@@ -26,6 +26,7 @@ _MECHANISM_SLUG = {
     OpportunityMechanism.DIRECTIONAL_TRANSITION: "directional_transition",
     OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION: "directional_pullback",
     OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL: "asia_range_sweep",
+    OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE: "structural_displacement_sequence",
 }
 
 
@@ -122,6 +123,8 @@ def shadow_mechanism_enabled(
     symbol: str,
     mechanism: OpportunityMechanism,
 ) -> bool:
+    if mechanism == OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE:
+        return symbol.upper() == "BTCUSD"
     if mechanism in {
         OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
         OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL,

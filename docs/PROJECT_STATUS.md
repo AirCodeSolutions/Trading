@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed repository commit: `d9dca9c` (PR #69). Trading decision/execution logic remains unchanged; research/intelligence now includes causal classification, historical stability and the Economic Feasibility Map.
+Current repository served: `cf05e90` (PR #73). The frontend Command Center UX is active; backend/worker trading decision and execution behavior remains unchanged from PR #69.
 
 Operational services:
 
@@ -940,9 +940,9 @@ Next chantier: **Causal Sequence Research v1**, using ordered pre-move context
 states across multiple M5 bars rather than adding more static thresholds.
 
 
-## Dashboard UX — current chantier
+## Dashboard UX — PR #73 deployed
 
-Branch: `feat/dashboard-command-center`.
+Status: **MERGED + FRONTEND ACTIVE** at `cf05e90`.
 
 The dashboard is being reorganized around operational decisions instead of one
 long stack of technical panels.
@@ -960,3 +960,21 @@ The default view now answers the immediate questions first:
 Detailed execution, market and research information remains available through
 separate top-level views. This is a presentation-only change and does not alter
 trading authority or evidence policy.
+
+
+## Causal Sequence Research v1 — current chantier
+
+Branch: `research/causal-sequence-v1`.
+
+Research now evaluates ordered three-M5 causal contexts instead of isolated
+states. The report measures both directional MFE lift and a stricter symmetric
+first-touch lift on **all sequence occurrences** relative to each asset's own
+train / validation / holdout baseline.
+
+The strict screen left only one BTC and one XAU sequence with >50% first-touch
+success in all three windows and minimum sample support. Actual cost-aware
+replays rejected both because train expectancy stayed negative.
+
+No runtime strategy is promoted. Current automatic DEMO collection remains
+unchanged and continues waiting for one of the four existing PAPER-eligible
+strategies to produce an executable PAPER trade.

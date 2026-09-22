@@ -69,13 +69,17 @@ Last updated: 2026-09-22.
 | #67 | `501c18d` | Record PR66 classifier deployment |
 | #68 | `172b8f3` | Historical causal pattern stability research |
 | #69 | `d9dca9c` | Economic feasibility map + dashboard |
+| #70 | `c62880a` | Record PR69 deployment |
+| #71 | `d4dac43` | Causal × Economic Candidate Matrix |
+| #72 | `9c2c80a` | Record matrix-guided reversal replays |
+| #73 | `cf05e90` | Dashboard Command Center UX |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current deployed repository: `d9dca9c` through PR #69; trading decision/execution logic remains unchanged, while research/intelligence now includes causal classification, historical stability and the Economic Feasibility Map;
+- current repository served: `cf05e90` through PR #73; frontend Command Center UX is active, while backend/worker trading decision and execution behavior remains unchanged from PR #69;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
@@ -841,9 +845,9 @@ Causal Sequence Research v1 using multi-M5 state transitions before market-first
 moves.
 
 
-## In-flight — Dashboard Command Center UX
+## PR #73 — Dashboard Command Center UX
 
-Branch: `feat/dashboard-command-center`.
+Status: **MERGED + FRONTEND ACTIVE** at `cf05e90`.
 
 Frontend-only usability refactor:
 
@@ -867,3 +871,29 @@ No backend, scanner, admission, sizing, risk, stop/target or broker bridge behav
 changes.
 
 Validation: frontend TypeScript/Vite build passed; git diff check clean.
+
+
+## In-flight — Causal Sequence Research v1
+
+Branch: `research/causal-sequence-v1`.
+
+Research-only additions:
+
+- typed three-M5 causal sequence report;
+- causal direction from the latest non-neutral state in the sequence;
+- train / validation / holdout sequence statistics;
+- all-occurrence directional MFE lift versus per-asset baseline;
+- all-occurrence symmetric first-touch (+1.5 ATR before -1.5 ATR) lift;
+- ambiguous same-M5 double-touch exclusion;
+- CLI `scripts/analyze_causal_sequences.py`;
+- dedicated first-touch and sequence-direction tests.
+
+Research result so far:
+
+- only BTC and XAU retained a strict >50% first-touch sequence across all three
+  windows with minimum sample support;
+- both failed actual economic replay because train expectancy remained negative;
+- no strategy is promoted.
+
+No runtime scanner, admission, risk, execution or dashboard behavior changes in
+this research branch.

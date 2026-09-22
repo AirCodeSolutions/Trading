@@ -50,20 +50,21 @@ Last updated: 2026-09-22.
 | #48 | `130ef7e` | Align PAPER admission semantics and refresh 400 EUR admissions |
 | #49 | `f00da09` | Refresh deployed 400 EUR admission/runtime documentation |
 | #50 | `0ccdf3e` | Automatic-execution clarity + per-asset strategy map |
+| #51 | `6bc4db7` | Record PR50 deployment + reject Asia midpoint variant |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current deployed main: `0ccdf3e` through PR #50;
+- current deployed main: `6bc4db7` through PR #51;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
 - current Portfolio Manager: `NO_TRADE`;
 - first clean post-cutover paper result remains GBP failed-auction **+1.5R / +2.7329 EUR**;
-- DEMO transport: technically proven on five symbol-scoped bridge instances, but explicitly **DISARMED** on 2026-09-22 for no-trade development;
-- current flags: PAPER mode, DEMO collection OFF, DEMO bridge OFF, live trading OFF;
+- DEMO transport: technically proven on five symbol-scoped bridge instances and **RE-ARMED** on 2026-09-22 after confirming 0 PAPER open, 0 Trading-New position and 0 pending command;
+- current flags: DEMO mode, DEMO collection ON, DEMO bridge ON, live trading OFF;
 - live trading: locked;
 - post-cutover prospective evidence: 1 closed GBP failed-auction trade,
   +1.5R / +2.7329 EUR.
@@ -424,3 +425,32 @@ Frontend-only execution clarity plus documentation/architecture updates:
   them later.
 
 No risk, signal, stop, target, admission threshold or execution flag is changed.
+
+
+## In-flight — PR #52 collect all PAPER-eligible SHADOW in DEMO
+
+Branch: `feat/demo-collect-all-paper-eligible`.
+
+Objective: remove a transport-only bottleneck without changing strategy edge or
+risk. Before this change, isolated broker DEMO collection required the special
+`paper_collection_candidate` flag, which only represents the train+validation
+under-sampled exception. That excluded BTCUSD `break_retest_reaccel` even
+though the centralized admission policy already marks it `paper_entry_allowed`.
+
+New contract:
+
+- PAPER entry policy is unchanged;
+- REJECTED remains forbidden;
+- ACTIVE keeps its existing `DEMO_ELIGIBLE` path after SUPPORTS_DEMO;
+- any SHADOW that is actually `paper_entry_allowed` may enter isolated
+  `DEMO_COLLECTION` when a PAPER trade is open;
+- the broker DEMO command still mirrors the exact PAPER side, lot, SL and TP;
+- all macro, daily-loss, bridge-isolation and execution guards remain unchanged;
+- LIVE remains OFF.
+
+This adds BTCUSD break/retest to the DEMO-collectable set while preserving the
+existing GBPUSD Asia sweep, GBPUSD directional pullback and XAUUSD break/retest
+collectors.
+
+Targeted validation before PR: 17 admission/portfolio tests passed; frontend
+build passed.

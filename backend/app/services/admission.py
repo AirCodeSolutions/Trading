@@ -81,3 +81,11 @@ def paper_entry_allowed(admission: AdmissionDecision | None) -> bool:
         admission.weakest_expectancy_r > 0
         or admission.paper_collection_candidate
     )
+
+
+def demo_collection_allowed(admission: AdmissionDecision | None) -> bool:
+    return (
+        admission is not None
+        and admission.state == AdmissionState.SHADOW
+        and paper_entry_allowed(admission)
+    )

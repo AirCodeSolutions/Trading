@@ -664,12 +664,12 @@ export default function App() {
     overview?.paper_strategies.filter(
       (row) =>
         row.historical_state === "shadow" &&
-        row.paper_collection_candidate
+        row.paper_entry_allowed
     ) ?? [];
   const openDemoCollectionCandidates = openPaperRows.filter(
     (row) =>
       row.historical_state === "shadow" &&
-      row.paper_collection_candidate
+      row.paper_entry_allowed
   );
   const retainedSymbols = ["BTCUSD", "EURUSD", "GBPUSD", "XAUUSD", "XAGUSD"];
   const strategyByAsset = retainedSymbols.map((symbol) => {
@@ -881,8 +881,8 @@ export default function App() {
             <div>
               <strong>1 · Stratégie autorisée à la collecte DEMO</strong>
               <p>
-                {demoCollectionCandidates.length} SHADOW actuellement marqué(s)
-                paper_collection_candidate ; {paperCandidates.length} mécanisme(s)
+                {demoCollectionCandidates.length} SHADOW PAPER-éligible(s) peuvent
+                être mirrorés en DEMO ; {paperCandidates.length} mécanisme(s)
                 peuvent ouvrir du PAPER au total.
               </p>
             </div>
@@ -969,7 +969,10 @@ export default function App() {
                       <span>
                         prospectif {row.summary.closed_trades}/{prospectiveTarget} ·{" "}
                         {row.qualification.state.replaceAll("_", " ")}
-                        {row.paper_collection_candidate ? " · DEMO COLLECTION CANDIDATE" : ""}
+                        {row.historical_state === "shadow" && row.paper_entry_allowed
+                          ? " · DEMO COLLECTABLE"
+                          : ""}
+                        {row.paper_collection_candidate ? " · UNDER-SAMPLED RULE" : ""}
                       </span>
                     </div>
                   ))}

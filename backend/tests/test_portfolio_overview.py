@@ -138,7 +138,9 @@ def test_overview_exposes_historical_paper_collection_status(tmp_path: Path) -> 
         if item.strategy_id == "GBPUSD:directional_pullback_resumption"
     )
     assert row.historical_state == "shadow"
+    assert row.historical_weakest_expectancy_r == -0.24
     assert row.paper_collection_candidate is True
+    assert row.paper_entry_allowed is True
 
 
 def test_open_paper_collection_candidate_becomes_demo_collection(tmp_path: Path) -> None:
@@ -191,3 +193,92 @@ def test_open_paper_collection_candidate_becomes_demo_collection(tmp_path: Path)
     assert overview.portfolio.action == "demo_collection"
     assert overview.portfolio.selected_strategy_id == "GBPUSD:directional_pullback_resumption"
     assert overview.risk.selected_open_risk_eur == 2.0
+
+
+
+def test_overview_exposes_positive_weakest_shadow_as_paper_eligible(
+    tmp_path: Path,
+) -> None:
+    files_dir = tmp_path / "mt4"
+    runtime_dir = tmp_path / "runtime"
+    files_dir.mkdir()
+    runtime_dir.mkdir()
+
+    (runtime_dir / "BTCUSD_break_retest_paper_state.json").write_text(
+        ShadowPaperState().model_dump_json(),
+        encoding="utf-8",
+    )
+    (runtime_dir / "strategy_admissions.json").write_text(
+        json.dumps(
+            {
+                "BTCUSD:break_retest_reaccel": {
+                    "strategy_id": "BTCUSD:break_retest_reaccel",
+                    "state": "shadow",
+                    "reason": "insufficient independent validation evidence",
+                    "weakest_expectancy_r": 0.24,
+                    "worst_drawdown_r": 3.0,
+                    "paper_collection_candidate": False,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    overview = build_trading_overview(
+        files_dir,
+        runtime_dir,
+        datetime(2026, 9, 22, 8, 0, tzinfo=TZ),
+    )
+
+    row = next(
+        item
+        for item in overview.paper_strategies
+        if item.strategy_id == "BTCUSD:break_retest_reaccel"
+    )
+    assert row.paper_collection_candidate is False
+    assert row.historical_weakest_expectancy_r == 0.24
+    assert row.paper_entry_allowed is True
+
+
+def test_overview_never_marks_rejected_admission_as_paper_entry_allowed(
+    tmp_path: Path,
+) -> None:
+    files_dir = tmp_path / "mt4"
+    runtime_dir = tmp_path / "runtime"
+    files_dir.mkdir()
+    runtime_dir.mkdir()
+
+    (runtime_dir / "XAUUSD_failed_auction_paper_state.json").write_text(
+        ShadowPaperState().model_dump_json(),
+        encoding="utf-8",
+    )
+    (runtime_dir / "strategy_admissions.json").write_text(
+        json.dumps(
+            {
+                "XAUUSD:failed_auction_reversal": {
+                    "strategy_id": "XAUUSD:failed_auction_reversal",
+                    "state": "rejected",
+                    "reason": "non-positive expectancy in validation or holdout",
+                    "weakest_expectancy_r": -0.09,
+                    "worst_drawdown_r": 9.7,
+                    "paper_collection_candidate": True,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    overview = build_trading_overview(
+        files_dir,
+        runtime_dir,
+        datetime(2026, 9, 22, 8, 0, tzinfo=TZ),
+    )
+
+    row = next(
+        item
+        for item in overview.paper_strategies
+        if item.strategy_id == "XAUUSD:failed_auction_reversal"
+    )
+    assert row.historical_state == "rejected"
+    assert row.paper_collection_candidate is True
+    assert row.paper_entry_allowed is False

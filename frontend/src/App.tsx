@@ -120,7 +120,9 @@ type PaperStrategyRuntime = {
   summary: PaperSummary & { max_drawdown_r: number };
   qualification: ProspectiveQualification;
   historical_state: "rejected" | "shadow" | "active" | null;
+  historical_weakest_expectancy_r: number | null;
   paper_collection_candidate: boolean;
+  paper_entry_allowed: boolean;
 };
 
 type TradingOverview = {
@@ -627,7 +629,7 @@ export default function App() {
 
   const liveCount = quotes.filter((quote) => quote.status === "live").length;
   const paperCandidates = overview?.paper_strategies.filter(
-    (row) => row.paper_collection_candidate
+    (row) => row.paper_entry_allowed
   ) ?? [];
   const bestProspective = paperCandidates.reduce<PaperStrategyRuntime | null>(
     (best, row) =>
@@ -1033,7 +1035,10 @@ export default function App() {
                 <span>{row.summary.expectancy_r.toFixed(3)} R</span>
                 <span>{row.summary.profit_factor.toFixed(2)}</span>
                 <span>{row.summary.max_drawdown_r.toFixed(2)} R</span>
-                <span>{row.historical_state?.toUpperCase() ?? "—"}{row.paper_collection_candidate ? " · PAPER CANDIDATE" : ""}</span>
+                <span>
+                  {row.historical_state?.toUpperCase() ?? "—"}
+                  {row.paper_entry_allowed ? " · PAPER ELIGIBLE" : ""}
+                </span>
                 <span>{row.qualification.state.replaceAll("_", " ").toUpperCase()}</span>
               </div>
             ))

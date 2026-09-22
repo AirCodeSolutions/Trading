@@ -406,3 +406,24 @@ minimum-lot-blocked probes would become executable at the unchanged 1% risk.
 Their aggregate result was -1.11R, so the capital increase alone is not an
 activation rule. The current research priority is to select positive-edge
 subsets that are now economically executable at 400 EUR.
+
+
+## 400 EUR historical-admission preview — 2026-09-22
+
+A paired frozen-data replay shows that the current 200 EUR admission registry is
+now stale relative to the 400 EUR economic contract. No registry refresh has
+been applied yet at this checkpoint.
+
+Expected PAPER eligibility after a 400 EUR refresh, limited to the 22 mechanisms
+actually enabled by runtime:
+
+- BTCUSD `break_retest_reaccel` — newly PAPER eligible, still SHADOW;
+- GBPUSD `asia_range_sweep_reversal` — remains PAPER eligible;
+- GBPUSD `directional_pullback_resumption` — remains PAPER eligible;
+- XAUUSD `break_retest_reaccel` — newly PAPER eligible, still SHADOW;
+- XAUUSD `failed_auction_reversal` — removed from eligibility because the larger
+  executable sample makes historical admission REJECTED.
+
+No strategy becomes ACTIVE. DEMO and LIVE remain disabled. The admission registry
+must only be refreshed after PR #48 has corrected the contradictory
+REJECTED/candidate flag semantics.

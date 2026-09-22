@@ -1501,3 +1501,18 @@ h1 {
     min-width: 1040px;
   }
 }
+
+.economic-feasibility-row {
+  min-width: 980px;
+  grid-template-columns: 0.8fr 0.9fr 1fr 1fr 1.2fr 1fr 1fr;
+}
+
+.economic-feasibility-row strong {
+  color: #f1f5f8;
+}
+
+@media (max-width: 900px) {
+  .economic-feasibility-row {
+    min-width: 900px;
+  }
+}

@@ -17,6 +17,7 @@ from app.domain.broker import (
 )
 from app.domain.daily_report import DailyTradingReport
 from app.domain.demo_execution import DemoCloseCommand, DemoExecutionStatus, DemoOrderCommand
+from app.domain.economic_feasibility import EconomicFeasibilityReport
 from app.domain.execution_audit import ExecutionQualitySummary
 from app.domain.live_market import LiveMarketQuote
 from app.domain.macro import MacroGateStatus
@@ -56,6 +57,10 @@ from app.services.daily_report import (
 )
 from app.services.demo_collection import load_demo_collection_state
 from app.services.demo_execution import build_demo_status, submit_selected_demo_order
+from app.services.economic_feasibility import (
+    ECONOMIC_FEASIBILITY_FILE,
+    load_economic_feasibility_report,
+)
 from app.services.execution_audit import AUDIT_FILE, build_execution_quality_summary
 from app.services.execution_cost_history import summarize_execution_costs
 from app.services.live_market_quality import build_live_market_quality
@@ -408,6 +413,22 @@ def collect_btc_break_retest_shadow() -> ShadowCollectionResult:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get(
+    f"{settings.api_prefix}/research/economic-feasibility",
+    response_model=EconomicFeasibilityReport,
+)
+def research_economic_feasibility() -> EconomicFeasibilityReport:
+    report = load_economic_feasibility_report(
+        settings.shadow_ledger_dir / ECONOMIC_FEASIBILITY_FILE
+    )
+    if report is None:
+        raise HTTPException(
+            status_code=404,
+            detail="economic feasibility snapshot is not available",
+        )
+    return report
 
 
 @app.post(

@@ -758,3 +758,33 @@ Validation:
 - 185 backend tests passed;
 - Ruff clean;
 - runtime trading code and dashboard are unchanged by this branch.
+
+
+## In-flight — Economic Feasibility Map
+
+Branch: `research/economic-feasibility-map`.
+
+Research-only additions:
+
+- typed economic-feasibility report models;
+- historical feasibility by asset, causal pattern and 0.50 / 0.75 / 1.00 /
+  1.50 ATR stop widths;
+- exact reuse of `size_position()` with the 400 EUR reference capital;
+- spread, minimum-lot, margin and other rejection attribution;
+- symbol-level feasible stop envelope and minimum theoretical capital;
+- CLI `scripts/analyze_economic_feasibility.py` with optional snapshot output;
+- cached `economic_feasibility_latest.json` artifact;
+- read-only `/api/v1/research/economic-feasibility` endpoint;
+- dashboard Economic Feasibility Map;
+- dedicated tests.
+
+Key result:
+
+- XAGUSD has no feasible stop-distance interval at 400 EUR under the frozen
+  0.07 spread, neither at 1% nor at the 2% absolute risk ceiling;
+- XAUUSD is most feasible around 0.5–0.75 ATR stops;
+- BTC/EUR/GBP require wider stops mainly because of spread economics.
+
+No runtime scanner, strategy, risk or bridge behavior changes.
+
+Validation: 191 backend tests passed; Ruff clean; frontend TypeScript/Vite build passed.

@@ -160,6 +160,8 @@ def _historical_causal_episodes(
         rows.append(
             {
                 "birth_at": bar.timestamp + timedelta(minutes=5),
+                "reference_price": bar.close,
+                "atr_m5": current_atr,
                 "move_atr": move_atr,
                 "episode_side": episode_side,
                 "context": context,

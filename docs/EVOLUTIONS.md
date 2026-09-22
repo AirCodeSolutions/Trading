@@ -651,3 +651,21 @@ Read-only replay only; no runtime change.
 - XAU feasibility remains constrained by the 0.01 minimum lot at 400 EUR.
 
 No strategy is promoted from this branch.
+
+
+## In-flight — Missed Opportunity Review dashboard
+
+Branch: `feat/missed-opportunity-review`.
+
+Frontend-only intelligence improvement:
+
+- surfaces the 12 largest `capture_state=missed` market-first episodes from the
+  current 24 h snapshot;
+- shows birth time, asset, future-direction label, move magnitude in ATR,
+  reference price and horizon end;
+- keeps an explicit warning that these are retrospective coverage episodes, not
+  trading signals;
+- uses the existing Trading Intelligence API; no backend/runtime decision logic
+  changes.
+
+No scanner, strategy, admission, risk, execution or bridge behavior changes.

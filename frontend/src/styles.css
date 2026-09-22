@@ -1470,3 +1470,25 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+.intelligence-note {
+  margin: 0 0 12px;
+  color: #8798aa;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.missed-opportunity-row {
+  min-width: 820px;
+  grid-template-columns: 1.6fr 0.8fr 0.7fr 0.9fr 1fr 0.9fr;
+}
+
+.missed-opportunity-row strong {
+  color: #f1f5f8;
+}
+
+@media (max-width: 900px) {
+  .missed-opportunity-row {
+    min-width: 760px;
+  }
+}

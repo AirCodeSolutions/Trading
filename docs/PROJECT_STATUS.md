@@ -788,3 +788,14 @@ but failed its two-trade holdout and remains mostly infeasible at the 400 EUR
 risk budget because of the broker minimum lot.
 
 No deployed strategy, risk rule or admission state changes from these tests.
+
+
+## Missed Opportunity Review — dashboard follow-up
+
+The Trading Intelligence panel is being extended to show the 12 largest missed
+market-first episodes from the latest 24 h snapshot. This turns the aggregate
+missed-opportunity count into concrete episodes that can be inspected by asset,
+time and move size.
+
+The panel remains research-only: the episode direction and magnitude are known
+from the future window and are therefore never used as live trade inputs.

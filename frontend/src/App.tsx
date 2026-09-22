@@ -440,6 +440,9 @@ type TradingIntelligence = {
     symbol: string;
     side: "buy" | "sell";
     birth_at: string;
+    horizon_end_at: string;
+    reference_price: number;
+    atr_m5: number;
     move_atr: number;
     capture_state: "executable" | "blocked" | "missed";
     matching_strategies: string[];
@@ -869,6 +872,10 @@ export default function App() {
         new Date(right.trade.signal_at).getTime() - new Date(left.trade.signal_at).getTime()
     )
     .slice(0, 10);
+  const topMissedOpportunities = (intelligence?.opportunities ?? [])
+    .filter((episode) => episode.capture_state === "missed")
+    .sort((left, right) => right.move_atr - left.move_atr)
+    .slice(0, 12);
 
   const refreshExecutionState = async () => {
     const [overviewResponse, demoResponse, preflightResponse] = await Promise.all([
@@ -1508,6 +1515,42 @@ export default function App() {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="intelligence-subsection">
+          <h3>Missed Opportunity Review · plus gros mouvements non capturés</h3>
+          <p className="intelligence-note">
+            Télémétrie rétrospective uniquement : ces épisodes montrent où le marché a bougé
+            sans signal SHADOW correspondant. Ils ne constituent pas des signaux de trading.
+          </p>
+          {topMissedOpportunities.length ? (
+            <div className="intelligence-table missed-opportunity-table">
+              <div className="intelligence-row missed-opportunity-row intelligence-head">
+                <span>Naissance</span>
+                <span>Actif</span>
+                <span>Sens</span>
+                <span>Mouvement</span>
+                <span>Référence</span>
+                <span>Horizon</span>
+              </div>
+              {topMissedOpportunities.map((episode) => (
+                <div className="intelligence-row missed-opportunity-row" key={episode.episode_id}>
+                  <span>{new Date(episode.birth_at).toLocaleString("fr-FR")}</span>
+                  <strong>{episode.symbol}</strong>
+                  <span className={episode.side === "buy" ? "positive-text" : "negative-text"}>
+                    {episode.side.toUpperCase()}
+                  </span>
+                  <span>
+                    <strong>{episode.move_atr.toFixed(2)} ATR</strong>
+                  </span>
+                  <span>{episode.reference_price}</span>
+                  <span>{new Date(episode.horizon_end_at).toLocaleTimeString("fr-FR")}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="strategy-empty">Aucun épisode market-first manqué dans le snapshot.</p>
+          )}
         </div>
 
         <div className="intelligence-subsection">

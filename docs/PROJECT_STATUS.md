@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed code commit: `99e2d30` (PR #60).
+Current deployed repository commit: `029227d` (PR #64). Backend/worker trading logic remains the PR #60 implementation (`99e2d30`); later PRs are research/docs/frontend-only.
 
 Operational services:
 
@@ -765,9 +765,7 @@ episodes are retrospective coverage telemetry and must not be interpreted as
 
 ## Market-First Signature Research — current status
 
-A reusable offline signature analyzer is being added on branch
-`research/btc-missed-opportunity-signatures`. It does not alter the deployed
-runtime or the four current DEMO-collectable mechanisms.
+A reusable offline signature analyzer was merged in PR #62 (`b126510`). It does not alter the deployed runtime or the four current DEMO-collectable mechanisms.
 
 The first cross-asset pass found stable pre-move signature frequencies, but
 causal replay rejected the obvious static mechanisms on BTC, GBP and XAU.
@@ -792,10 +790,7 @@ No deployed strategy, risk rule or admission state changes from these tests.
 
 ## Missed Opportunity Review — dashboard follow-up
 
-The Trading Intelligence panel is being extended to show the 12 largest missed
-market-first episodes from the latest 24 h snapshot. This turns the aggregate
-missed-opportunity count into concrete episodes that can be inspected by asset,
-time and move size.
+The Trading Intelligence panel now shows the 12 largest missed market-first episodes from the latest 24 h snapshot. This turns the aggregate missed-opportunity count into concrete episodes that can be inspected by asset, time and move size.
 
 The panel remains research-only: the episode direction and magnitude are known
 from the future window and are therefore never used as live trade inputs.

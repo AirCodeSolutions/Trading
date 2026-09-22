@@ -60,13 +60,17 @@ Last updated: 2026-09-22.
 | #58 | `b07ee23` | Guarded manual DEMO trading + Trade Blotter |
 | #59 | `dce7b52` | Record PR58 manual DEMO deployment |
 | #60 | `99e2d30` | Trading Intelligence v1 + prospective degradation safeguards |
+| #61 | `2d8d2c7` | Record Trading Intelligence v1 deployment |
+| #62 | `b126510` | Market-first signature research tooling |
+| #63 | `539c410` | Record failed-auction event-chain research |
+| #64 | `029227d` | Expose missed market opportunities in dashboard |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current deployed code: `99e2d30` through PR #60;
+- current deployed repository: `029227d` through PR #64; backend/worker trading logic remains unchanged from PR #60 (`99e2d30`), while frontend/research/docs advanced through #64;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
@@ -611,7 +615,9 @@ Validation checkpoint:
 - optimized snapshot runtime: ~0.43 s on the runtime host.
 
 
-## In-flight — Market-First Signature Research tooling
+## PR #62 — Market-First Signature Research tooling
+
+Status: **MERGED** at `b126510`.
 
 Branch: `research/btc-missed-opportunity-signatures`.
 
@@ -638,7 +644,9 @@ Next research direction: event-chain significance rather than static-bar
 patterns.
 
 
-## Research follow-up — failed-auction event chains
+## PR #63 — failed-auction event-chain research
+
+Status: **MERGED** at `539c410`.
 
 Branch: `research/btc-failed-auction-displacement`.
 
@@ -653,7 +661,9 @@ Read-only replay only; no runtime change.
 No strategy is promoted from this branch.
 
 
-## In-flight — Missed Opportunity Review dashboard
+## PR #64 — Missed Opportunity Review dashboard
+
+Status: **MERGED + FRONTEND ACTIVE** at `029227d`.
 
 Branch: `feat/missed-opportunity-review`.
 

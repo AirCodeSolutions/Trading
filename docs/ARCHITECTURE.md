@@ -253,3 +253,26 @@ Conséquences :
 
 Le dashboard expose désormais cette carte de spécialisation directement depuis
 le registre d'admission courant.
+
+
+## PAPER vs isolated DEMO collection
+
+PAPER admission and broker DEMO collection share one source of truth.
+
+- `paper_entry_allowed(admission)` decides whether a strategy may open a new
+  PAPER trade;
+- REJECTED is always false;
+- ACTIVE is PAPER-eligible;
+- SHADOW is PAPER-eligible only under the centralized evidence policy
+  (positive weakest independent expectancy or the explicit under-sampled
+  train+validation exception);
+- `demo_collection_allowed(admission)` is restricted to SHADOW and requires
+  `paper_entry_allowed(admission)=true`.
+
+The special `paper_collection_candidate` field is evidence metadata for the
+under-sampled exception. It is not, by itself, the transport policy.
+
+When a collectable SHADOW PAPER trade is open and the runtime is in DEMO
+collection mode, the Portfolio Manager may select `DEMO_COLLECTION`. The
+broker adapter then mirrors exactly that PAPER trade's side, lot, stop and
+target. LIVE remains a separate locked path.

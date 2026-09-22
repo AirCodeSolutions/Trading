@@ -282,3 +282,120 @@ def test_overview_never_marks_rejected_admission_as_paper_entry_allowed(
     assert row.historical_state == "rejected"
     assert row.paper_collection_candidate is True
     assert row.paper_entry_allowed is False
+
+def test_open_positive_weakest_shadow_can_enter_demo_collection(
+    tmp_path: Path,
+) -> None:
+    files_dir = tmp_path / "mt4"
+    runtime_dir = tmp_path / "runtime"
+    files_dir.mkdir()
+    runtime_dir.mkdir()
+
+    now = datetime(2026, 9, 22, 9, 15, tzinfo=TZ)
+    trade = ShadowPaperTrade(
+        trade_id="btc-break-retest-demo-1",
+        symbol="BTCUSD",
+        mechanism=OpportunityMechanism.BREAK_RETEST_REACCEL,
+        side=Side.BUY,
+        signal_at=now,
+        entry_bar_at=now,
+        opened_at=now,
+        entry_price=65000,
+        stop_price=64600,
+        target_price=65800,
+        spread_at_entry=24.5,
+        lots=0.01,
+        risk_eur=4.0,
+        risk_distance=400,
+        target_r=2.0,
+        max_holding_bars=12,
+    )
+    (runtime_dir / "BTCUSD_break_retest_paper_state.json").write_text(
+        ShadowPaperState(open_trade=trade).model_dump_json(),
+        encoding="utf-8",
+    )
+    (runtime_dir / "strategy_admissions.json").write_text(
+        json.dumps(
+            {
+                "BTCUSD:break_retest_reaccel": {
+                    "strategy_id": "BTCUSD:break_retest_reaccel",
+                    "state": "shadow",
+                    "reason": "insufficient independent validation evidence",
+                    "weakest_expectancy_r": 0.24,
+                    "worst_drawdown_r": 3.0,
+                    "paper_collection_candidate": False,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    overview = build_trading_overview(files_dir, runtime_dir, now)
+
+    row = next(
+        item
+        for item in overview.paper_strategies
+        if item.strategy_id == "BTCUSD:break_retest_reaccel"
+    )
+    assert row.paper_entry_allowed is True
+    assert row.paper_collection_candidate is False
+    assert overview.portfolio.action == "demo_collection"
+    assert overview.portfolio.selected_strategy_id == "BTCUSD:break_retest_reaccel"
+    assert overview.risk.selected_open_risk_eur == 4.0
+
+
+def test_open_rejected_shadow_never_enters_demo_collection(tmp_path: Path) -> None:
+    files_dir = tmp_path / "mt4"
+    runtime_dir = tmp_path / "runtime"
+    files_dir.mkdir()
+    runtime_dir.mkdir()
+
+    now = datetime(2026, 9, 22, 9, 20, tzinfo=TZ)
+    trade = ShadowPaperTrade(
+        trade_id="xau-rejected-open-1",
+        symbol="XAUUSD",
+        mechanism=OpportunityMechanism.FAILED_AUCTION_REVERSAL,
+        side=Side.BUY,
+        signal_at=now,
+        entry_bar_at=now,
+        opened_at=now,
+        entry_price=4318,
+        stop_price=4312,
+        target_price=4327,
+        spread_at_entry=0.28,
+        lots=0.01,
+        risk_eur=6.0,
+        risk_distance=6.0,
+        target_r=1.5,
+        max_holding_bars=12,
+    )
+    (runtime_dir / "XAUUSD_failed_auction_paper_state.json").write_text(
+        ShadowPaperState(open_trade=trade).model_dump_json(),
+        encoding="utf-8",
+    )
+    (runtime_dir / "strategy_admissions.json").write_text(
+        json.dumps(
+            {
+                "XAUUSD:failed_auction_reversal": {
+                    "strategy_id": "XAUUSD:failed_auction_reversal",
+                    "state": "rejected",
+                    "reason": "non-positive expectancy in validation or holdout",
+                    "weakest_expectancy_r": -0.09,
+                    "worst_drawdown_r": 9.7,
+                    "paper_collection_candidate": False,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    overview = build_trading_overview(files_dir, runtime_dir, now)
+
+    row = next(
+        item
+        for item in overview.paper_strategies
+        if item.strategy_id == "XAUUSD:failed_auction_reversal"
+    )
+    assert row.paper_entry_allowed is False
+    assert overview.portfolio.action == "paper_only"
+    assert overview.portfolio.selected_strategy_id == "XAUUSD:failed_auction_reversal"

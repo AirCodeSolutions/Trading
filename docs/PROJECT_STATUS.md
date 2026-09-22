@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `0ccdf3e` (PR #50).
+Current deployed main commit: `6bc4db7` (PR #51).
 
 Operational services:
 
@@ -39,7 +39,7 @@ Operational services:
 - 5/5 retained markets are PAPER-ready with live MT4 quote, M5/M15 data and broker specs
 - PAPER entries remain evidence-gated; broker capital/risk feasibility is still enforced
 - MT4 DEMO transport was runtime-proven across five symbol-scoped bridge instances
-- **current execution state (2026-09-22): PAPER only; DEMO collection disabled by explicit no-trade instruction**
+- **current execution state (2026-09-22): DEMO collection ARMED on the broker DEMO account; LIVE remains locked**
 - live trading: locked
 
 Latest runtime checkpoint:
@@ -50,8 +50,8 @@ Latest runtime checkpoint:
 - no post-cutover paper position is currently open;
 - MT4 DEMO bridge: 0 bridge positions, 0 pending commands;
 - DEMO transport proof: five symbol-scoped bridge snapshots refresh correctly and a fake-symbol routing probe was not consumed by any bridge;
-- current no-trade runtime flags: `execution_mode=paper`, `demo_collection=false`, `demo_execution_bridge=false`, `live_trading=false`;
-- post-PR #46 cycle: 22 scanners, 5/5 READY, 0 worker error, 0 PAPER open, 0 Trading-New command/position.
+- current runtime flags: `execution_mode=demo`, `demo_collection=true`, `demo_execution_bridge=true`, `live_trading=false`;
+- latest checked state: 22 scanners, 5/5 READY, 0 worker error, 0 PAPER open, 0 Trading-New command/position; DEMO guard waits only for a portfolio-selected collectable PAPER trade.
 
 No strategy currently satisfies both:
 
@@ -402,8 +402,8 @@ The runtime has been updated to:
 - absolute maximum = 8 EUR at 2%;
 - daily loss maximum = 12 EUR at 3%.
 
-Execution remains intentionally disarmed while development continues:
-`execution_mode=paper`, DEMO collection OFF, DEMO bridge OFF, LIVE OFF.
+At the capital-update checkpoint execution was intentionally disarmed:
+`execution_mode=paper`, DEMO collection OFF, DEMO bridge OFF, LIVE OFF. This historical checkpoint is superseded by the current re-armed DEMO state documented above.
 
 A retrospective 24 h capital-impact check shows that 11 previously
 minimum-lot-blocked probes would become executable at the unchanged 1% risk.
@@ -427,23 +427,21 @@ Current PAPER eligibility across the 22 runtime mechanisms:
 - XAUUSD `break_retest_reaccel` — PAPER eligible, SHADOW;
 - XAUUSD `failed_auction_reversal` — REJECTED and PAPER ineligible.
 
-No strategy becomes ACTIVE. DEMO and LIVE remain disabled. The Portfolio Manager
-therefore remains `NO_TRADE` for broker execution.
+No strategy becomes ACTIVE. LIVE remains disabled. DEMO collection is now armed, but the Portfolio Manager remains `NO_TRADE` until a collectable PAPER trade is actually open.
 
 ## Automatic execution visibility and strategy specialization — PR #50 deployed
 
-The runtime remains intentionally PAPER-only:
+The dashboard clarity work from PR #50 is deployed. The runtime has since been re-armed for isolated broker DEMO collection:
 
 - reference capital 400 EUR;
-- DEMO collection OFF;
-- DEMO bridge OFF;
+- execution mode DEMO;
+- DEMO collection ON;
+- DEMO bridge ON;
 - LIVE OFF;
-- Portfolio Manager currently `NO_TRADE`;
+- Portfolio Manager currently `NO_TRADE` while no collectable PAPER is open;
 - 5/5 retained symbols READY.
 
-The dashboard is being changed so this is impossible to confuse with active
-broker trading. It will show a dedicated automatic-execution state and the
-actual path required before a DEMO order can be emitted.
+The dashboard now makes this impossible to confuse with active LIVE broker trading: it shows the automatic-execution state and the actual path required before a DEMO order can be emitted.
 
 Strategy policy is also made explicit: infrastructure is shared, but evidence is
 admitted per `symbol × mechanism`. Current PAPER-eligible pairs are:
@@ -454,9 +452,7 @@ admitted per `symbol × mechanism`. Current PAPER-eligible pairs are:
 - EURUSD: none;
 - XAGUSD: none.
 
-Only SHADOW rows marked `paper_collection_candidate` can currently trigger
-isolated DEMO collection before ACTIVE/SUPPORTS_DEMO qualification. PAPER
-eligibility and DEMO-collection eligibility are therefore displayed separately.
+PR #52 changes isolated DEMO collection eligibility so every SHADOW row that is actually `paper_entry_allowed` can be mirrored in DEMO when its PAPER trade is open. The special `paper_collection_candidate` flag remains only the under-sampled train+validation exception; it is no longer the sole DEMO-transport gate.
 
 Recent fixed-hypothesis research rejected three attempted shortcuts:
 
@@ -494,3 +490,37 @@ Result:
 
 The hypothesis improves executability but not robust edge, so it is rejected
 and no runtime mechanism is added.
+
+
+## DEMO collection eligibility expansion — PR #52 in flight
+
+The isolated broker DEMO transport is now **armed** while LIVE remains disabled.
+The pre-deploy runtime check showed:
+
+- 5/5 retained symbols READY;
+- 22 SHADOW scanners healthy;
+- 0 PAPER open;
+- 0 Trading-New bridge position;
+- 0 pending open/close/result command;
+- broker account confirmed DEMO;
+- Portfolio Manager `NO_TRADE` only because no collectable PAPER is open.
+
+PR #52 removes a policy mismatch between PAPER admission and DEMO transport.
+`paper_collection_candidate` remains a special evidence flag for the
+under-sampled train+validation-positive exception. It is no longer used as the
+sole transport permission.
+
+After PR #52, every SHADOW strategy for which centralized
+`paper_entry_allowed()` returns true may be mirrored into isolated broker DEMO
+collection when it has an open PAPER trade.
+
+Current DEMO-collectable SHADOW set under the 400 EUR registry:
+
+- BTCUSD `break_retest_reaccel`;
+- GBPUSD `asia_range_sweep_reversal`;
+- GBPUSD `directional_pullback_resumption`;
+- XAUUSD `break_retest_reaccel`.
+
+EURUSD and XAGUSD remain research-only. XAUUSD failed-auction remains REJECTED.
+No risk percentage, lot floor, spread/stop threshold, stop geometry or target is
+changed by this PR.

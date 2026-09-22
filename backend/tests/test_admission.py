@@ -1,5 +1,5 @@
 from app.domain.admission import AdmissionState, EvidenceWindow, StrategyEvidence
-from app.services.admission import assess_strategy
+from app.services.admission import assess_strategy, demo_collection_allowed, paper_entry_allowed
 
 
 def window(
@@ -109,3 +109,41 @@ def test_active_strategy_does_not_need_shadow_collection_candidate_flag() -> Non
 
     assert result.state == AdmissionState.ACTIVE
     assert result.paper_collection_candidate is False
+
+
+def test_demo_collection_allows_positive_weakest_shadow() -> None:
+    result = assess_strategy(
+        StrategyEvidence(
+            strategy_id="candidate",
+            train=window(200, -0.1),
+            validation=window(20, 0.30),
+            holdout=window(10, 0.20),
+        )
+    )
+
+    assert result.state == AdmissionState.SHADOW
+    assert result.paper_collection_candidate is False
+    assert paper_entry_allowed(result) is True
+    assert demo_collection_allowed(result) is True
+
+
+def test_demo_collection_never_allows_rejected_or_active_via_shadow_path() -> None:
+    rejected = assess_strategy(
+        StrategyEvidence(
+            strategy_id="rejected",
+            train=window(200, 0.2),
+            validation=window(60, 0.1),
+            holdout=window(30, -0.01),
+        )
+    )
+    active = assess_strategy(
+        StrategyEvidence(
+            strategy_id="active",
+            train=window(200, 0.2),
+            validation=window(60, 0.08, profit_factor=1.18),
+            holdout=window(30, 0.05, profit_factor=1.11),
+        )
+    )
+
+    assert demo_collection_allowed(rejected) is False
+    assert demo_collection_allowed(active) is False

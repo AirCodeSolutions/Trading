@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current repository served: `cf05e90` (PR #73). The frontend Command Center UX is active; backend/worker trading decision and execution behavior remains unchanged from PR #69.
+Current repository served: `b5388e4` (PR #74). The frontend Command Center UX is active and causal-sequence research is merged; backend/worker trading decision and execution behavior remains unchanged from PR #69.
 
 Operational services:
 
@@ -962,9 +962,9 @@ separate top-level views. This is a presentation-only change and does not alter
 trading authority or evidence policy.
 
 
-## Causal Sequence Research v1 — current chantier
+## Causal Sequence Research v1 — PR #74 merged
 
-Branch: `research/causal-sequence-v1`.
+Status: **MERGED** at `b5388e4`.
 
 Research now evaluates ordered three-M5 causal contexts instead of isolated
 states. The report measures both directional MFE lift and a stricter symmetric
@@ -978,3 +978,16 @@ replays rejected both because train expectancy stayed negative.
 No runtime strategy is promoted. Current automatic DEMO collection remains
 unchanged and continues waiting for one of the four existing PAPER-eligible
 strategies to produce an executable PAPER trade.
+
+
+## Next research chantier
+
+**Execution-Aware Sequence Research**.
+
+PR #74 showed that directional and symmetric first-touch lifts can still select
+sequences that fail once real entry, spread and asset-specific stop geometry are
+applied. The next layer therefore moves executable path economics into the
+sequence-screening stage itself.
+
+No runtime change is authorized from PR #74. Automatic DEMO collection remains
+limited to the existing four PAPER-eligible strategies.

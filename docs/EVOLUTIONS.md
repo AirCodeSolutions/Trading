@@ -457,3 +457,37 @@ collectors.
 
 Targeted validation before PR: 17 admission/portfolio tests passed; frontend
 build passed.
+
+
+## In-flight — PR #54 freshest runtime bar source
+
+Branch: `fix/runtime-freshest-bar-source`.
+
+A live-runtime defect was found after PR #52: BTCUSD and XAGUSD moved to
+preflight `M5_STALLED` even though broker quotes were live and their
+`SYMBOL-M5.csv` files contained fresh closed bars.
+
+Root cause:
+
+- `mt4_live_quotes` returned the first valid source and therefore preferred a
+  stale `mt4_bars_<SYMBOL>_M5.json` snapshot over a fresher live CSV;
+- `load_closed_market_bars` also preferred the snapshot, and when no snapshot
+  existed its fallback resolver preferred frozen research CSVs over live legacy
+  CSVs.
+
+This could make both the preflight and the SHADOW scanner use older bars while
+fresh market data was already present on disk.
+
+PR #54 centralizes runtime bar-source selection:
+
+1. load available closed-bar snapshot, live legacy CSV and research CSV;
+2. causally remove bars not closed at `evaluated_at`;
+3. select the source whose latest closed bar timestamp is newest;
+4. use source priority only as a tie-breaker;
+5. cache parsed CSVs by mtime.
+
+The research/backtest history resolver remains unchanged and reproducible.
+
+Targeted RED/GREEN tests: 10 passed. Direct runtime-file proof before deployment
+showed all five retained symbols on the same current M5 close instead of
+BTC/XAG lagging by multiple bars.

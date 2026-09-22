@@ -276,3 +276,22 @@ When a collectable SHADOW PAPER trade is open and the runtime is in DEMO
 collection mode, the Portfolio Manager may select `DEMO_COLLECTION`. The
 broker adapter then mirrors exactly that PAPER trade's side, lot, stop and
 target. LIVE remains a separate locked path.
+
+
+## Runtime market-bar source selection
+
+Research data selection and runtime data selection are deliberately separate.
+
+For runtime scanning/preflight, available bar sources are evaluated causally at
+the current decision timestamp:
+
+- closed-bar JSON snapshot;
+- continuously refreshed MT4 `SYMBOL-TF.csv`;
+- research CSV only as a fallback.
+
+The runtime selects the source with the most recent **closed** bar, rather than
+using a hard-coded source priority. This prevents a stale snapshot or frozen
+research file from masking a fresher live MT4 CSV.
+
+Research/backtest code continues to use the frozen/versioned history resolver so
+historical admissions remain reproducible.

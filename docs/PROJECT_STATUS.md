@@ -538,3 +538,29 @@ changed by this PR.
 - Portfolio Manager remains NO_TRADE only because no collectable PAPER is open;
 - PAPER-eligible / DEMO-collectable SHADOW set now includes BTCUSD break/retest,
   GBPUSD Asia sweep, GBPUSD directional pullback and XAUUSD break/retest.
+
+
+## Runtime market-data freshness incident — PR #54 in flight
+
+After the DEMO collector was armed, session preflight degraded BTCUSD and
+XAGUSD as `m5_stalled`. Quotes/specs were live, but the API exposed a last
+closed M5 at 09:15 while the corresponding MT4 CSVs already contained 09:20,
+09:25 and later bars.
+
+This was a backend source-priority defect, not an MT4 exporter outage.
+
+The new runtime source selector chooses the freshest causally closed source
+among JSON snapshot, live `SYMBOL-TF.csv` and frozen research CSV. The
+backtest/research resolver is intentionally not changed.
+
+Pre-PR direct proof against the real MT4 directory with the patched loader:
+
+- BTCUSD M5: 09:30;
+- EURUSD M5: 09:30;
+- GBPUSD M5: 09:30;
+- XAUUSD M5: 09:30;
+- XAGUSD M5: 09:30;
+- all five live quote objects expose the same current closed-M5 timestamp.
+
+This fix is required before further strategy work because stale runtime bars can
+suppress or distort otherwise valid opportunities.

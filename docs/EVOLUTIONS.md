@@ -49,13 +49,14 @@ Last updated: 2026-09-22.
 | #47 | `f9be5e4` | Record deployed 400 EUR runtime state |
 | #48 | `130ef7e` | Align PAPER admission semantics and refresh 400 EUR admissions |
 | #49 | `f00da09` | Refresh deployed 400 EUR admission/runtime documentation |
+| #50 | `0ccdf3e` | Automatic-execution clarity + per-asset strategy map |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current deployed main: `f00da09` through PR #49;
+- current deployed main: `0ccdf3e` through PR #50;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
@@ -405,7 +406,9 @@ The runtime registry was regenerated after merge. No broker execution flag was
 changed: PAPER mode remains enabled for evidence collection while DEMO and LIVE
 remain OFF.
 
-## In-flight — PR #50 automatic-execution clarity + per-asset strategy map
+## PR #50 — automatic-execution clarity + per-asset strategy map
+
+Status: **MERGED + DEPLOYED** at `0ccdf3e`.
 
 Branch: `feat/dashboard-auto-execution-map`.
 

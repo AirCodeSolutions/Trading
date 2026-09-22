@@ -63,8 +63,16 @@ fi
 
 if ! worker_healthy; then
   if pid_alive "$RUNTIME/pids/shadow-worker.pid"; then
-    kill "$(cat "$RUNTIME/pids/shadow-worker.pid")" 2>/dev/null || true
-    sleep 1
+    old_worker_pid="$(cat "$RUNTIME/pids/shadow-worker.pid")"
+    kill "$old_worker_pid" 2>/dev/null || true
+    for _ in $(seq 1 50); do
+      kill -0 "$old_worker_pid" 2>/dev/null || break
+      sleep 0.1
+    done
+    if kill -0 "$old_worker_pid" 2>/dev/null; then
+      echo "Refusing to start a second shadow worker: PID $old_worker_pid did not stop" >&2
+      exit 1
+    fi
   fi
   (
     exec 9>&-

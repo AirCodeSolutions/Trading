@@ -906,9 +906,9 @@ capital changes.
 - no strategy, admission, risk, stop, target or bridge rule changed.
 
 
-## Causal × Economic Candidate Matrix — current chantier
+## Causal × Economic Candidate Matrix — PR #71 merged
 
-Branch: `research/causal-economic-candidate-matrix`.
+Status: **MERGED** at `d4dac43`.
 
 The current research layer now intersects causal stability with executable
 broker/capital geometry before any new mechanism replay.
@@ -923,3 +923,18 @@ geometry exist. The next concrete replay target is GBPUSD
 `structural_extreme_stretch` as an opposite-side structural mean-reversion
 hypothesis, because that cell is stable across all three windows and was not
 already rejected by the earlier compression/displacement replays.
+
+
+## Matrix-guided replay checkpoint
+
+The first two economically feasible OPPOSED_STABLE cells were replayed as fixed
+mean-reversion contracts and both failed all independent windows:
+
+- GBP structural extreme stretch reversal;
+- XAU directional displacement reversal.
+
+No strategy is promoted. The evidence now rejects single-state causal labels as
+sufficient entry logic.
+
+Next chantier: **Causal Sequence Research v1**, using ordered pre-move context
+states across multiple M5 bars rather than adding more static thresholds.

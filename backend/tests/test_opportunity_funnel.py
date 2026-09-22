@@ -232,3 +232,67 @@ def test_opportunity_funnel_api_is_read_only_and_uses_runtime_dir(
     assert payload["window_hours"] == 24
     assert payload["signal_rows"] == 0
     assert payload["tracked_blocked_probes"] == 0
+
+def test_funnel_recomputes_capital_feasibility_for_current_reference(
+    tmp_path: Path,
+) -> None:
+    probes = [
+        blocked_probe(
+            probe_id="base-win",
+            signal_at=NOW - timedelta(hours=3),
+            result_r=1.5,
+            status=PaperTradeStatus.TARGET,
+            min_lot_loss_eur=3.8,
+            required_capital_eur=380.0,
+            feasible_under_max=False,
+        ),
+        blocked_probe(
+            probe_id="max-only-loss",
+            signal_at=NOW - timedelta(hours=2),
+            result_r=-1.0,
+            status=PaperTradeStatus.STOP,
+            min_lot_loss_eur=6.0,
+            required_capital_eur=600.0,
+            feasible_under_max=False,
+        ),
+        blocked_probe(
+            probe_id="above-max",
+            signal_at=NOW - timedelta(hours=1),
+            result_r=1.5,
+            status=PaperTradeStatus.TARGET,
+            min_lot_loss_eur=9.0,
+            required_capital_eur=900.0,
+            feasible_under_max=False,
+        ),
+    ]
+    (tmp_path / "BTCUSD_directional_transition_blocked_probes.jsonl").write_text(
+        "".join(row.model_dump_json() + "\n" for row in probes),
+        encoding="utf-8",
+    )
+
+    funnel = build_opportunity_funnel(
+        tmp_path,
+        now=NOW,
+        window_hours=24,
+        symbols=("BTCUSD",),
+        reference_capital_eur=400.0,
+        base_risk_fraction=0.01,
+        absolute_max_risk_fraction=0.02,
+    )
+
+    assert funnel.reference_capital_eur == 400.0
+    assert funnel.base_risk_budget_eur == 4.0
+    assert funnel.absolute_max_risk_budget_eur == 8.0
+    assert funnel.capital_limited_probes == 3
+    assert funnel.capital_base_feasible_probes == 1
+    assert funnel.capital_max_feasible_probes == 2
+    assert funnel.capital_base_feasible_resolved_probes == 1
+    assert funnel.capital_base_feasible_wins == 1
+    assert funnel.capital_base_feasible_losses == 0
+    assert funnel.capital_base_feasible_total_r == 1.5
+    assert funnel.capital_base_feasible_expectancy_r == 1.5
+    assert funnel.blocked_feasible_under_max_risk == 2
+    strategy = funnel.strategies[0]
+    assert strategy.capital_limited_probes == 3
+    assert strategy.capital_base_feasible_probes == 1
+    assert strategy.capital_base_feasible_total_r == 1.5

@@ -1,11 +1,11 @@
-# Project status — 2026-09-21
+# Project status — 2026-09-22
 
 ## Objective
 
 Build a causal M5/M15 trading system that can progress from research to SHADOW,
 then DEMO, without increasing risk to compensate for missing edge.
 
-Economic reference capital remains **200 EUR**.
+Economic reference capital is now **400 EUR** (updated 2026-09-22). Risk percentages remain unchanged.
 
 ## Active market scope
 
@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `7764ec7` (PR #43).
+Current deployed main commit: `fd00652` (PR #45).
 
 Operational services:
 
@@ -59,10 +59,10 @@ No strategy currently satisfies both:
 
 ## Risk policy
 
-- reference capital: 200 EUR
-- base risk: 1% / trade
-- absolute max: 2% / trade
-- daily max loss: 3%
+- reference capital: 400 EUR
+- base risk: 1% / trade = 4 EUR budget
+- absolute max: 2% / trade = 8 EUR hard ceiling
+- daily max loss: 3% = 12 EUR
 - spread / stop ceiling: 15%
 - max margin fraction: 25%
 
@@ -98,13 +98,18 @@ The legacy losses remain visible and are never deleted.
 
 Live capital/execution feasibility has shown:
 
-- BTCUSD: currently the clearest market compatible with 200 EUR under the
-  existing risk policy;
-- EURUSD / GBPUSD: lot granularity is compatible; spread can still block
-  narrow-stop setups, but GBPUSD has now produced the first executable
-  post-cutover paper entry;
-- XAUUSD / XAGUSD: many setups are structurally blocked by minimum-lot
-  granularity at 200 EUR.
+- the economic reference capital is now 400 EUR, so the 1% base-risk budget is
+  4 EUR and the 2% hard ceiling is 8 EUR;
+- BTCUSD becomes much less constrained by minimum-lot granularity, but recent
+  blocked-probe outcomes remain negative for directional-transition and
+  failed-auction samples; more capital does not create edge;
+- EURUSD / GBPUSD lot granularity is generally compatible; spread can still
+  block narrow-stop setups independently of capital;
+- XAUUSD now has some 1%-feasible probes at 400 EUR, including positive
+  failed-auction and post-shock examples in the recent sample, while other XAU
+  setups still exceed the base budget;
+- XAGUSD remains dominated by spread/stop economics; the capital increase does
+  not solve that constraint.
 
 Blocked opportunities are followed prospectively instead of weakening the risk
 policy.
@@ -147,7 +152,7 @@ add infrastructure:
 3. keep BTC as the primary broadly executable market and continue post-cutover
    prospective evidence;
 4. keep XAU/XAG in observation/blocked-probe mode until a genuinely structural
-   setup fits the 200 EUR capital policy;
+   setup fits the current 400 EUR capital policy and still shows positive edge;
 5. preserve macro, spread, capital and causality gates;
 6. move SHADOW -> DEMO only after historical ACTIVE + prospective SUPPORTS_DEMO.
 
@@ -379,3 +384,24 @@ Development checkpoint over the trailing 24 h:
 
 These observations are diagnostics, not activation criteria. Execution remains
 PAPER-only with DEMO and LIVE disabled while this work is developed.
+
+
+## Capital update — 2026-09-22
+
+Economic reference capital is now **400 EUR**.
+
+The runtime has been updated to:
+
+- `reference_capital_eur=400`;
+- base-risk monetary budget = 4 EUR at 1%;
+- absolute maximum = 8 EUR at 2%;
+- daily loss maximum = 12 EUR at 3%.
+
+Execution remains intentionally disarmed while development continues:
+`execution_mode=paper`, DEMO collection OFF, DEMO bridge OFF, LIVE OFF.
+
+A retrospective 24 h capital-impact check shows that 11 previously
+minimum-lot-blocked probes would become executable at the unchanged 1% risk.
+Their aggregate result was -1.11R, so the capital increase alone is not an
+activation rule. The current research priority is to select positive-edge
+subsets that are now economically executable at 400 EUR.

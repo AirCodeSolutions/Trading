@@ -5,7 +5,7 @@ from app.services.capital_risk import size_position
 from app.services.market_quality import assess_market
 
 
-def test_xau_m15_atr_stop_is_too_coarse_for_200_eur_account() -> None:
+def test_xau_m15_atr_stop_is_too_coarse_for_400_eur_account() -> None:
     spec = BrokerSymbolSpec(
         symbol="XAUUSD",
         bid=4344.70,
@@ -50,8 +50,8 @@ def test_btc_m15_atr_stop_can_fit_absolute_two_percent_cap() -> None:
         )
     )
     assert result.approved is True
-    assert result.lots == pytest.approx(0.01)
-    assert result.expected_loss_eur < 4.0
+    assert result.lots == pytest.approx(0.02)
+    assert result.expected_loss_eur < 8.0
 
 
 def test_eurusd_m15_atr_stop_fits_default_risk_but_is_costly() -> None:
@@ -74,7 +74,7 @@ def test_eurusd_m15_atr_stop_fits_default_risk_but_is_costly() -> None:
         )
     )
     assert result.approved is True
-    assert result.lots == pytest.approx(0.03)
+    assert result.lots == pytest.approx(0.07)
     assert result.spread_to_stop == pytest.approx(0.140625, rel=1e-5)
 
 
@@ -99,9 +99,9 @@ def test_market_quality_separates_execution_fit_from_strategy_edge() -> None:
     )
     assert result.eligible_for_m15_research is True
     assert result.absolute_risk_feasible is True
-    assert result.default_risk_feasible is False
+    assert result.default_risk_feasible is True
     assert result.min_lot_loss_atr_m15_eur == pytest.approx(3.252601197, rel=1e-6)
     assert result.required_capital_base_risk_eur == pytest.approx(325.2601197, rel=1e-6)
     assert result.required_capital_max_risk_eur == pytest.approx(162.6300599, rel=1e-6)
-    assert result.minimum_feasible_risk_fraction == pytest.approx(0.016263006, rel=1e-6)
+    assert result.minimum_feasible_risk_fraction == pytest.approx(0.008131503, rel=1e-6)
     assert result.execution_quality_score > 0

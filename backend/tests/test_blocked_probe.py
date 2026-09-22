@@ -115,7 +115,7 @@ def test_blocked_probe_preserves_base_reason_and_max_risk_viability() -> None:
     assert probe.min_lot_loss_eur == 3.0
     assert probe.required_capital_base_risk_eur == 300.0
     assert probe.required_capital_max_risk_eur == 150.0
-    assert probe.minimum_feasible_risk_fraction == 0.015
+    assert probe.minimum_feasible_risk_fraction == 0.0075
     assert probe.capital_granularity_feasible_under_max_risk is True
 
 

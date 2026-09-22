@@ -13,7 +13,7 @@ Construire une application de trading M5/M15 testable, observable et indépendan
 5. **Causal Backtester** — exécute la bougie suivante avec modèle Bid/Ask.
 6. **Strategy Admission** — REJECTED, SHADOW ou ACTIVE.
 7. **Portfolio Matrix** — compare marché × mécanisme et ne qualifie que les couples ACTIVE.
-8. **Capital Risk Engine** — sizing depuis 200 EUR, jamais depuis le gros solde démo.
+8. **Capital Risk Engine** — sizing depuis le capital économique de référence courant (400 EUR depuis le 2026-09-22), jamais depuis le gros solde démo.
 9. **Approval Gate** — mode AUTO ou CONFIRM.
 10. **Macro Gate** — bloque les nouvelles entrées autour des événements USD à fort impact.
 11. **MT4 DEMO Execution Adapter** — bridge isolé, désactivé par défaut, avec rapprochement commandes/résultats/positions.
@@ -123,12 +123,12 @@ La matrice portefeuille ne renvoie un `qualified_strategy_id` que pour une strat
 
 ## Capital
 
-Configuration initiale :
+Configuration courante :
 
-- capital de référence : 200 EUR ;
-- risque de base : 1 % ;
-- plafond absolu : 2 % ;
-- perte journalière maximale : 3 % ;
+- capital de référence : 400 EUR ;
+- risque de base : 1 % = 4 EUR ;
+- plafond absolu : 2 % = 8 EUR ;
+- perte journalière maximale : 3 % = 12 EUR ;
 - spread maximal : 15 % du stop ;
 - marge maximale : 25 % du capital.
 

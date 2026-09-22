@@ -43,13 +43,15 @@ Last updated: 2026-09-22.
 | #41 | `0cef8eb` | Isolated broker DEMO collection transport |
 | #42 | `aa4b7f2` | Multi-instance DEMO bridge symbol routing and lock |
 | #43 | `7764ec7` | Symbol-scoped broker quote/spec snapshots from each DEMO bridge |
+| #44 | `eb3578b` | No-trade runtime status + dashboard state clarity |
+| #45 | `fd00652` | Read-only opportunity funnel telemetry |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current deployed main: `7764ec7` through PR #43;
+- current deployed main: `fd00652` through PR #45;
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
 - current Portfolio Manager: `NO_TRADE`;
@@ -81,7 +83,7 @@ five retained assets, with:
 - causal signal definition;
 - unchanged risk policy;
 - train / validation / holdout evidence;
-- execution feasibility under 200 EUR;
+- execution feasibility under the current 400 EUR economic reference capital;
 - SHADOW-only activation first;
 - no DEMO activation unless both historical and prospective contracts pass.
 
@@ -316,3 +318,40 @@ blindly relaxing guards: the purpose of this telemetry is to isolate mechanisms
 where economic feasibility and edge coexist.
 
 Targeted validation: 3 new tests passed, Ruff passed, frontend build passed.
+
+
+## In-flight — PR #46 capital 400 EUR + capital-aware funnel
+
+Branch: `feat/capital-400-funnel`.
+
+The economic reference capital was increased by the user from 200 EUR to
+**400 EUR**. This is treated as a capital-base update, not a percentage-risk
+relaxation.
+
+Unchanged policy:
+
+- base risk = 1% per trade = 4 EUR at 400 EUR capital;
+- absolute max = 2% = 8 EUR hard ceiling;
+- daily loss max = 3% = 12 EUR;
+- spread/stop ceiling = 15%;
+- max margin fraction = 25%;
+- DEMO collection OFF, DEMO bridge OFF, LIVE OFF during development.
+
+The opportunity funnel now recomputes capital feasibility against the **current**
+reference capital instead of trusting a historical boolean stored when probes
+were created under 200 EUR.
+
+Trailing-24h checkpoint at 400 EUR:
+
+- 19 probes were blocked specifically by minimum-lot risk;
+- 11/19 would now fit the 1% base-risk budget;
+- those 11 resolved probes total **-1.11R**, expectancy **-0.10R**;
+- 17/19 fit below the 2% hard ceiling, but 2% remains a ceiling and is not used
+  as a target sizing rule;
+- XAUUSD failed-auction 1%-feasible subset: +0.5R across 2 resolved probes;
+- XAUUSD post-shock 1%-feasible subset: +1.8R across 1 resolved probe;
+- BTCUSD directional-transition 1%-feasible subset: -1.41R across 6 resolved;
+- BTCUSD failed-auction 1%-feasible subset: -2.0R across 2 resolved.
+
+Conclusion: increasing capital improves execution feasibility but does not
+justify enabling all newly feasible setups. Edge selection remains necessary.

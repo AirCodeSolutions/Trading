@@ -51,13 +51,14 @@ Last updated: 2026-09-22.
 | #49 | `f00da09` | Refresh deployed 400 EUR admission/runtime documentation |
 | #50 | `0ccdf3e` | Automatic-execution clarity + per-asset strategy map |
 | #51 | `6bc4db7` | Record PR50 deployment + reject Asia midpoint variant |
+| #52 | `6a7e8e6` | Collect every PAPER-eligible SHADOW strategy in isolated DEMO |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current deployed main: `6bc4db7` through PR #51;
+- current deployed main: `6a7e8e6` through PR #52;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
@@ -427,7 +428,9 @@ Frontend-only execution clarity plus documentation/architecture updates:
 No risk, signal, stop, target, admission threshold or execution flag is changed.
 
 
-## In-flight — PR #52 collect all PAPER-eligible SHADOW in DEMO
+## PR #52 — collect all PAPER-eligible SHADOW in DEMO
+
+Status: **MERGED + DEPLOYED** at `6a7e8e6`.
 
 Branch: `feat/demo-collect-all-paper-eligible`.
 

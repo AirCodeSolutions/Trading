@@ -39,18 +39,23 @@ Last updated: 2026-09-21.
 | #36 | `14427e5` | PAPER collection for promising under-sampled SHADOWs |
 | #37 | `fcf5c50` | Refresh deployed status through PR #36 |
 | #38 | `587cae7` | GBP Asia range sweep SHADOW/PAPER candidate |
+| #40 | `c314a9a` | Five-asset runtime hardening and DEMO readiness |
+| #41 | `0cef8eb` | Isolated broker DEMO collection transport |
+| #42 | `aa4b7f2` | Multi-instance DEMO bridge symbol routing and lock |
+| #43 | `7764ec7` | Symbol-scoped broker quote/spec snapshots from each DEMO bridge |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- PR #29 is merged and deployed: GBPUSD `directional_pullback_resumption`, SHADOW-only;
-- current deployed main: `587cae7`;
+- current deployed main: `7764ec7` through PR #43;
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
+- 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
 - current Portfolio Manager: `NO_TRADE`;
-- first clean post-cutover paper result: GBP failed-auction **+1.5R / +2.7329 EUR**;
-- DEMO bridge: locked;
+- first clean post-cutover paper result remains GBP failed-auction **+1.5R / +2.7329 EUR**;
+- DEMO transport: technically proven on five symbol-scoped bridge instances, but explicitly **DISARMED** on 2026-09-22 for no-trade development;
+- current flags: PAPER mode, DEMO collection OFF, DEMO bridge OFF, live trading OFF;
 - live trading: locked;
 - post-cutover prospective evidence: 1 closed GBP failed-auction trade,
   +1.5R / +2.7329 EUR.
@@ -245,9 +250,9 @@ Validation: 134 backend tests passed, Ruff passed and MetaEditor compiled the
 hardened bridge with 0 errors / 0 warnings.
 
 
-## In-flight — symbol-scoped DEMO broker snapshots
+## PR #43 — symbol-scoped DEMO broker snapshots
 
-Branch: `fix/demo-bridge-symbol-specs`.
+Status: **MERGED + DEPLOYED** at `7764ec7`.
 
 Runtime verification after PR #42 showed BTCUSD/XAUUSD/XAGUSD READY but EURUSD
 and GBPUSD lacked current broker Bid/Ask/spec snapshots even though their M5/M15
@@ -264,3 +269,27 @@ histories were fresh. To avoid adding another MT4 EA, each already-attached
 
 Validation before PR: 14 targeted tests passed, Ruff passed and MetaEditor
 compiled the bridge with 0 errors / 0 warnings.
+
+
+## 2026-09-22 — no-trade development mode and opportunity diagnosis
+
+Runtime execution was deliberately returned to PAPER-only before analysis:
+
+- `TRADING_EXECUTION_MODE=paper`;
+- `TRADING_DEMO_COLLECTION_ENABLED=false`;
+- `TRADING_DEMO_EXECUTION_BRIDGE_ENABLED=false`;
+- `TRADING_LIVE_TRADING_ENABLED=false`;
+- zero Trading-New broker positions and zero pending bridge commands.
+
+Morning SHADOW evidence shows the engine is detecting opportunities, but economics
+prevent execution rather than a dead scanner:
+
+- BTCUSD examples are narrowly above the 1% base-risk budget at minimum lot;
+- XAGUSD is frequently rejected by spread/stop economics;
+- XAUUSD can generate positive counterfactuals but minimum-lot stop loss can
+  exceed the absolute 2% cap on 200 EUR;
+- the candidate GBP mechanisms did not trigger an executable signal in the
+  observed morning window.
+
+Next implementation: read-only opportunity funnel / blocked-opportunity outcome
+telemetry. No trading threshold or risk policy change is part of that work.

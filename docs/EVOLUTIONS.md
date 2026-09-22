@@ -66,13 +66,16 @@ Last updated: 2026-09-22.
 | #64 | `029227d` | Expose missed market opportunities in dashboard |
 | #65 | `d39b7a9` | Refresh status through PR64 |
 | #66 | `f021b98` | Causal Missed Opportunity Classifier v1 |
+| #67 | `501c18d` | Record PR66 classifier deployment |
+| #68 | `172b8f3` | Historical causal pattern stability research |
+| #69 | `d9dca9c` | Economic feasibility map + dashboard |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current deployed repository: `f021b98` through PR #66; trading decision/execution logic remains unchanged, while the backend/worker intelligence layer now includes the causal missed-opportunity classifier;
+- current deployed repository: `d9dca9c` through PR #69; trading decision/execution logic remains unchanged, while research/intelligence now includes causal classification, historical stability and the Economic Feasibility Map;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 22 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
@@ -732,7 +735,9 @@ The causal classifier remains research-only and does not participate in
 scanner admission or broker order decisions.
 
 
-## In-flight — Historical Causal Pattern Stability report
+## PR #68 — Historical Causal Pattern Stability report
+
+Status: **MERGED** at `172b8f3`.
 
 Branch: `research/causal-pattern-stability`.
 
@@ -760,7 +765,9 @@ Validation:
 - runtime trading code and dashboard are unchanged by this branch.
 
 
-## In-flight — Economic Feasibility Map
+## PR #69 — Economic Feasibility Map
+
+Status: **MERGED + DEPLOYED** at `d9dca9c`.
 
 Branch: `research/economic-feasibility-map`.
 

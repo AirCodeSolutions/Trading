@@ -77,13 +77,14 @@ Last updated: 2026-09-22.
 | #75 | `998ddc8` | Refresh status through PR74 |
 | #76 | `3251b41` | Execution-aware sequence research |
 | #77 | `17a1bbb` | BTC structural displacement sequence SHADOW |
+| #78 | `92ce5c6` | Enforce SHADOW worker singleton |
 
 PR #20 was closed as superseded after its Live Opportunity Board functionality
 was incorporated by the later merged main-branch work.
 
 ## Current state
 
-- current repository served: `17a1bbb` through PR #77; frontend Command Center UX is active and BTC structural displacement sequence is deployed SHADOW/PAPER-only;
+- current repository served: `92ce5c6` through PR #78; frontend Command Center UX is active, BTC structural displacement sequence is deployed SHADOW/PAPER-only, and the SHADOW worker is singleton-protected;
 - economic reference capital: 400 EUR (1% = 4 EUR, 2% hard ceiling = 8 EUR, daily max 3% = 12 EUR);
 - runtime: 23 SHADOW scanners = 20 baseline + GBP directional pullback + GBP Asia range sweep + BTC structural displacement sequence;
 - 5/5 retained symbols have live quotes, M5/M15 data and broker specs;
@@ -994,9 +995,9 @@ Temporary full admission refresh also confirms the new BTC strategy as SHADOW an
 PAPER-eligible, with no ACTIVE strategy created.
 
 
-## In-flight — Shadow worker singleton hardening
+## PR #78 — Shadow worker singleton hardening
 
-Branch: `fix/shadow-worker-singleton`.
+Status: **MERGED + DEPLOYED** at `92ce5c6`.
 
 Operational incident observed on 2026-09-22:
 

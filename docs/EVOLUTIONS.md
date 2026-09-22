@@ -1048,3 +1048,8 @@ Revalidation ciblee : 17 tests passent sur causal sequence, execution-aware et
 parite structural displacement sequence.
 
 Aucune modification de strategie ou d execution n est associee a ce checkpoint.
+
+Recherche additionnelle du checkpoint : le croisement regime M15 + sequence M5
+execution-aware (longueur 2) a ete teste sur les quatre actifs economiquement
+faisables. Il ne produit aucune cellule `POSITIVE_STABLE`; aucun changement
+runtime n en decoule.

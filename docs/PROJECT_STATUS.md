@@ -28,7 +28,7 @@ watchlist or used to justify faster activation:
 
 ## Deployed runtime
 
-Current deployed main commit: `fd00652` (PR #45).
+Current deployed main commit: `7dd72bd` (PR #46).
 
 Operational services:
 
@@ -50,7 +50,8 @@ Latest runtime checkpoint:
 - no post-cutover paper position is currently open;
 - MT4 DEMO bridge: 0 bridge positions, 0 pending commands;
 - DEMO transport proof: five symbol-scoped bridge snapshots refresh correctly and a fake-symbol routing probe was not consumed by any bridge;
-- current no-trade runtime flags: `execution_mode=paper`, `demo_collection=false`, `demo_execution_bridge=false`, `live_trading=false`.
+- current no-trade runtime flags: `execution_mode=paper`, `demo_collection=false`, `demo_execution_bridge=false`, `live_trading=false`;
+- post-PR #46 cycle: 22 scanners, 5/5 READY, 0 worker error, 0 PAPER open, 0 Trading-New command/position.
 
 No strategy currently satisfies both:
 

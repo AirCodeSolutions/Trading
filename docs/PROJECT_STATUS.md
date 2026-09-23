@@ -1150,3 +1150,30 @@ Historical replay at the unchanged 400 EUR / 1% contract:
 The runtime scope change is limited to allowing Asia sweep on GBPUSD + XAUUSD. Directional pullback remains GBP-only. Risk, entry logic, stop, target, macro, sizing, spread guards, LIVE lock and broker isolation are unchanged.
 
 Dry-run against current MT4 data in /tmp: 24 diagnostics total versus 23 deployed, with exactly one additional XAUUSD Asia sweep scanner; current XAU state is NO_SIGNAL.
+
+
+## 2026-09-23 — PR #82 deployed
+
+Status: **MERGED + DEPLOYED** at `5a2782f`.
+
+Deployment safety immediately before the worker restart:
+
+- 23 current PAPER state files inspected directly, 0 open trade;
+- `demo_collection_state` empty;
+- 0 Trading-New bridge position;
+- no pending Trading-New open/close command.
+
+Only the SHADOW worker was restarted. Backend and frontend were left running. The singleton lock moved cleanly to the new worker PID.
+
+First completed post-deployment cycle:
+
+- session READY 5/5, worker OK;
+- scanners: 23 -> **24**;
+- PAPER states: 23 -> **24**;
+- XAUUSD now has an `asia_range_sweep_reversal` SHADOW/PAPER scanner and state;
+- PAPER/demo-collection eligible collectors: 5 -> **6**;
+- current XAU Asia sweep state: NO_SIGNAL;
+- 0 PAPER open, 0 Trading-New broker position, 0 pending command;
+- AUTO-DEMO transport and collection remain armed; LIVE remains OFF.
+
+The new collector does not create ACTIVE authority. It exists only to accumulate prospective evidence under the unchanged 400 EUR / 1% contract.

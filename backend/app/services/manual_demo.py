@@ -204,6 +204,7 @@ def submit_manual_demo_order(
                 audit_path,
                 command,
                 reference_entry_price=preview.entry_price,
+                reference_risk_eur=preview.sizing.expected_loss_eur,
             )
         except OSError:
             pass

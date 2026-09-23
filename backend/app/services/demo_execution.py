@@ -172,6 +172,7 @@ def submit_selected_demo_order(
                 audit_path,
                 command,
                 reference_entry_price=trade.entry_price,
+                reference_risk_eur=trade.risk_eur,
             )
         except OSError:
             pass

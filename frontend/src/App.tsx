@@ -606,6 +606,25 @@ type DailyTradingReport = {
     average_adverse_slippage_price: number;
     max_adverse_slippage_price: number;
     average_slippage_r: number;
+    average_risk_delta_eur?: number;
+    max_risk_increase_eur?: number;
+    max_risk_increase_pct?: number;
+    average_rr_delta?: number;
+    minimum_fill_reward_risk_ratio?: number;
+    samples?: {
+      command_id: string;
+      symbol: string;
+      strategy_id: string;
+      side: "buy" | "sell";
+      reference_risk_eur: number | null;
+      fill_risk_eur: number | null;
+      risk_delta_eur: number | null;
+      risk_delta_pct: number | null;
+      reference_reward_risk_ratio: number | null;
+      fill_reward_risk_ratio: number | null;
+      rr_delta: number | null;
+      ticket: number;
+    }[];
   };
   assets: {
     symbol: string;
@@ -1034,6 +1053,7 @@ export default function App() {
     );
   const tradingNewPositions = demo?.bridge_positions.length ?? 0;
   const paperPnlToday = dailyReport?.paper_closed_pnl_eur_today ?? 0;
+  const latestExecutionRiskSample = dailyReport?.execution_quality.samples?.[0] ?? null;
   const systemReady = preflight?.status === "ready";
   const autoDemoState = tradingNewPositions
     ? "POSITION OUVERTE"
@@ -1775,6 +1795,42 @@ export default function App() {
                   dailyReport.execution_quality.average_slippage_r.toFixed(3) +
                   "R"
                 : "—"}
+            </p>
+          </div>
+          <div className="intelligence-card">
+            <span className="label">Fidélité risque au fill</span>
+            <strong
+              className={
+                (latestExecutionRiskSample?.risk_delta_eur ?? 0) > 0
+                  ? "negative-text"
+                  : "positive-text"
+              }
+            >
+              {latestExecutionRiskSample?.fill_risk_eur != null
+                ? latestExecutionRiskSample.fill_risk_eur.toFixed(2) + " €"
+                : "—"}
+            </strong>
+            <p>
+              {latestExecutionRiskSample?.reference_risk_eur != null &&
+              latestExecutionRiskSample?.risk_delta_eur != null
+                ? "prévu " +
+                  latestExecutionRiskSample.reference_risk_eur.toFixed(2) +
+                  " € · Δ " +
+                  (latestExecutionRiskSample.risk_delta_eur >= 0 ? "+" : "") +
+                  latestExecutionRiskSample.risk_delta_eur.toFixed(2) +
+                  " € (" +
+                  (latestExecutionRiskSample.risk_delta_pct != null
+                    ? latestExecutionRiskSample.risk_delta_pct.toFixed(1) + " %"
+                    : "—") +
+                  ") · RR " +
+                  (latestExecutionRiskSample.reference_reward_risk_ratio != null
+                    ? latestExecutionRiskSample.reference_reward_risk_ratio.toFixed(2)
+                    : "—") +
+                  " → " +
+                  (latestExecutionRiskSample.fill_reward_risk_ratio != null
+                    ? latestExecutionRiskSample.fill_reward_risk_ratio.toFixed(2)
+                    : "—")
+                : "Mesuré à partir des prochains fills instrumentés."}
             </p>
           </div>
           <div className="intelligence-card">

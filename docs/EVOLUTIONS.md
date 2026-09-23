@@ -1169,3 +1169,19 @@ Backend Opportunity Funnel adds a compact research-progress candidate selected o
 Frontend Command Center adds a `Recherche · candidat le plus observé` card showing symbol, resolved/minimum sample, mechanism, research state and expectancy. The card is descriptive and does not rank strategies by profitability.
 
 Validation: 219 backend tests pass, Ruff clean, targeted frontend build passes, and a read-only production calculation returns XAUUSD post-shock continuation at 1/20 / -1R / COLLECTING.
+
+
+## 2026-09-23 — PAPER → broker fill fidelity
+
+Execution audit candidate:
+
+- open-command audit records the reference monetary risk;
+- filled orders derive fill-based stop risk from the same reference risk model;
+- each execution sample reports risk delta EUR / %, reference RR, fill RR and RR delta;
+- summary reports average risk delta, maximum observed risk increase and minimum
+  fill RR;
+- manual and automatic DEMO orders use the same instrumentation;
+- dashboard Trading Intelligence adds a fill-risk fidelity card.
+
+No execution authority or guard changes. Validation: 26 targeted tests, 219 full
+backend tests, Ruff clean and frontend Vite build clean.

@@ -37,6 +37,9 @@ type ShadowDiagnostic = {
   momentum_12_atr: number | null;
   efficiency: number;
   latest_closed_m5_at: string;
+  structural_stop: number | null;
+  target_r: number | null;
+  max_holding_bars: number | null;
   base_risk: ShadowSizing | null;
   reason: string;
 };
@@ -1064,6 +1067,51 @@ export default function App() {
     risk_fraction: Number(manualRiskPct) / 100
   });
 
+  const prepareManualFromOpportunity = async (item: ShadowDiagnostic) => {
+    if (item.state !== "signal_executable" || !item.side) return;
+
+    setManualBusy(true);
+    setManualMessage("");
+    try {
+      const response = await fetch("/api/v1/execution/demo/manual/opportunity-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          symbol: item.symbol,
+          mechanism: item.mechanism
+        })
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.detail ?? "Cette opportunité n’est plus exécutable.");
+      }
+      const preview = payload as ManualDemoPreview;
+      setManualSymbol(preview.symbol);
+      setManualSide(preview.side);
+      setManualStop(String(preview.stop_loss));
+      setManualTarget(String(preview.take_profit));
+      setManualRiskPct(String(preview.risk_fraction * 100));
+      setManualPreview(preview);
+      setManualMessage(
+        preview.approved
+          ? "Signal chargé depuis le moteur. Vérifie le preview avant confirmation DEMO."
+          : preview.reasons.join(" · ")
+      );
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById("manual-demo-trade")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    } catch (error) {
+      setManualPreview(null);
+      setManualMessage(
+        error instanceof Error ? error.message : "Prévisualisation de l’opportunité impossible."
+      );
+    } finally {
+      setManualBusy(false);
+    }
+  };
+
   const previewManualTrade = async () => {
     const payload = manualPayload();
     if (
@@ -1578,7 +1626,11 @@ export default function App() {
         </div>
       </section>
 
-      <section className="manual-trade-panel" hidden={activeView !== "trading"}>
+      <section
+        id="manual-demo-trade"
+        className="manual-trade-panel"
+        hidden={activeView !== "trading"}
+      >
         <div className="section-heading">
           <div>
             <p className="eyebrow">MANUAL DEMO TRADE</p>
@@ -2449,6 +2501,7 @@ export default function App() {
             <span>Side</span>
             <span>Dernière M5</span>
             <span>Diagnostic</span>
+            <span>Action</span>
           </div>
           {opportunities.map((item) => (
             <div
@@ -2464,6 +2517,20 @@ export default function App() {
               <span>{item.side?.toUpperCase() ?? "—"}</span>
               <span>{new Date(item.latest_closed_m5_at).toLocaleTimeString("fr-FR")}</span>
               <span className="opportunity-reason">{item.reason}</span>
+              <span>
+                {item.state === "signal_executable" && item.side ? (
+                  <button
+                    type="button"
+                    className="opportunity-trade-button"
+                    disabled={manualBusy || !demoTransportArmed}
+                    onClick={() => void prepareManualFromOpportunity(item)}
+                  >
+                    PRÉPARER DEMO
+                  </button>
+                ) : (
+                  "—"
+                )}
+              </span>
             </div>
           ))}
         </div>

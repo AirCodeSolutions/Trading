@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from app.domain.broker import PositionSizeResult
+from app.domain.opportunity import OpportunityMechanism
 from app.domain.trading import Side
 
 
@@ -16,6 +17,11 @@ class ManualDemoTradeRequest(BaseModel):
 
 class ManualDemoSubmitRequest(ManualDemoTradeRequest):
     confirmed: bool = False
+
+
+class ManualDemoOpportunityRequest(BaseModel):
+    symbol: str = Field(min_length=1, max_length=32)
+    mechanism: OpportunityMechanism
 
 
 class ManualDemoTradePreview(BaseModel):

@@ -8,7 +8,12 @@ from app.core.config import ExecutionMode, settings
 from app.domain.broker import BrokerSymbolSpec
 from app.domain.live_market import LiveMarketQuote, MarketFeedStatus
 from app.domain.macro import MacroGateStatus
-from app.domain.manual_demo import ManualDemoSubmitRequest, ManualDemoTradeRequest
+from app.domain.manual_demo import (
+    ManualDemoOpportunityRequest,
+    ManualDemoSubmitRequest,
+    ManualDemoTradeRequest,
+)
+from app.domain.opportunity import OpportunityMechanism
 from app.domain.portfolio import (
     BrokerDemoSnapshot,
     PortfolioAction,
@@ -16,9 +21,16 @@ from app.domain.portfolio import (
     PortfolioRiskSnapshot,
     TradingOverview,
 )
+from app.domain.regime import MarketRegime
+from app.domain.shadow import (
+    ShadowOpportunityDiagnostic,
+    ShadowSignalState,
+    ShadowSizingSnapshot,
+)
 from app.domain.trading import Side
 from app.services.demo_execution import read_pending_command
 from app.services.manual_demo import (
+    build_manual_demo_opportunity_preview,
     build_manual_demo_preview,
     submit_manual_demo_order,
 )
@@ -139,6 +151,133 @@ def valid_request(*, risk_fraction: float = 0.01) -> ManualDemoTradeRequest:
         take_profit=1.1820,
         risk_fraction=risk_fraction,
     )
+
+
+def executable_shadow(
+    *,
+    state: ShadowSignalState = ShadowSignalState.SIGNAL_EXECUTABLE,
+) -> ShadowOpportunityDiagnostic:
+    return ShadowOpportunityDiagnostic(
+        symbol="EURUSD",
+        mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+        evaluated_at=NOW,
+        latest_closed_m5_at=NOW,
+        latest_closed_m15_at=NOW,
+        state=state,
+        side=Side.BUY if state != ShadowSignalState.NO_SIGNAL else None,
+        regime=MarketRegime.DIRECTIONAL,
+        regime_direction=1,
+        atr_m15=0.001,
+        atr_ratio=1.0,
+        volatility_percentile=0.5,
+        efficiency=0.6,
+        structural_stop=1.1790 if state != ShadowSignalState.NO_SIGNAL else None,
+        target_r=1.5 if state != ShadowSignalState.NO_SIGNAL else None,
+        max_holding_bars=12 if state != ShadowSignalState.NO_SIGNAL else None,
+        base_risk=(
+            ShadowSizingSnapshot(
+                risk_fraction=0.01,
+                approved=True,
+                reason="risk and execution constraints satisfied",
+                lots=0.01,
+                expected_loss_eur=1.1,
+                spread_to_stop=0.09,
+            )
+            if state != ShadowSignalState.NO_SIGNAL
+            else None
+        ),
+        reason="test opportunity",
+    )
+
+
+def patch_executable_shadow(
+    monkeypatch,
+    diagnostic: ShadowOpportunityDiagnostic,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.manual_demo.load_shadow_overview",
+        lambda *args, **kwargs: [diagnostic],
+    )
+
+
+def test_opportunity_preview_uses_live_quote_and_shadow_geometry(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    configure_demo(monkeypatch)
+    patch_market(monkeypatch)
+    patch_executable_shadow(monkeypatch, executable_shadow())
+
+    preview = build_manual_demo_opportunity_preview(
+        files_dir=tmp_path,
+        runtime_dir=tmp_path,
+        overview=overview(),
+        macro=clear_macro(),
+        request=ManualDemoOpportunityRequest(
+            symbol="EURUSD",
+            mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+        ),
+        now=NOW,
+    )
+
+    assert preview.approved is True
+    assert preview.entry_price == pytest.approx(1.1801)
+    assert preview.stop_loss == pytest.approx(1.1790)
+    assert preview.take_profit == pytest.approx(1.18175)
+    assert preview.risk_fraction == pytest.approx(0.01)
+    assert preview.sizing is not None
+    assert preview.sizing.expected_loss_eur <= 4.0
+    assert not (tmp_path / "trading_demo_command.csv").exists()
+
+
+def test_opportunity_preview_rejects_non_executable_shadow(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    configure_demo(monkeypatch)
+    patch_market(monkeypatch)
+    patch_executable_shadow(
+        monkeypatch,
+        executable_shadow(state=ShadowSignalState.SIGNAL_BLOCKED),
+    )
+
+    with pytest.raises(ValueError, match="not currently executable"):
+        build_manual_demo_opportunity_preview(
+            files_dir=tmp_path,
+            runtime_dir=tmp_path,
+            overview=overview(),
+            macro=clear_macro(),
+            request=ManualDemoOpportunityRequest(
+                symbol="EURUSD",
+                mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+            ),
+            now=NOW,
+        )
+
+
+def test_opportunity_preview_rejects_stale_shadow(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    configure_demo(monkeypatch)
+    patch_market(monkeypatch)
+    diagnostic = executable_shadow().model_copy(
+        update={"evaluated_at": NOW.replace(hour=10, minute=40)}
+    )
+    patch_executable_shadow(monkeypatch, diagnostic)
+
+    with pytest.raises(ValueError, match="diagnostic is stale"):
+        build_manual_demo_opportunity_preview(
+            files_dir=tmp_path,
+            runtime_dir=tmp_path,
+            overview=overview(),
+            macro=clear_macro(),
+            request=ManualDemoOpportunityRequest(
+                symbol="EURUSD",
+                mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+            ),
+            now=NOW,
+        )
 
 
 def test_manual_preview_sizes_from_live_quote_and_existing_risk_engine(

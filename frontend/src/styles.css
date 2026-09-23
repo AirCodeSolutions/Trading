@@ -880,6 +880,66 @@ h1 {
 }
 
 
+.review-queue {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid rgba(93, 201, 178, 0.34);
+  border-radius: 14px;
+  background: rgba(93, 201, 178, 0.04);
+}
+
+.review-queue-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: end;
+}
+
+.review-queue-heading > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-queue-heading p {
+  max-width: 620px;
+  margin: 0;
+  color: #9cabbc;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.review-queue-table {
+  margin-top: 14px;
+  overflow-x: auto;
+  border: 1px solid #1c2b3a;
+  border-radius: 12px;
+}
+
+.review-queue-row {
+  min-width: 900px;
+  display: grid;
+  grid-template-columns: 2.2fr 0.8fr 0.8fr 0.6fr 0.7fr 1.4fr;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid #182736;
+  color: #c5d0dc;
+  font-size: 11px;
+  align-items: center;
+}
+
+.review-queue-row:first-child {
+  border-top: 0;
+}
+
+.review-queue-head {
+  color: #718297;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .funnel-table {
   margin-top: 18px;
   overflow-x: auto;

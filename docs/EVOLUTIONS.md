@@ -1221,3 +1221,22 @@ New operational safety primitive:
 No strategy, admission, risk, lot, cap, spread, stop/target or LIVE rule changes.
 
 Validation: 224 backend tests pass, Ruff clean, frontend Vite build clean.
+
+
+## 2026-09-23 — P1 explicit probe review queue
+
+Opportunity Funnel now returns `unqualified_probe_review_queue` for every
+strategy whose prospective executable-probe evidence reaches
+`SUPPORTS_REVIEW`.
+
+The Research dashboard renders the queue with:
+
+- strategy/mechanism;
+- resolved sample / minimum sample;
+- expectancy R;
+- profit factor;
+- max drawdown R;
+- explicit `REPLAY DÉDIÉ REQUIS` action.
+
+No automatic promotion is possible from this queue.
+Validation: 228 backend tests pass, Ruff clean and Vite build passes.

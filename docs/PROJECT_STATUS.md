@@ -1334,3 +1334,17 @@ A dedicated runtime drain is now implemented on an isolated branch:
 Validation: 34 targeted drain tests, 224 full backend tests, Ruff clean and Vite
 build clean. The feature is not deployed while the current Trading-New BTC
 PAPER/broker position remains open.
+
+
+## 2026-09-23 — P1 executable-probe review queue candidate
+
+The prospective executable-unqualified probe layer now exposes an explicit
+research review queue.
+
+A strategy enters this queue only when its existing probe qualification reaches
+`SUPPORTS_REVIEW` (minimum 20 resolved probes + the unchanged prospective
+expectancy/PF/DD contract). The queue exposes strategy id, symbol, mechanism,
+sample size, expectancy, profit factor and drawdown.
+
+This remains research-only: queue membership does not modify admission files,
+PAPER authority, DEMO collection, risk, sizing or LIVE.

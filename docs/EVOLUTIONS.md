@@ -1088,3 +1088,19 @@ Purpose: collect prospective evidence on XAU where validation/holdout historical
 Validation so far: RED scope test first, then 19 targeted tests green; /tmp dry-run produces 24 scanners with exactly one new XAU Asia sweep scanner and no production-runtime writes.
 
 Related scope checks remain rejected: directional pullback is not extended to EUR/XAU/BTC, and EUR Asia sweep remains disabled because it has no executable validation/holdout evidence under the current broker/capital contract.
+
+
+## PR #82 — XAU Asia sweep collector deployed
+
+Status: **MERGED + DEPLOYED** at `5a2782f`.
+
+Operational result after a worker-only restart and the first full cycle:
+
+- 24 SHADOW scanners total;
+- 24 PAPER states;
+- 6 PAPER/demo-collection eligible SHADOW strategies;
+- exactly one new scanner: `XAUUSD:asia_range_sweep_reversal`;
+- current new scanner state = NO_SIGNAL;
+- no broker order, PAPER position or LIVE authority created.
+
+The backend/frontend processes were not restarted for this deployment. Runtime remains READY 5/5 and AUTO-DEMO remains armed while waiting for an executable qualified PAPER signal.

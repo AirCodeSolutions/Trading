@@ -1542,3 +1542,65 @@ Results versus TP-only:
 Decision: **REJECTED FOR PROSPECTIVE ACTIVATION**. The extra SL protection has no
 incremental validation or holdout benefit. The deployed Trailing SHADOW remains
 TP-only. The protective-stop mode stays research-only for future evidence.
+
+## 2026-09-23 — post-PR #98 operational checkpoint
+
+PR tracking:
+
+- #95 `Integrate broker PnL reconciliation and probe review workflow`: MERGED + DEPLOYED at `ac2c0e9`;
+- #96 `Add prospective Trailing Manager research`: MERGED + DEPLOYED at `bf6f00a`;
+- #97 `Harden runtime stop against orphaned processes`: MERGED at `bf35db2`; shell deployment utility is active on disk and requires no process restart;
+- #98 `Evaluate protective stop after target extension`: MERGED at `85c6a97`; research-only code, no runtime authority change and no restart required;
+- #93 was closed as superseded by integration PR #95.
+
+Current runtime after all deployment checks:
+
+- session READY 5/5;
+- worker healthy;
+- 24 SHADOW scanners;
+- 6 PAPER/demo-collection eligible strategies;
+- DEMO transport ON, auto-DEMO collection armed;
+- DRAIN OFF;
+- LIVE OFF;
+- 0 PAPER open;
+- 0 Trading-New broker position;
+- 0 pending Trading-New open/close command.
+
+First automatic Trading-New cycle remains fully reconciled:
+
+- PAPER +1.8453 EUR / +0.5751R;
+- broker DEMO realized +2.64 EUR;
+- broker history complete = true;
+- 1 closed Trading-New broker ticket reconciled;
+- observed broker-fill RR moved from planned 1.00R to 0.871R.
+
+Current 24 h research denominator:
+
+- 112 market opportunities;
+- 17 captured;
+- 95 missed.
+
+Executable-unqualified prospective evidence:
+
+- 17 resolved probes;
+- 5 wins / 12 losses;
+- -4.7805R total;
+- -0.2812R expectancy;
+- research review queue = empty;
+- most-observed family = `BTCUSD:failed_auction_reversal`, 3/20 probes, -0.1667R expectancy;
+- `BTCUSD:directional_transition` is +1.21R but on only 2 resolved probes, therefore non-actionable.
+
+Trailing Manager prospective state:
+
+- strategy: `BTCUSD:structural_displacement_sequence`;
+- prospective start: 2026-09-23T17:33:37+03:00;
+- resolved future observations: 0;
+- deployed policy: TP dynamic extension only;
+- SL trailing remains inactive because both tested SL policies failed the independent-evidence gate.
+
+Next evidence gates:
+
+1. keep the six qualified collectors running unchanged;
+2. automatically review any executable-probe family only after `SUPPORTS_REVIEW`;
+3. accumulate future Trailing SHADOW results before any PAPER-stage exit change;
+4. never promote frequency, trailing SL/TP or LIVE from small positive samples.

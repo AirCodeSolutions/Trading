@@ -34,6 +34,8 @@ def collect_all_shadow_once(
     files_dir: Path,
     runtime_dir: Path,
     evaluated_at: datetime,
+    *,
+    allow_paper_entries: bool = True,
 ) -> list[ShadowCollectionResult]:
     results: list[ShadowCollectionResult] = []
     admissions = load_research_admissions(runtime_dir / "strategy_admissions.json")
@@ -82,7 +84,9 @@ def collect_all_shadow_once(
             appended = append_shadow_observation(ledger_path, diagnostic)
             strategy_id = f"{asset.symbol}:{mechanism.value}"
             admission = admissions.get(strategy_id)
-            allow_new_entries = paper_entry_allowed(admission)
+            allow_new_entries = (
+                allow_paper_entries and paper_entry_allowed(admission)
+            )
             paper = advance_shadow_paper_book(
                 diagnostic=diagnostic,
                 spec=spec,

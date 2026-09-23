@@ -1169,3 +1169,20 @@ Backend Opportunity Funnel adds a compact research-progress candidate selected o
 Frontend Command Center adds a `Recherche · candidat le plus observé` card showing symbol, resolved/minimum sample, mechanism, research state and expectancy. The card is descriptive and does not rank strategies by profitability.
 
 Validation: 219 backend tests pass, Ruff clean, targeted frontend build passes, and a read-only production calculation returns XAUUSD post-shock continuation at 1/20 / -1R / COLLECTING.
+
+
+## 2026-09-23 — hot runtime deployment drain
+
+New operational safety primitive:
+
+- atomic runtime drain state outside static process configuration;
+- worker checks drain on every collection cycle;
+- PAPER and broker DEMO new-entry paths honor the same drain state;
+- existing trade lifecycle and close commands bypass the new-entry block so
+  draining cannot strand an open Trading-New position;
+- manual DEMO is also blocked while drained;
+- frontend shows and controls the drain explicitly.
+
+No strategy, admission, risk, lot, cap, spread, stop/target or LIVE rule changes.
+
+Validation: 224 backend tests pass, Ruff clean, frontend Vite build clean.

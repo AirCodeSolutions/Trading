@@ -45,10 +45,13 @@ def build_manual_demo_preview(
     macro: MacroGateStatus,
     request: ManualDemoTradeRequest,
     now: datetime,
+    drain_enabled: bool = False,
 ) -> ManualDemoTradePreview:
     symbol = request.symbol.upper()
     reasons: list[str] = []
 
+    if drain_enabled:
+        reasons.append("runtime drain is enabled")
     if symbol not in {item.upper() for item in settings.session_watch_symbols}:
         reasons.append("symbol is outside the retained trading universe")
     if settings.execution_mode != ExecutionMode.DEMO:
@@ -161,6 +164,7 @@ def submit_manual_demo_order(
     request: ManualDemoSubmitRequest,
     now: datetime,
     audit_path: Path | None = None,
+    drain_enabled: bool = False,
 ) -> DemoOrderCommand:
     if not request.confirmed:
         raise ValueError("manual demo trade requires explicit confirmation")
@@ -177,6 +181,7 @@ def submit_manual_demo_order(
             risk_fraction=request.risk_fraction,
         ),
         now=now,
+        drain_enabled=drain_enabled,
     )
     if not preview.approved or preview.sizing is None:
         raise ValueError("; ".join(preview.reasons) or "manual demo preview is not approved")

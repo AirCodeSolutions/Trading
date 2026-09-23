@@ -15,6 +15,12 @@ type RuntimeConfig = {
   historical_holdout_min_trades: number;
 };
 
+type RuntimeDrainState = {
+  enabled: boolean;
+  updated_at: string | null;
+  reason: string;
+};
+
 type ShadowSizing = {
   approved: boolean;
   reason: string;
@@ -195,6 +201,7 @@ type DemoExecutionStatus = {
     ready: boolean;
     transport_armed: boolean;
     auto_collection_armed: boolean;
+    drain_enabled: boolean;
     waiting_for_qualified_trade: boolean;
     qualified_collectors: number;
     execution_mode: string;
@@ -753,6 +760,8 @@ function MarketCard({ quote }: { quote: MarketQuote }) {
 
 export default function App() {
   const [config, setConfig] = useState<RuntimeConfig | null>(null);
+  const [drain, setDrain] = useState<RuntimeDrainState | null>(null);
+  const [drainBusy, setDrainBusy] = useState(false);
   const [shadow, setShadow] = useState<ShadowDiagnostic | null>(null);
   const [opportunities, setOpportunities] = useState<ShadowDiagnostic[]>([]);
   const [blockedProbes, setBlockedProbes] = useState<BlockedProbeRuntime[]>([]);
@@ -792,6 +801,7 @@ export default function App() {
         const [
           healthResponse,
           configResponse,
+          drainResponse,
           shadowResponse,
           paperResponse,
           universeResponse,
@@ -811,6 +821,7 @@ export default function App() {
         ] = await Promise.all([
           fetch("/api/v1/health"),
           fetch("/api/v1/config"),
+          fetch("/api/v1/runtime/drain"),
           fetch("/api/v1/shadow/mt4/btc/break-retest"),
           fetch("/api/v1/shadow/mt4/btc/break-retest/paper"),
           fetch("/api/v1/market/mt4/universe"),
@@ -834,6 +845,7 @@ export default function App() {
 
         const health = await healthResponse.json();
         const runtime = await configResponse.json();
+        const drainPayload = drainResponse.ok ? await drainResponse.json() : null;
         const shadowPayload = shadowResponse.ok ? await shadowResponse.json() : null;
         const paperPayload = paperResponse.ok ? await paperResponse.json() : null;
         const universePayload = universeResponse.ok ? await universeResponse.json() : [];
@@ -870,6 +882,7 @@ export default function App() {
         if (!active) return;
         setStatus(health.status === "ok" ? "Opérationnel" : "Dégradé");
         setConfig(runtime);
+        setDrain(drainPayload);
         setShadow(shadowPayload);
         setPaper(paperPayload);
         setUniverse(universePayload);
@@ -939,6 +952,7 @@ export default function App() {
   );
   const prospectiveTarget = config?.prospective_min_trades ?? 20;
   const prospectiveProgress = bestProspective?.summary.closed_trades ?? 0;
+  const drainEnabled = drain?.enabled ?? demo?.guard.drain_enabled ?? false;
   const demoTransportArmed =
     demo?.guard.transport_armed ??
     (
@@ -1046,14 +1060,44 @@ export default function App() {
           : "DÉSARMÉ";
 
   const refreshExecutionState = async () => {
-    const [overviewResponse, demoResponse, preflightResponse] = await Promise.all([
-      fetch("/api/v1/portfolio/overview"),
-      fetch("/api/v1/execution/demo/status"),
-      fetch("/api/v1/session/preflight")
-    ]);
+    const [overviewResponse, demoResponse, preflightResponse, drainResponse] =
+      await Promise.all([
+        fetch("/api/v1/portfolio/overview"),
+        fetch("/api/v1/execution/demo/status"),
+        fetch("/api/v1/session/preflight"),
+        fetch("/api/v1/runtime/drain")
+      ]);
     if (overviewResponse.ok) setOverview(await overviewResponse.json());
     if (demoResponse.ok) setDemo(await demoResponse.json());
     if (preflightResponse.ok) setPreflight(await preflightResponse.json());
+    if (drainResponse.ok) setDrain(await drainResponse.json());
+  };
+
+  const toggleDrain = async (enabled: boolean) => {
+    const confirmation = window.confirm(
+      enabled
+        ? "Activer le DRAIN ? Aucune nouvelle entrée PAPER/DEMO/manuelle ne sera autorisée. Les positions existantes continueront à être gérées et fermées."
+        : "Désactiver le DRAIN ? Les nouvelles entrées qualifiées pourront repartir immédiatement."
+    );
+    if (!confirmation) return;
+
+    setDrainBusy(true);
+    try {
+      const response = await fetch("/api/v1/runtime/drain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled,
+          reason: enabled ? "dashboard deployment drain" : "dashboard drain released"
+        })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error("Impossible de modifier le drain.");
+      setDrain(payload as RuntimeDrainState);
+      await refreshExecutionState();
+    } finally {
+      setDrainBusy(false);
+    }
   };
 
   const manualPayload = () => ({
@@ -1486,6 +1530,33 @@ export default function App() {
         </p>
 
         <div className="gate-grid">
+          <div className="gate-card drain-control-card">
+            <span className="label">Drain déploiement</span>
+            <strong className={drainEnabled ? "negative-text" : "positive-text"}>
+              {drainEnabled ? "ON" : "OFF"}
+            </strong>
+            <p>
+              {drainEnabled
+                ? "Nouvelles entrées bloquées ; les positions existantes restent gérées jusqu’à fermeture."
+                : "Entrées qualifiées autorisées selon les guards normaux."}
+            </p>
+            <div className="drain-actions">
+              <button
+                type="button"
+                disabled={drainBusy || drainEnabled}
+                onClick={() => void toggleDrain(true)}
+              >
+                DRAIN ON
+              </button>
+              <button
+                type="button"
+                disabled={drainBusy || !drainEnabled}
+                onClick={() => void toggleDrain(false)}
+              >
+                DRAIN OFF
+              </button>
+            </div>
+          </div>
           <div className="gate-card">
             <span className="label">Mode runtime</span>
             <strong>{config?.execution_mode.toUpperCase() ?? "—"}</strong>

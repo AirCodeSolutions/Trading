@@ -614,6 +614,34 @@ h1 {
   line-height: 1.5;
 }
 
+.drain-control-card {
+  border-color: rgba(244, 190, 90, 0.32);
+}
+
+.drain-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.drain-actions button {
+  flex: 1;
+  border: 1px solid #2b4155;
+  border-radius: 9px;
+  padding: 9px 10px;
+  background: #08131d;
+  color: #dce6ef;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.drain-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
 .gate-result {
   margin-top: 12px;
   padding: 14px 18px;

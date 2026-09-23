@@ -1,8 +1,25 @@
 from datetime import datetime
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 from app.domain.opportunity import OpportunityMechanism
+
+
+class ResearchProbeQualificationState(StrEnum):
+    COLLECTING = "collecting"
+    FAILED = "failed"
+    SUPPORTS_REVIEW = "supports_review"
+
+
+class ResearchProbeQualification(BaseModel):
+    state: ResearchProbeQualificationState
+    closed_trades: int = Field(ge=0)
+    minimum_trades: int = Field(gt=0)
+    expectancy_r: float
+    profit_factor: float = Field(ge=0)
+    max_drawdown_r: float = Field(ge=0)
+    reason: str
 
 
 class OpportunityFunnelStrategy(BaseModel):
@@ -19,6 +36,7 @@ class OpportunityFunnelStrategy(BaseModel):
     unqualified_probe_losses: int = Field(default=0, ge=0)
     unqualified_probe_total_r: float = 0.0
     unqualified_probe_expectancy_r: float = 0.0
+    unqualified_probe_qualification: ResearchProbeQualification | None = None
     tracked_blocked_probes: int = Field(ge=0)
     resolved_blocked_probes: int = Field(ge=0)
     open_blocked_probes: int = Field(ge=0)
@@ -57,6 +75,7 @@ class OpportunityFunnel(BaseModel):
     unqualified_probe_losses: int = Field(default=0, ge=0)
     unqualified_probe_total_r: float = 0.0
     unqualified_probe_expectancy_r: float = 0.0
+    unqualified_probe_review_ready_strategies: int = Field(default=0, ge=0)
     tracked_blocked_probes: int = Field(ge=0)
     resolved_blocked_probes: int = Field(ge=0)
     open_blocked_probes: int = Field(ge=0)

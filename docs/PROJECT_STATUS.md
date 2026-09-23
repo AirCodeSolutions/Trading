@@ -1225,3 +1225,17 @@ Post-deployment proof:
 - 0 PAPER open, 0 Trading-New broker position and 0 pending command after deployment.
 
 This layer cannot enter Portfolio Manager selection or the DEMO bridge. Its purpose is to measure the future R of technically executable signals that were previously counted but not resolved, so research can identify additional collector candidates from prospective evidence without relaxing admission or risk.
+
+
+## 2026-09-23 — unqualified-probe research qualification
+
+A read-only qualification layer is being added on top of PR #84 probe evidence. It reuses the existing prospective contract (20 resolved trades, positive expectancy, PF >= 1.05, DD <= 12R) but maps a passing result to `SUPPORTS_REVIEW`, never to PAPER/DEMO authority.
+
+Safety semantics:
+
+- `COLLECTING`: insufficient resolved executable-probe evidence;
+- `FAILED`: the existing prospective quality contract is not met;
+- `SUPPORTS_REVIEW`: evidence is sufficient only to trigger a dedicated single-family validation step;
+- no admission file, Portfolio Manager state, PAPER permission, DEMO bridge or LIVE flag is modified automatically.
+
+Validation on the isolated branch: 219 backend tests pass, Ruff clean and frontend build clean. A read-only calculation over current production data detected one open unqualified probe, `XAUUSD:post_shock_continuation`, correctly reported as `COLLECTING 0/20`.

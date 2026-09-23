@@ -8,6 +8,7 @@ from app.domain.blocked_probe import BlockedOpportunityProbe
 from app.domain.opportunity_funnel import (
     OpportunityFunnel,
     OpportunityFunnelStrategy,
+    ResearchProbeCandidateProgress,
     ResearchProbeQualification,
     ResearchProbeQualificationState,
 )
@@ -203,6 +204,21 @@ def build_opportunity_funnel(
             )
         )
 
+    research_candidates = [
+        row for row in strategies if row.unqualified_probe_qualification is not None
+    ]
+    most_observed = (
+        min(
+            research_candidates,
+            key=lambda row: (
+                -row.unqualified_probe_qualification.closed_trades,
+                row.strategy_id,
+            ),
+        )
+        if research_candidates
+        else None
+    )
+
     all_results = _resolved_results(probes)
     all_unqualified_results = _resolved_trade_results(unqualified_probes)
     all_reasons = Counter(
@@ -250,6 +266,17 @@ def build_opportunity_funnel(
             and row.unqualified_probe_qualification.state
             == ResearchProbeQualificationState.SUPPORTS_REVIEW
             for row in strategies
+        ),
+        most_observed_unqualified_candidate=(
+            ResearchProbeCandidateProgress(
+                strategy_id=most_observed.strategy_id,
+                symbol=most_observed.symbol,
+                mechanism=most_observed.mechanism,
+                qualification=most_observed.unqualified_probe_qualification,
+            )
+            if most_observed is not None
+            and most_observed.unqualified_probe_qualification is not None
+            else None
         ),
         tracked_blocked_probes=len(probes),
         resolved_blocked_probes=len(all_results),

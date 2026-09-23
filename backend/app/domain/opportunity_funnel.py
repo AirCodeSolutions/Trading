@@ -22,6 +22,13 @@ class ResearchProbeQualification(BaseModel):
     reason: str
 
 
+class ResearchProbeCandidateProgress(BaseModel):
+    strategy_id: str
+    symbol: str
+    mechanism: OpportunityMechanism
+    qualification: ResearchProbeQualification
+
+
 class OpportunityFunnelStrategy(BaseModel):
     strategy_id: str
     symbol: str
@@ -76,6 +83,7 @@ class OpportunityFunnel(BaseModel):
     unqualified_probe_total_r: float = 0.0
     unqualified_probe_expectancy_r: float = 0.0
     unqualified_probe_review_ready_strategies: int = Field(default=0, ge=0)
+    most_observed_unqualified_candidate: ResearchProbeCandidateProgress | None = None
     tracked_blocked_probes: int = Field(ge=0)
     resolved_blocked_probes: int = Field(ge=0)
     open_blocked_probes: int = Field(ge=0)

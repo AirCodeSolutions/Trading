@@ -414,6 +414,20 @@ type OpportunityFunnel = {
   unqualified_probe_total_r: number;
   unqualified_probe_expectancy_r: number;
   unqualified_probe_review_ready_strategies?: number;
+  most_observed_unqualified_candidate?: {
+    strategy_id: string;
+    symbol: string;
+    mechanism: string;
+    qualification: {
+      state: "collecting" | "failed" | "supports_review";
+      closed_trades: number;
+      minimum_trades: number;
+      expectancy_r: number;
+      profit_factor: number;
+      max_drawdown_r: number;
+      reason: string;
+    };
+  } | null;
   tracked_blocked_probes: number;
   resolved_blocked_probes: number;
   open_blocked_probes: number;
@@ -1230,6 +1244,27 @@ export default function App() {
             <span>Preuve prospective</span>
             <strong>{prospectiveProgress}/{prospectiveTarget}</strong>
             <small>{paperCandidates.length} stratégie(s) PAPER-éligible(s)</small>
+          </article>
+          <article>
+            <span>Recherche · candidat le plus observé</span>
+            <strong
+              className={
+                opportunityFunnel?.most_observed_unqualified_candidate?.qualification.closed_trades
+                  ? opportunityFunnel.most_observed_unqualified_candidate.qualification.expectancy_r >= 0
+                    ? "positive-text"
+                    : "negative-text"
+                  : ""
+              }
+            >
+              {opportunityFunnel?.most_observed_unqualified_candidate
+                ? `${opportunityFunnel.most_observed_unqualified_candidate.symbol} · ${opportunityFunnel.most_observed_unqualified_candidate.qualification.closed_trades}/${opportunityFunnel.most_observed_unqualified_candidate.qualification.minimum_trades}`
+                : "—"}
+            </strong>
+            <small>
+              {opportunityFunnel?.most_observed_unqualified_candidate
+                ? `${opportunityFunnel.most_observed_unqualified_candidate.mechanism.replaceAll("_", " ")} · ${opportunityFunnel.most_observed_unqualified_candidate.qualification.state.replaceAll("_", " ").toUpperCase()} · exp. ${opportunityFunnel.most_observed_unqualified_candidate.qualification.expectancy_r >= 0 ? "+" : ""}${opportunityFunnel.most_observed_unqualified_candidate.qualification.expectancy_r.toFixed(2)} R`
+                : "Aucun probe exécutable non qualifié résolu."}
+            </small>
           </article>
         </div>
       </section>

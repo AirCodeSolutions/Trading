@@ -1256,3 +1256,19 @@ Post-deployment:
 - 0 PAPER open, 0 Trading-New broker position, 0 pending command.
 
 A follow-up copy fix ensures COLLECTING/FAILED reasons explicitly say executable-probe evidence rather than PAPER evidence. This does not alter any qualification threshold or authority.
+
+
+## 2026-09-23 — Command Center research-progress candidate
+
+The Opportunity Funnel now exposes the most-observed executable-unqualified research candidate as a dedicated read-only object. Selection is intentionally based on resolved sample count, not on PnL ranking, so small positive/negative samples are not presented as a best strategy.
+
+The Command Center Overview shows symbol, mechanism, `n/20` progress, research state and current probe expectancy.
+
+Current production read-only result at validation time:
+
+- `XAUUSD:post_shock_continuation`;
+- `COLLECTING 1/20`;
+- expectancy = -1.0R;
+- review-ready strategies = 0.
+
+This is visibility only. It does not change admission, PAPER/DEMO authority, risk, sizing, signal detection or LIVE.

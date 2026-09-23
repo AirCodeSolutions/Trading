@@ -1160,3 +1160,12 @@ Probe qualification visibility from PR #86 is active. The frontend can now show 
 The first deployed probe is XAUUSD post-shock continuation and remains outside PAPER/DEMO.
 
 A targeted follow-up hardens wording so research-probe states can never be mistaken for PAPER evidence: collecting reasons report `n/20 resolved executable probes`, and failed reasons are explicitly labelled `executable-probe`.
+
+
+## 2026-09-23 — most-observed probe progress in Overview
+
+Backend Opportunity Funnel adds a compact research-progress candidate selected only by largest resolved executable-probe sample, with deterministic strategy-id tie breaking.
+
+Frontend Command Center adds a `Recherche · candidat le plus observé` card showing symbol, resolved/minimum sample, mechanism, research state and expectancy. The card is descriptive and does not rank strategies by profitability.
+
+Validation: 219 backend tests pass, Ruff clean, targeted frontend build passes, and a read-only production calculation returns XAUUSD post-shock continuation at 1/20 / -1R / COLLECTING.

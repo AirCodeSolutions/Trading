@@ -241,6 +241,12 @@ def test_funnel_aggregates_unqualified_executable_probes(tmp_path: Path) -> None
     assert qualification.reason == (
         "2/20 resolved executable probes; minimum research-review sample not reached"
     )
+    candidate = funnel.most_observed_unqualified_candidate
+    assert candidate is not None
+    assert candidate.strategy_id == "BTCUSD:directional_transition"
+    assert candidate.symbol == "BTCUSD"
+    assert candidate.mechanism == OpportunityMechanism.DIRECTIONAL_TRANSITION
+    assert candidate.qualification.closed_trades == 2
     assert funnel.unqualified_probe_review_ready_strategies == 0
 
 

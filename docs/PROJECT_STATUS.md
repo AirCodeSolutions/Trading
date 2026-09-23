@@ -1604,3 +1604,42 @@ Next evidence gates:
 2. automatically review any executable-probe family only after `SUPPORTS_REVIEW`;
 3. accumulate future Trailing SHADOW results before any PAPER-stage exit change;
 4. never promote frequency, trailing SL/TP or LIVE from small positive samples.
+
+
+## 2026-09-23 — Causal Precursor First-Seen v1 candidate
+
+Next development track addresses the current capture gap directly: the 24 h
+market-first denominator has recently shown many more market opportunities than
+captured engine signals, while the intelligence layer explicitly lacked a true
+pre-signal first_seen timestamp.
+
+The candidate is research-only:
+
+- every newly closed M5 can persist an already-existing directional causal
+  pattern (auction failure, compression breakout, directional displacement,
+  structural extreme/stretch, etc.);
+- collection starts prospectively from an explicit timestamp; historical
+  first_seen observations are never backfilled;
+- duplicate worker cycles cannot duplicate the same closed M5 observation;
+- market opportunity episodes look only at aligned precursor observations in
+  the existing 3-M5 / 15-minute signal-capture window before opportunity birth;
+- intelligence reports precursor coverage and average lead time only for
+  opportunities born after collector startup;
+- no precursor creates a strategy signal, admission, PAPER trade, DEMO command
+  or LIVE authority;
+- precursor collection is wired into worker observability so research failure
+  cannot stop the execution/scanner cycle;
+- Research dashboard adds a Causal Precursor First-Seen card.
+
+Validation:
+
+- 18 targeted tests pass;
+- 245 full backend tests pass;
+- Ruff clean;
+- frontend TypeScript/Vite build clean;
+- real-data /tmp dry-run created exactly the five current M5 observations,
+  one per retained asset, with zero historical backfill and zero production
+  runtime write.
+
+Runtime execution remains unchanged: six qualified collectors, base risk 1%,
+existing spread/lot/cap guards, DRAIN OFF and LIVE OFF.

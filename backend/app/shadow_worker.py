@@ -9,6 +9,7 @@ from typing import TextIO
 from app.core.config import settings
 from app.domain.portfolio import TradingOverview
 from app.domain.session import ShadowWorkerHeartbeat
+from app.services.causal_precursor import advance_causal_precursors_once
 from app.services.daily_report import (
     build_daily_trading_report,
     write_daily_trading_report,
@@ -165,6 +166,16 @@ def _update_observability(
     now: datetime,
 ) -> list[str]:
     errors: list[str] = []
+
+    try:
+        advance_causal_precursors_once(
+            settings.mt4_files_dir,
+            settings.shadow_ledger_dir,
+            now,
+            symbols=settings.session_watch_symbols,
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        errors.append(f"causal_precursor: {exc!r}")
 
     try:
         advance_trailing_shadow_once(

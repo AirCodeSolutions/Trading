@@ -513,6 +513,11 @@ type TradingIntelligence = {
   window_hours: number;
   market_move_threshold_atr: number;
   market_move_horizon_bars: number;
+  precursor_collection_started_at: string | null;
+  precursor_eligible_opportunities: number;
+  precursor_seen_opportunities: number;
+  precursor_seen_rate: number;
+  average_precursor_lead_minutes: number;
   trades: TradeIntelligence[];
   opportunities: {
     episode_id: string;
@@ -525,6 +530,18 @@ type TradingIntelligence = {
     move_atr: number;
     capture_state: "executable" | "blocked" | "missed";
     matching_strategies: string[];
+    precursor_first_seen_at: string | null;
+    precursor_pattern:
+      | "auction_failure_reclaim"
+      | "compression_breakout"
+      | "directional_displacement"
+      | "structural_extreme_stretch"
+      | "compression_state"
+      | "structural_extreme"
+      | "unclassified"
+      | null;
+    precursor_lead_minutes: number | null;
+    precursor_observations: number;
     causal_context: {
       pattern:
         | "auction_failure_reclaim"
@@ -1896,7 +1913,7 @@ export default function App() {
       <section className="intelligence-panel" hidden={activeView !== "research"}>
         <div className="section-heading">
           <div>
-            <p className="eyebrow">TRADING INTELLIGENCE · 8 CHANTIERS</p>
+            <p className="eyebrow">TRADING INTELLIGENCE · 9 CHANTIERS</p>
             <h2>Comprendre avant de modifier</h2>
           </div>
           <p>
@@ -1953,6 +1970,24 @@ export default function App() {
               {dailyReport && dailyReport.market_opportunities_24h
                 ? ((dailyReport.captured_opportunities_24h / dailyReport.market_opportunities_24h) * 100).toFixed(1) + " %"
                 : "—"}
+            </p>
+          </div>
+          <div className="intelligence-card">
+            <span className="label">Précurseur causal · first_seen</span>
+            <strong>
+              {intelligence?.precursor_collection_started_at
+                ? intelligence.precursor_seen_opportunities +
+                  " / " +
+                  intelligence.precursor_eligible_opportunities
+                : "—"}
+            </strong>
+            <p>
+              {intelligence?.precursor_collection_started_at
+                ? (intelligence.precursor_seen_rate * 100).toFixed(1) +
+                  " % vus avant naissance · avance moyenne " +
+                  intelligence.average_precursor_lead_minutes.toFixed(1) +
+                  " min. Prospectif uniquement."
+                : "Collecte prospective non initialisée. Aucun historique first_seen n’est backfillé."}
             </p>
           </div>
           <div className="intelligence-card">

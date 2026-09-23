@@ -1296,3 +1296,25 @@ No admission, PAPER authority, DEMO order, SL, TP, risk, lot, cap, spread guard
 or LIVE setting is changed by this candidate.
 
 Validation: 241 backend tests pass, Ruff clean and frontend build passes.
+
+
+## 2026-09-23 — deployed Trailing SHADOW + orphan-process-safe stop
+
+Trailing Manager research from PR #96 is active in production runtime as
+research-only collection:
+
+- target-only candidate remains the only prospective policy under observation;
+- stop-trailing hypothesis remains rejected and inactive;
+- no broker/PAPER TP or SL is modified;
+- first SHADOW state starts with 0 resolved future trades.
+
+Deployment validation exposed an ops gap in `stop_trading.sh`: PID-file-only
+shutdown can miss a still-running process when its PID file is absent/stale.
+
+The stop script now safely reconciles actual processes after PID-file shutdown,
+matching repo cwd + expected command before killing any orphan. It also fails
+closed on unexpected port occupants and waits for confirmed process exit.
+
+Isolated test: orphan backend listener + worker + frontend listener all stopped
+on temporary ports without touching the live runtime. Full backend suite:
+241 passed.

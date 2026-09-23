@@ -1478,3 +1478,45 @@ SL and TP are never modified.
 Validation: 8 targeted tests, 241 full backend tests, Ruff clean, Vite build
 clean. A real-data /tmp dry-run starts at 0 resolved observations and performs no
 production-runtime write.
+
+
+## 2026-09-23 — PR #96 deployed + runtime stop hardening
+
+PR #96 `Add prospective Trailing Manager research` is **MERGED + DEPLOYED**
+at `bf6f00a`.
+
+Deployment proof:
+
+- Trading-New book flat before deployment;
+- native drain ON before merge/restart;
+- 24 scanners / 6 PAPER-eligible collectors preserved;
+- READY 5/5 after deployment;
+- LIVE OFF;
+- 0 PAPER open, 0 Trading-New bridge position, 0 pending open/close command;
+- Trailing SHADOW state initialized prospectively at
+  2026-09-23T17:33:37+03:00;
+- initial trailing evidence = 0 resolved observations, proving no historical
+  backfill;
+- Research dashboard exposes the TP-dynamic trailing progress card;
+- drain released OFF after verification; auto-DEMO armed again.
+
+During the restart verification an operational defect was found: backend port
+8020 was still served by an older Trading uvicorn process because the previous
+backend PID file was missing. Frontend and worker had restarted, but the stale
+backend continued serving the old API until explicitly replaced. No trade or
+command was open and the drain remained ON throughout the correction.
+
+A follow-up hardens `ops/stop_trading.sh`:
+
+- PID files remain the first stop mechanism;
+- missing/stale PID files now trigger a safe process fallback;
+- orphan backend/frontend listeners are killed only when both process cwd and
+  expected command match this Trading repo;
+- orphan worker cleanup additionally requires a real Python executable, matching
+  backend cwd and `-m app.shadow_worker`;
+- unexpected listeners are refused rather than killed;
+- backend/frontend ports honor the same configurable env vars as start script;
+- stop waits for process exit and fails closed if a process refuses to stop.
+
+Validation: isolated orphan backend/worker/frontend cleanup PASS on temporary
+ports, `bash -n` clean, executable mode preserved, and 241 backend tests pass.

@@ -1332,3 +1332,28 @@ Trailing Manager research now supports an incremental
 Replay improved train only and produced no incremental validation/holdout
 benefit. Therefore the mode is not used by the live SHADOW collector and does
 not change PAPER/broker behavior.
+
+## 2026-09-23 — PR #95–#98 consolidated status
+
+The first end-to-end DEMO trade has moved Trading-New from transport validation
+to evidence accumulation.
+
+Delivered:
+
+- exact broker-history PnL reconciliation;
+- executable-unqualified probe review queue + dedicated replay workflow;
+- hot runtime deployment drain;
+- guarded manual DEMO preparation from executable signals;
+- PAPER -> broker fill risk/RR fidelity;
+- prospective TP-dynamic Trailing SHADOW;
+- orphan-process-safe runtime stop script.
+
+Rejected and therefore inactive:
+
+- XAU failed-auction x USD-pressure filter;
+- XAU post-shock x USD-pressure filter;
+- standalone dynamic SL trailing;
+- SL protection after TP extension (no incremental validation/holdout benefit).
+
+Current auto-DEMO execution remains unchanged: six admitted SHADOW collectors,
+base risk 1%, existing spread/lot/cap guards, LIVE OFF.

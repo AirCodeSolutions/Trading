@@ -1421,3 +1421,60 @@ A new exit-management research track is now scheduled. Safety contract:
 The intended manager will study market-structure / ATR / favorable-excursion
 state to move SL and TP with the market, rather than using a fixed-distance
 trailing stop.
+
+
+## 2026-09-23 — P0–P3 completed + Trailing Manager v0 candidate
+
+The four post-first-trade development steps are now closed at their current
+evidence stage:
+
+- P0 broker reconciliation: MERGED + DEPLOYED through PR #95; first automatic
+  Trading-New ticket reconciles exactly from MT4 history at +2.64 EUR realized;
+- P1 executable-probe review workflow: MERGED + DEPLOYED through PR #95;
+  SUPPORTS_REVIEW remains research-only and now has an explicit dedicated replay
+  workflow;
+- P2 XAU failed-auction x USD-pressure confirmation: REJECTED because validation
+  and holdout are negative;
+- P3 XAU post-shock x USD-pressure confirmation: REJECTED on train, validation
+  and holdout; no frequency collector was added.
+
+PR #93 has been closed as superseded by merged integration PR #95.
+
+### Trailing Manager v0
+
+The first exit-management family is deliberately limited to
+`BTCUSD:structural_displacement_sequence`.
+
+Paired replay keeps exactly the same accepted entries, sizing, execution costs,
+macro exclusions and static overlap decisions. Only exit management changes.
+
+SL-only causal trailing (3-bar structure + ATR buffer + break-even protection):
+
+- train: +0.0122R static -> +0.0067R trailing;
+- validation: +0.1384R -> +0.0925R;
+- holdout: +0.2015R -> +0.1199R;
+- decision: REJECTED despite lower drawdown in train/holdout.
+
+TP-only dynamic extension, with initial SL unchanged:
+
+- trigger uses closed bars only, favorable progress + directional close sequence;
+- initial 1.0R target may extend to 1.5R;
+- train: +0.0122R -> +0.0424R;
+- validation: +0.1384R -> +0.1717R;
+- holdout: +0.2015R -> +0.2571R;
+- drawdown is unchanged in all three windows;
+- 10 historical trades triggered an adjustment, 5 improved and 0 worsened;
+- no initial-risk increase occurred.
+
+This is promising but still too small for broker TP modification. The next stage
+is prospective SHADOW evidence only.
+
+The candidate adds an isolated trailing-shadow ledger and state. The first live
+cycle establishes its own prospective start time; historical PAPER trades are
+never backfilled. Completed future BTC structural-displacement PAPER trades are
+replayed only after their complete original horizon is available. PAPER, bridge,
+SL and TP are never modified.
+
+Validation: 8 targeted tests, 241 full backend tests, Ruff clean, Vite build
+clean. A real-data /tmp dry-run starts at 0 resolved observations and performs no
+production-runtime write.

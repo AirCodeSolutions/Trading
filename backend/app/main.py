@@ -44,6 +44,7 @@ from app.domain.session import SessionPreflight
 from app.domain.shadow import ShadowCollectionResult, ShadowOpportunityDiagnostic
 from app.domain.shadow_paper import ShadowPaperSummary
 from app.domain.trading_intelligence import TradingIntelligenceOverview
+from app.domain.trailing_shadow import TrailingShadowSummary
 from app.services.admission import (
     MIN_HOLDOUT_TRADES,
     MIN_VALIDATION_TRADES,
@@ -107,6 +108,7 @@ from app.services.trading_intelligence import (
     build_trading_intelligence,
     load_trading_intelligence,
 )
+from app.services.trailing_shadow import load_trailing_shadow_summary
 
 app = FastAPI(title=settings.app_name, version="0.4.0")
 market_store = MarketStore()
@@ -458,6 +460,14 @@ def research_economic_feasibility() -> EconomicFeasibilityReport:
             detail="economic feasibility snapshot is not available",
         )
     return report
+
+
+@app.get(
+    f"{settings.api_prefix}/research/trailing-shadow",
+    response_model=TrailingShadowSummary,
+)
+def research_trailing_shadow() -> TrailingShadowSummary:
+    return load_trailing_shadow_summary(settings.shadow_ledger_dir)
 
 
 @app.post(

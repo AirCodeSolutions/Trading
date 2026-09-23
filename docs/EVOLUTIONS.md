@@ -1058,3 +1058,22 @@ Deux prototypes research-only supplementaires ont ete rejetes sans code runtime 
 modele causal continu sur les features OHLC existantes, puis extension avec
 impulsion de tick-volume MT4. Aucun ne generalise sur validation + holdout ;
 aucune dependance ML ni regle d execution n a ete ajoutee.
+
+
+## 2026-09-23 — DEMO readiness semantics + Command Center no-trade diagnosis
+
+Backend:
+
+- DemoExecutionGuard now exposes transport_armed, auto_collection_armed, waiting_for_qualified_trade and qualified_collectors;
+- ready keeps its strict meaning: a broker DEMO order is eligible now;
+- armed transport is no longer misreported as locked merely because the portfolio is waiting for a qualified PAPER signal.
+
+Frontend:
+
+- Command Center reports qualified / total executable opportunities over 24 h;
+- new « Pourquoi aucun trade automatique ? » panel explains the current bottleneck;
+- AUTO-DEMO state displays ARMÉ · ATTENTE SIGNAL while waiting;
+- preflight DEMO displays ARMED instead of the misleading LOCKED;
+- direct navigation to the guarded manual DEMO form is available without submitting an order automatically.
+
+Validation in the isolated worktree: 26 targeted backend tests passed, Ruff clean, frontend TypeScript/Vite build passed.

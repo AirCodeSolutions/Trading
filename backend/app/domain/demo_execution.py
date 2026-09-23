@@ -30,6 +30,10 @@ class DemoCloseCommand(BaseModel):
 class DemoExecutionGuard(BaseModel):
     at: datetime
     ready: bool
+    transport_armed: bool = False
+    auto_collection_armed: bool = False
+    waiting_for_qualified_trade: bool = False
+    qualified_collectors: int = Field(default=0, ge=0)
     execution_mode: str
     bridge_enabled: bool
     live_trading_enabled: bool

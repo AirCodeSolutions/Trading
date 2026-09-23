@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from app.core.config import ExecutionMode, settings
+from app.domain.admission import AdmissionState
 from app.domain.approval import ExecutionProposal, ProposalStatus
 from app.domain.macro import MacroGateStatus
 from app.domain.opportunity import OpportunityMechanism
@@ -25,6 +26,7 @@ from app.domain.shadow_paper import (
 )
 from app.domain.trading import Side
 from app.services.demo_execution import (
+    build_demo_guard,
     read_pending_command,
     submit_selected_demo_order,
 )
@@ -141,6 +143,63 @@ def clear_macro() -> MacroGateStatus:
         active_events=[],
         reason="clear",
     )
+
+
+def test_demo_guard_distinguishes_armed_transport_from_waiting_portfolio(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "execution_mode", ExecutionMode.DEMO)
+    monkeypatch.setattr(settings, "demo_execution_bridge_enabled", True)
+    monkeypatch.setattr(settings, "demo_collection_enabled", True)
+    monkeypatch.setattr(settings, "live_trading_enabled", False)
+    current = overview()
+    current.portfolio.action = PortfolioAction.NO_TRADE
+    current.portfolio.selected_strategy_id = None
+    current.paper_strategies[0].historical_state = AdmissionState.SHADOW
+    current.paper_strategies[0].paper_entry_allowed = True
+    current.paper_strategies[0].summary.open_trade = None
+
+    guard = build_demo_guard(
+        current,
+        clear_macro(),
+        NOW,
+        bridge_positions=[],
+    )
+
+    assert guard.ready is False
+    assert guard.transport_armed is True
+    assert guard.auto_collection_armed is True
+    assert guard.waiting_for_qualified_trade is True
+    assert guard.qualified_collectors == 1
+    assert "portfolio is not demo eligible" in guard.reasons
+
+
+def test_demo_guard_reports_collection_disarmed_separately(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "execution_mode", ExecutionMode.DEMO)
+    monkeypatch.setattr(settings, "demo_execution_bridge_enabled", True)
+    monkeypatch.setattr(settings, "demo_collection_enabled", False)
+    monkeypatch.setattr(settings, "live_trading_enabled", False)
+    current = overview()
+    current.portfolio.action = PortfolioAction.NO_TRADE
+    current.portfolio.selected_strategy_id = None
+    current.paper_strategies[0].historical_state = AdmissionState.SHADOW
+    current.paper_strategies[0].paper_entry_allowed = True
+    current.paper_strategies[0].summary.open_trade = None
+
+    guard = build_demo_guard(
+        current,
+        clear_macro(),
+        NOW,
+        bridge_positions=[],
+    )
+
+    assert guard.ready is False
+    assert guard.transport_armed is True
+    assert guard.auto_collection_armed is False
+    assert guard.waiting_for_qualified_trade is False
+    assert guard.qualified_collectors == 1
 
 
 def test_demo_submit_refuses_while_execution_mode_is_paper(

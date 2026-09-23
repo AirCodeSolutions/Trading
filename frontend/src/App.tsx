@@ -193,6 +193,10 @@ type DemoExecutionStatus = {
   guard: {
     at: string;
     ready: boolean;
+    transport_armed: boolean;
+    auto_collection_armed: boolean;
+    waiting_for_qualified_trade: boolean;
+    qualified_collectors: number;
     execution_mode: string;
     bridge_enabled: boolean;
     live_trading_enabled: boolean;
@@ -898,24 +902,34 @@ export default function App() {
   const prospectiveTarget = config?.prospective_min_trades ?? 20;
   const prospectiveProgress = bestProspective?.summary.closed_trades ?? 0;
   const demoTransportArmed =
-    config?.execution_mode === "demo" &&
-    config.demo_collection_enabled &&
-    config.demo_execution_bridge_enabled;
+    demo?.guard.transport_armed ??
+    (
+      config?.execution_mode === "demo" &&
+      config.demo_execution_bridge_enabled &&
+      !config.live_trading_enabled
+    );
+  const autoDemoArmed =
+    demo?.guard.auto_collection_armed ??
+    (demoTransportArmed && Boolean(config?.demo_collection_enabled));
   const demoBridgeLabel = demo?.guard.ready
-    ? "READY"
+    ? "ORDER READY"
     : demoTransportArmed
-      ? "ARMED"
+      ? "TRANSPORT ARMED"
       : "DISARMED";
   const demoRoadmapTitle = demo?.guard.ready
     ? "DEMO ORDER READY"
-    : demoTransportArmed
+    : autoDemoArmed
       ? "DEMO COLLECTION ARMÉE"
-      : "PAPER / RESEARCH ONLY";
+      : demoTransportArmed
+        ? "TRANSPORT DEMO ARMÉ"
+        : "PAPER / RESEARCH ONLY";
   const automaticTradingLabel = config?.live_trading_enabled
     ? "LIVE ACTIF"
-    : demoTransportArmed
-      ? "DEMO AUTO ARMÉ"
-      : "OFF · PAPER ONLY";
+    : autoDemoArmed
+      ? "AUTO-DEMO ARMÉ"
+      : demoTransportArmed
+        ? "DEMO MANUEL DISPONIBLE"
+        : "OFF · PAPER ONLY";
   const openPaperRows =
     overview?.paper_strategies.filter((row) => row.summary.open_trade != null) ?? [];
   const eligibleOpenPaperRows = openPaperRows.filter((row) => row.paper_entry_allowed);
@@ -957,14 +971,41 @@ export default function App() {
   const executableOpportunities = opportunities.filter(
     (item) => item.state === "signal_executable"
   ).length;
+  const qualifiedStrategyIds = new Set(
+    demoCollectionCandidates.map((row) => row.strategy_id)
+  );
+  const executableOpportunities24h = opportunityFunnel?.executable_signal_rows ?? 0;
+  const qualifiedExecutableOpportunities24h =
+    opportunityFunnel?.strategies.reduce(
+      (total, row) =>
+        total + (qualifiedStrategyIds.has(row.strategy_id) ? row.executable_signal_rows : 0),
+      0
+    ) ?? 0;
+  const unqualifiedExecutableOpportunities24h = Math.max(
+    0,
+    executableOpportunities24h - qualifiedExecutableOpportunities24h
+  );
+  const qualifiedCollectors =
+    demo?.guard.qualified_collectors ?? demoCollectionCandidates.length;
+  const waitingForQualifiedTrade =
+    demo?.guard.waiting_for_qualified_trade ??
+    (
+      autoDemoArmed &&
+      overview?.portfolio.action === "no_trade" &&
+      qualifiedCollectors > 0
+    );
   const tradingNewPositions = demo?.bridge_positions.length ?? 0;
   const paperPnlToday = dailyReport?.paper_closed_pnl_eur_today ?? 0;
   const systemReady = preflight?.status === "ready";
   const autoDemoState = tradingNewPositions
     ? "POSITION OUVERTE"
-    : demoTransportArmed
-      ? "ARMÉ · EN ATTENTE"
-      : "DÉSARMÉ";
+    : demo?.guard.ready
+      ? "ORDRE QUALIFIÉ PRÊT"
+      : waitingForQualifiedTrade
+        ? "ARMÉ · ATTENTE SIGNAL"
+        : autoDemoArmed
+          ? "ARMÉ · EN ATTENTE"
+          : "DÉSARMÉ";
 
   const refreshExecutionState = async () => {
     const [overviewResponse, demoResponse, preflightResponse] = await Promise.all([
@@ -1132,7 +1173,7 @@ export default function App() {
           </article>
           <article>
             <span>Auto DEMO</span>
-            <strong className={demoTransportArmed ? "positive-text" : ""}>{autoDemoState}</strong>
+            <strong className={autoDemoArmed ? "positive-text" : ""}>{autoDemoState}</strong>
             <small>LIVE {config?.live_trading_enabled ? "ON" : "OFF"}</small>
           </article>
           <article>
@@ -1148,9 +1189,11 @@ export default function App() {
             <small>{dailyReport ? `${dailyReport.paper_closed_r_today >= 0 ? "+" : ""}${dailyReport.paper_closed_r_today.toFixed(2)} R` : "—"}</small>
           </article>
           <article>
-            <span>Opportunités exécutables</span>
-            <strong>{executableOpportunities}</strong>
-            <small>{opportunities.length} scanners</small>
+            <span>Opportunités exécutables · 24 h</span>
+            <strong>{qualifiedExecutableOpportunities24h}/{executableOpportunities24h}</strong>
+            <small>
+              qualifiées / détectées · {executableOpportunities} exécutable(s) maintenant
+            </small>
           </article>
           <article>
             <span>Macro</span>
@@ -1164,6 +1207,42 @@ export default function App() {
             <strong>{prospectiveProgress}/{prospectiveTarget}</strong>
             <small>{paperCandidates.length} stratégie(s) PAPER-éligible(s)</small>
           </article>
+        </div>
+      </section>
+
+      <section className="no-trade-insight" hidden={activeView !== "overview"}>
+        <div>
+          <p className="eyebrow">POURQUOI AUCUN TRADE AUTOMATIQUE ?</p>
+          <h2>
+            {demo?.guard.ready
+              ? "Un ordre qualifié est prêt"
+              : waitingForQualifiedTrade
+                ? "Le moteur est armé, il attend un signal qualifié"
+                : autoDemoArmed
+                  ? "Auto-DEMO armé, aucun ordre sélectionné"
+                  : "Auto-DEMO désarmé"}
+          </h2>
+          <p>
+            {waitingForQualifiedTrade
+              ? `Les ${qualifiedCollectors} collecteurs qualifiés peuvent ouvrir du PAPER et être mirrorés en DEMO. Sur les dernières 24 h, ${executableOpportunities24h} signal(s) ont été techniquement exécutables, dont ${qualifiedExecutableOpportunities24h} provenant de ces collecteurs.`
+              : demo?.guard.reasons.length
+                ? demo.guard.reasons.join(" · ")
+                : "Aucun blocage opérationnel supplémentaire n’est signalé."}
+          </p>
+          {unqualifiedExecutableOpportunities24h > 0 ? (
+            <small>
+              {unqualifiedExecutableOpportunities24h} signal(s) exécutable(s) ont été volontairement
+              laissés hors broker car leur stratégie n’a pas la preuve requise.
+            </small>
+          ) : null}
+        </div>
+        <div className="no-trade-actions">
+          <span className={autoDemoArmed ? "command-status command-status-ready" : "command-status"}>
+            {autoDemoArmed ? "AUTO-DEMO ARMÉ" : "AUTO-DEMO OFF"}
+          </span>
+          <button type="button" onClick={() => setActiveView("trading")}>
+            OUVRIR LE TRADING DEMO
+          </button>
         </div>
       </section>
 
@@ -1231,7 +1310,9 @@ export default function App() {
           </div>
           <div>
             <span>DEMO</span>
-            <strong>{preflight ? (preflight.demo_execution_ready ? "READY" : "LOCKED") : "—"}</strong>
+            <strong>
+              {demo?.guard.ready ? "ORDER READY" : autoDemoArmed ? "ARMED" : "OFF"}
+            </strong>
           </div>
         </div>
 
@@ -1338,9 +1419,11 @@ export default function App() {
         </div>
 
         <p className="execution-explainer">
-          {demoTransportArmed
-            ? "Le transport DEMO est armé. Un ordre ne part que si un PAPER sélectionné devient DEMO_COLLECTION / DEMO_ELIGIBLE et que tous les guards restent verts."
-            : "Aucun ordre MT4 Trading-New ne peut partir actuellement : le runtime est en PAPER et le transport DEMO est désarmé. Les scanners et PAPER continuent à collecter les preuves."}
+          {autoDemoArmed
+            ? "L’auto-DEMO est armé. Un ordre automatique ne part que si un PAPER qualifié devient DEMO_COLLECTION / DEMO_ELIGIBLE et que tous les guards restent verts."
+            : demoTransportArmed
+              ? "Le transport DEMO est disponible pour le manuel, mais l’auto-collection est désarmée. LIVE reste verrouillé."
+              : "Aucun ordre MT4 Trading-New ne peut partir actuellement : le transport DEMO est désarmé. Les scanners et PAPER continuent à collecter les preuves."}
         </p>
 
         <div className="gate-grid">
@@ -1417,9 +1500,9 @@ export default function App() {
             </div>
           </div>
           <div className="execution-step">
-            <span className={demoTransportArmed ? "step-dot step-ok" : "step-dot"} />
+            <span className={autoDemoArmed ? "step-dot step-ok" : "step-dot"} />
             <div>
-              <strong>4 · Transport DEMO armé</strong>
+              <strong>4 · Auto-collection DEMO armée</strong>
               <p>Mode DEMO + collection ON + bridge ON, avec LIVE toujours OFF.</p>
             </div>
           </div>
@@ -1984,13 +2067,15 @@ export default function App() {
           </div>
           <div className="gate-card">
             <span className="label">Auto DEMO collection</span>
-            <strong>{demoTransportArmed ? "ARMED" : "DISARMED"}</strong>
+            <strong>{autoDemoArmed ? "ARMED" : "DISARMED"}</strong>
             <p>
               {demo?.collection_state?.paper_trade_id
                 ? `${demo.collection_state.strategy_id ?? "—"} · ticket ${demo.collection_state.ticket ?? "en attente"}`
-                : demoTransportArmed
+                : autoDemoArmed
                   ? demo?.collection_state?.last_error || "Armée, en attente d’un PAPER candidat exécutable."
-                  : "Exécution broker désarmée ; SHADOW et PAPER continuent en observation."}
+                  : demoTransportArmed
+                    ? "Transport DEMO disponible ; auto-collection désarmée."
+                    : "Exécution broker désarmée ; SHADOW et PAPER continuent en observation."}
             </p>
           </div>
           <div className="gate-card">

@@ -4,6 +4,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from app.core.config import ExecutionMode, settings
+from app.domain.admission import AdmissionState
 from app.domain.approval import ExecutionProposal, ProposalStatus
 from app.domain.demo_execution import (
     DemoBridgeCommandStatus,
@@ -40,6 +41,22 @@ def build_demo_guard(
     broker_positions = overview.broker.observed_positions if overview.broker else 0
     bridge_position_count = len(bridge_positions or [])
     remaining_daily_loss = overview.risk.remaining_daily_loss_budget_eur
+    qualified_collectors = sum(
+        row.historical_state == AdmissionState.SHADOW and row.paper_entry_allowed
+        for row in overview.paper_strategies
+    )
+    transport_armed = (
+        settings.execution_mode == ExecutionMode.DEMO
+        and settings.demo_execution_bridge_enabled
+        and not settings.live_trading_enabled
+        and broker_is_demo
+    )
+    auto_collection_armed = transport_armed and settings.demo_collection_enabled
+    waiting_for_qualified_trade = (
+        auto_collection_armed
+        and overview.portfolio.action == PortfolioAction.NO_TRADE
+        and qualified_collectors > 0
+    )
 
     if settings.execution_mode != ExecutionMode.DEMO:
         reasons.append("execution mode is not demo")
@@ -71,6 +88,10 @@ def build_demo_guard(
     return DemoExecutionGuard(
         at=now,
         ready=not reasons,
+        transport_armed=transport_armed,
+        auto_collection_armed=auto_collection_armed,
+        waiting_for_qualified_trade=waiting_for_qualified_trade,
+        qualified_collectors=qualified_collectors,
         execution_mode=settings.execution_mode.value,
         bridge_enabled=settings.demo_execution_bridge_enabled,
         live_trading_enabled=settings.live_trading_enabled,

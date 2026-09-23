@@ -1417,3 +1417,12 @@ New aggregate metrics separate:
 - signals that appear without a persisted precursor.
 
 The frontend first_seen card reports the conversion funnel and average causal lead time. No execution behavior changes.
+
+
+## 2026-09-23 — deployed precursor conversion funnel
+
+PR #102 is active. Future market opportunities born after prospective precursor startup will now be attributed to UNSEEN, PRECURSOR_ONLY, SIGNAL_BLOCKED or SIGNAL_EXECUTABLE.
+
+The Research view reports precursor-to-signal conversion and lead time. This is observability only and leaves all execution/admission/risk rules unchanged.
+
+Post-deploy: READY 5/5, DRAIN OFF, LIVE OFF, 6 qualified collectors, 0 PAPER/bridge/pending command.

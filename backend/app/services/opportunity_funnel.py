@@ -218,6 +218,16 @@ def build_opportunity_funnel(
         if research_candidates
         else None
     )
+    review_ready = sorted(
+        (
+            row
+            for row in research_candidates
+            if row.unqualified_probe_qualification is not None
+            and row.unqualified_probe_qualification.state
+            == ResearchProbeQualificationState.SUPPORTS_REVIEW
+        ),
+        key=lambda row: row.strategy_id,
+    )
 
     all_results = _resolved_results(probes)
     all_unqualified_results = _resolved_trade_results(unqualified_probes)
@@ -261,12 +271,17 @@ def build_opportunity_funnel(
             if all_unqualified_results
             else 0.0
         ),
-        unqualified_probe_review_ready_strategies=sum(
-            row.unqualified_probe_qualification is not None
-            and row.unqualified_probe_qualification.state
-            == ResearchProbeQualificationState.SUPPORTS_REVIEW
-            for row in strategies
-        ),
+        unqualified_probe_review_ready_strategies=len(review_ready),
+        unqualified_probe_review_queue=[
+            ResearchProbeCandidateProgress(
+                strategy_id=row.strategy_id,
+                symbol=row.symbol,
+                mechanism=row.mechanism,
+                qualification=row.unqualified_probe_qualification,
+            )
+            for row in review_ready
+            if row.unqualified_probe_qualification is not None
+        ],
         most_observed_unqualified_candidate=(
             ResearchProbeCandidateProgress(
                 strategy_id=most_observed.strategy_id,

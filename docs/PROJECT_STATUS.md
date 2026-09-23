@@ -1361,3 +1361,15 @@ First automatic broker DEMO cycle is now fully observed:
 P0 follow-up adds ticket-driven MT4-history reconciliation so broker realized PnL
 is reported exactly when every closed Trading-New ticket is present, and remains
 UNKNOWN if any closed ticket is missing.
+## 2026-09-23 — P1 executable-probe review queue candidate
+
+The prospective executable-unqualified probe layer now exposes an explicit
+research review queue.
+
+A strategy enters this queue only when its existing probe qualification reaches
+`SUPPORTS_REVIEW` (minimum 20 resolved probes + the unchanged prospective
+expectancy/PF/DD contract). The queue exposes strategy id, symbol, mechanism,
+sample size, expectancy, profit factor and drawdown.
+
+This remains research-only: queue membership does not modify admission files,
+PAPER authority, DEMO collection, risk, sizing or LIVE.

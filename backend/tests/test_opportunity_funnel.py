@@ -279,6 +279,12 @@ def test_funnel_marks_positive_probe_evidence_for_review(tmp_path: Path) -> None
     assert qualification.expectancy_r == 1.5
     assert qualification.profit_factor == 99.0
     assert funnel.unqualified_probe_review_ready_strategies == 1
+    assert len(funnel.unqualified_probe_review_queue) == 1
+    queued = funnel.unqualified_probe_review_queue[0]
+    assert queued.strategy_id == "BTCUSD:directional_transition"
+    assert queued.symbol == "BTCUSD"
+    assert queued.mechanism == OpportunityMechanism.DIRECTIONAL_TRANSITION
+    assert queued.qualification.state == ResearchProbeQualificationState.SUPPORTS_REVIEW
 
 
 def test_funnel_marks_negative_probe_evidence_failed(tmp_path: Path) -> None:

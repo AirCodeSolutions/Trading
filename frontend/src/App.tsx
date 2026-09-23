@@ -603,6 +603,8 @@ type DailyTradingReport = {
   bridge_open_positions: number;
   bridge_unrealized_pnl_eur: number;
   broker_realized_pnl_eur_today: number | null;
+  broker_closed_trades_today: number;
+  broker_history_complete: boolean;
   market_opportunities_24h: number;
   captured_opportunities_24h: number;
   missed_opportunities_24h: number;
@@ -1969,9 +1971,18 @@ export default function App() {
             <strong>
               {dailyReport?.broker_realized_pnl_eur_today == null
                 ? "UNKNOWN"
-                : dailyReport.broker_realized_pnl_eur_today.toFixed(2) + " €"}
+                : (dailyReport.broker_realized_pnl_eur_today >= 0 ? "+" : "") +
+                  dailyReport.broker_realized_pnl_eur_today.toFixed(2) +
+                  " €"}
             </strong>
-            <p>Le bridge actuel n’exporte pas encore le PnL réalisé des tickets fermés.</p>
+            <p>
+              {dailyReport
+                ? dailyReport.broker_history_complete
+                  ? dailyReport.broker_closed_trades_today +
+                    " ticket(s) Trading-New clôturé(s) rapproché(s) avec l’historique MT4."
+                  : "Historique incomplet : au moins un ticket Trading-New clôturé manque côté MT4."
+                : "Rapprochement broker indisponible."}
+            </p>
           </div>
         </div>
 

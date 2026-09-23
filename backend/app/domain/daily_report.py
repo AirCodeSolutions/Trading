@@ -42,6 +42,8 @@ class DailyTradingReport(BaseModel):
     bridge_open_positions: int = Field(ge=0)
     bridge_unrealized_pnl_eur: float
     broker_realized_pnl_eur_today: float | None = None
+    broker_closed_trades_today: int = Field(default=0, ge=0)
+    broker_history_complete: bool = True
     market_opportunities_24h: int = Field(ge=0)
     captured_opportunities_24h: int = Field(ge=0)
     missed_opportunities_24h: int = Field(ge=0)

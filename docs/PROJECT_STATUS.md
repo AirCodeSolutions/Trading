@@ -1671,3 +1671,21 @@ Current runtime after drain release:
 - 0 pending Trading-New command.
 
 PR tracking cleanup: #93 is confirmed CLOSED as superseded by merged #95. PRs #96, #97, #98, #99 and #100 are all MERGED.
+
+
+## 2026-09-23 — Precursor Conversion Funnel candidate
+
+The prospective first_seen collector now has a read-only attribution layer that identifies where future market opportunities are lost.
+
+For opportunities born after precursor collection startup, detection stages are:
+
+- UNSEEN: no aligned causal precursor was recorded before birth;
+- PRECURSOR_ONLY: an aligned precursor was seen, but no strategy signal followed in the existing capture window;
+- SIGNAL_BLOCKED: a strategy signal existed but was economically/technically blocked;
+- SIGNAL_EXECUTABLE: an executable strategy signal existed.
+
+Trading Intelligence also exposes precursor-to-signal conversion rate, signal-without-precursor count and the existing average lead time. The Research dashboard shows the funnel directly.
+
+This is attribution only. It changes no signal detector, admission, PAPER/DEMO authority, risk, sizing or LIVE state.
+
+Validation: 15 targeted tests, 245 full backend tests, Ruff clean and frontend Vite build clean.

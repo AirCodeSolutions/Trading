@@ -8,6 +8,7 @@ from app.domain.trading import Side
 from app.domain.trading_intelligence import (
     OpportunityCausalContext,
     OpportunityCausalPattern,
+    OpportunityDetectionStage,
 )
 from app.services.causal_precursor import (
     advance_causal_precursors_once,
@@ -160,3 +161,16 @@ def test_market_opportunity_uses_earliest_aligned_prebirth_precursor() -> None:
     assert first.precursor_pattern == OpportunityCausalPattern.STRUCTURAL_EXTREME_STRETCH
     assert first.precursor_lead_minutes == 10.0
     assert first.precursor_observations == 2
+    assert first.detection_stage == OpportunityDetectionStage.PRECURSOR_ONLY
+
+    unseen = _market_opportunity_episodes(
+        symbol="EURUSD",
+        bars=bars,
+        signals=[],
+        precursors=[],
+        window_start=START,
+        window_end=START + timedelta(hours=4),
+        threshold_atr=1.5,
+        horizon_bars=12,
+    )
+    assert unseen[0].detection_stage == OpportunityDetectionStage.UNSEEN

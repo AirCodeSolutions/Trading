@@ -18,6 +18,7 @@ from app.domain.trading_intelligence import (
     OpportunityCausalContext,
     OpportunityCausalPattern,
     OpportunityCausalPatternSummary,
+    OpportunityDetectionStage,
     TradeIntelligence,
     TradingIntelligenceOverview,
 )
@@ -163,6 +164,32 @@ def build_trading_intelligence(
         for row in precursor_seen
         if row.precursor_lead_minutes is not None
     ]
+    precursor_only = sum(
+        row.detection_stage == OpportunityDetectionStage.PRECURSOR_ONLY
+        for row in precursor_eligible
+    )
+    precursor_unseen = sum(
+        row.detection_stage == OpportunityDetectionStage.UNSEEN
+        for row in precursor_eligible
+    )
+    precursor_signal_blocked = sum(
+        row.detection_stage == OpportunityDetectionStage.SIGNAL_BLOCKED
+        and row.precursor_first_seen_at is not None
+        for row in precursor_eligible
+    )
+    precursor_signal_executable = sum(
+        row.detection_stage == OpportunityDetectionStage.SIGNAL_EXECUTABLE
+        and row.precursor_first_seen_at is not None
+        for row in precursor_eligible
+    )
+    signal_without_precursor = sum(
+        row.capture_state != OpportunityCaptureState.MISSED
+        and row.precursor_first_seen_at is None
+        for row in precursor_eligible
+    )
+    converted_from_precursor = (
+        precursor_signal_blocked + precursor_signal_executable
+    )
 
     assets = _asset_summaries(
         symbols=sorted(discovered_symbols),
@@ -183,6 +210,16 @@ def build_trading_intelligence(
         precursor_seen_rate=(
             len(precursor_seen) / len(precursor_eligible)
             if precursor_eligible
+            else 0.0
+        ),
+        precursor_only_opportunities=precursor_only,
+        precursor_unseen_opportunities=precursor_unseen,
+        precursor_signal_blocked_opportunities=precursor_signal_blocked,
+        precursor_signal_executable_opportunities=precursor_signal_executable,
+        signal_without_precursor_opportunities=signal_without_precursor,
+        precursor_to_signal_conversion_rate=(
+            converted_from_precursor / len(precursor_seen)
+            if precursor_seen
             else 0.0
         ),
         average_precursor_lead_minutes=(
@@ -728,6 +765,15 @@ def _market_opportunity_episodes(
             if aligned_precursors
             else None
         )
+        if capture_state == OpportunityCaptureState.EXECUTABLE:
+            detection_stage = OpportunityDetectionStage.SIGNAL_EXECUTABLE
+        elif capture_state == OpportunityCaptureState.BLOCKED:
+            detection_stage = OpportunityDetectionStage.SIGNAL_BLOCKED
+        elif earliest_precursor is not None:
+            detection_stage = OpportunityDetectionStage.PRECURSOR_ONLY
+        else:
+            detection_stage = OpportunityDetectionStage.UNSEEN
+
         causal_context = _classify_causal_context(
             bars=bars,
             atr=atr,
@@ -745,6 +791,7 @@ def _market_opportunity_episodes(
                 atr_m5=current_atr,
                 move_atr=move_atr,
                 capture_state=capture_state,
+                detection_stage=detection_stage,
                 matching_strategies=strategies,
                 precursor_first_seen_at=(
                     earliest_precursor.first_seen_at

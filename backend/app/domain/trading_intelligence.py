@@ -13,6 +13,13 @@ class OpportunityCaptureState(StrEnum):
     MISSED = "missed"
 
 
+class OpportunityDetectionStage(StrEnum):
+    UNSEEN = "unseen"
+    PRECURSOR_ONLY = "precursor_only"
+    SIGNAL_BLOCKED = "signal_blocked"
+    SIGNAL_EXECUTABLE = "signal_executable"
+
+
 class OpportunityCausalPattern(StrEnum):
     AUCTION_FAILURE_RECLAIM = "auction_failure_reclaim"
     COMPRESSION_BREAKOUT = "compression_breakout"
@@ -85,6 +92,7 @@ class MarketOpportunityEpisode(BaseModel):
     atr_m5: float = Field(gt=0)
     move_atr: float = Field(ge=0)
     capture_state: OpportunityCaptureState
+    detection_stage: OpportunityDetectionStage = OpportunityDetectionStage.UNSEEN
     matching_strategies: list[str] = Field(default_factory=list)
     precursor_first_seen_at: datetime | None = None
     precursor_pattern: OpportunityCausalPattern | None = None
@@ -122,6 +130,12 @@ class TradingIntelligenceOverview(BaseModel):
     precursor_eligible_opportunities: int = Field(default=0, ge=0)
     precursor_seen_opportunities: int = Field(default=0, ge=0)
     precursor_seen_rate: float = Field(default=0.0, ge=0, le=1)
+    precursor_only_opportunities: int = Field(default=0, ge=0)
+    precursor_unseen_opportunities: int = Field(default=0, ge=0)
+    precursor_signal_blocked_opportunities: int = Field(default=0, ge=0)
+    precursor_signal_executable_opportunities: int = Field(default=0, ge=0)
+    signal_without_precursor_opportunities: int = Field(default=0, ge=0)
+    precursor_to_signal_conversion_rate: float = Field(default=0.0, ge=0, le=1)
     average_precursor_lead_minutes: float = Field(default=0.0, ge=0)
     trades: list[TradeIntelligence] = Field(default_factory=list)
     opportunities: list[MarketOpportunityEpisode] = Field(default_factory=list)

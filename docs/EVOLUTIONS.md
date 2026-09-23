@@ -1253,3 +1253,21 @@ The Research dashboard renders the queue with:
 
 No automatic promotion is possible from this queue.
 Validation: 228 backend tests pass, Ruff clean and Vite build passes.
+
+
+## 2026-09-23 — P3 Review Pack + Trailing Manager roadmap
+
+A read-only `review_probe_candidate.py` workflow now turns a future
+`SUPPORTS_REVIEW` family into a reproducible dedicated replay pack:
+
+- verifies that the family is actually in the prospective review queue;
+- reruns exactly that symbol/mechanism on frozen train/validation/holdout;
+- attaches current historical admission and split performance;
+- never writes runtime admissions or changes PAPER/DEMO authority.
+
+This is the safe bridge from prospective probe evidence to a possible future
+frequency increase.
+
+Trailing Manager is added to the roadmap as a separate exit-management
+experiment. It starts replay-only and is constrained to never widen the initial
+stop or increase initial monetary risk.

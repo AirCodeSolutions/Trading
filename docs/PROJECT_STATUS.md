@@ -1373,3 +1373,51 @@ sample size, expectancy, profit factor and drawdown.
 
 This remains research-only: queue membership does not modify admission files,
 PAPER authority, DEMO collection, risk, sizing or LIVE.
+
+
+## 2026-09-23 — P2/P3 research outcome + Trailing Manager chantier
+
+Two fixed, causal inter-market hypotheses were tested with unchanged XAU signal
+geometry, frozen execution costs and the existing 400 EUR / 1% policy.
+
+### P2 — XAU failed-auction × USD pressure
+
+Filter: on the last three closed M5 bars before entry, EURUSD and GBPUSD must
+both confirm the expected USD direction (both rising for XAU BUY / USD weakness,
+both falling for XAU SELL / USD strength).
+
+Execution-aware results:
+
+- train: 16 trades, +0.1643R expectancy;
+- validation: 27 trades, -0.1290R;
+- holdout: 12 trades, -0.5059R.
+
+Decision: **REJECTED**. No runtime filter or admission change.
+
+### P3 — XAU post-shock × USD pressure
+
+Same fixed inter-market confirmation, different family after P2 rejection:
+
+- train: 3 trades, -0.0667R;
+- validation: 7 trades, -0.6000R;
+- holdout: 3 trades, -1.0000R.
+
+Decision: **REJECTED**. No new collector is activated. Useful trade frequency
+cannot be manufactured by accepting negative independent evidence.
+
+### Planned chantier — Trailing Manager
+
+A new exit-management research track is now scheduled. Safety contract:
+
+1. initial monetary risk is immutable;
+2. trailing SL may only preserve or reduce initial loss; it may never widen;
+3. target changes are evaluated causally from closed market bars only;
+4. target extension cannot justify increasing stop risk;
+5. first implementation is replay-only, then SHADOW hypothetical adjustments,
+   then PAPER; broker DEMO modification is forbidden until those stages prove
+   improved expectancy / drawdown without hidden risk;
+6. one family at a time, with static-exit control vs trailing-exit treatment.
+
+The intended manager will study market-structure / ATR / favorable-excursion
+state to move SL and TP with the market, rather than using a fixed-distance
+trailing stop.

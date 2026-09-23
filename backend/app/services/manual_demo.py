@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -11,11 +11,13 @@ from app.domain.demo_execution import DemoCloseCommand, DemoOrderCommand
 from app.domain.live_market import MarketFeedStatus
 from app.domain.macro import MacroGateStatus
 from app.domain.manual_demo import (
+    ManualDemoOpportunityRequest,
     ManualDemoSubmitRequest,
     ManualDemoTradePreview,
     ManualDemoTradeRequest,
 )
 from app.domain.portfolio import TradingOverview
+from app.domain.shadow import ShadowSignalState
 from app.domain.trading import Side
 from app.services.capital_risk import size_position
 from app.services.demo_execution import (
@@ -33,9 +35,85 @@ from app.services.execution_audit import (
 )
 from app.services.mt4_live_quotes import read_live_market_quotes
 from app.services.mt4_specs import get_mt4_symbol_spec
+from app.services.shadow_overview import load_shadow_overview
 
 MANUAL_STRATEGY_PREFIX = "manual_demo"
 MANUAL_POSITION_COMMENT_PREFIX = "TradingNew:manual_demo:"
+
+
+MAX_OPPORTUNITY_PREVIEW_AGE = timedelta(minutes=3)
+
+
+def build_manual_demo_opportunity_preview(
+    *,
+    files_dir: Path,
+    runtime_dir: Path,
+    overview: TradingOverview,
+    macro: MacroGateStatus,
+    request: ManualDemoOpportunityRequest,
+    now: datetime,
+) -> ManualDemoTradePreview:
+    symbol = request.symbol.upper()
+    diagnostic = next(
+        (
+            row
+            for row in load_shadow_overview(runtime_dir, symbols=(symbol,))
+            if row.mechanism == request.mechanism
+        ),
+        None,
+    )
+    if diagnostic is None:
+        raise ValueError("opportunity diagnostic is unavailable")
+    if diagnostic.state != ShadowSignalState.SIGNAL_EXECUTABLE:
+        raise ValueError("opportunity is not currently executable")
+    if diagnostic.side is None or diagnostic.structural_stop is None or diagnostic.target_r is None:
+        raise ValueError("opportunity execution geometry is incomplete")
+
+    age = now - diagnostic.evaluated_at
+    if age < -timedelta(seconds=5) or age > MAX_OPPORTUNITY_PREVIEW_AGE:
+        raise ValueError("opportunity diagnostic is stale")
+
+    quote = next(
+        (
+            item
+            for item in read_live_market_quotes(
+                files_dir,
+                now,
+                symbols=(symbol,),
+            )
+            if item.symbol.upper() == symbol
+        ),
+        None,
+    )
+    if quote is None:
+        raise ValueError("live broker quote is unavailable")
+    if quote.status != MarketFeedStatus.LIVE:
+        raise ValueError("broker quote is stale")
+
+    entry = quote.ask if diagnostic.side == Side.BUY else quote.bid
+    stop = diagnostic.structural_stop
+    risk_distance = entry - stop if diagnostic.side == Side.BUY else stop - entry
+    if risk_distance <= 0:
+        raise ValueError("opportunity stop is invalid at the current broker price")
+
+    target = (
+        entry + diagnostic.target_r * risk_distance
+        if diagnostic.side == Side.BUY
+        else entry - diagnostic.target_r * risk_distance
+    )
+    return build_manual_demo_preview(
+        files_dir=files_dir,
+        overview=overview,
+        macro=macro,
+        request=ManualDemoTradeRequest(
+            symbol=symbol,
+            side=diagnostic.side,
+            stop_loss=stop,
+            take_profit=target,
+            risk_fraction=settings.risk_per_trade_fraction,
+        ),
+        now=now,
+    )
 
 
 def build_manual_demo_preview(

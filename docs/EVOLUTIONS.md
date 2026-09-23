@@ -1169,3 +1169,26 @@ Backend Opportunity Funnel adds a compact research-progress candidate selected o
 Frontend Command Center adds a `Recherche · candidat le plus observé` card showing symbol, resolved/minimum sample, mechanism, research state and expectancy. The card is descriptive and does not rank strategies by profitability.
 
 Validation: 219 backend tests pass, Ruff clean, targeted frontend build passes, and a read-only production calculation returns XAUUSD post-shock continuation at 1/20 / -1R / COLLECTING.
+
+
+## 2026-09-23 — executable opportunity → guarded manual DEMO preview
+
+Backend candidate:
+
+- new `/execution/demo/manual/opportunity-preview` endpoint;
+- accepts only the retained symbol + existing mechanism;
+- requires the latest SHADOW diagnostic to still be `signal_executable`;
+- rejects stale diagnostics (>3 minutes), stale/missing broker quotes and invalid
+  current stop geometry;
+- derives TP from the live broker entry, structural stop and mechanism `target_r`;
+- reuses the existing manual DEMO sizing/risk/macro/position guards at base risk;
+- preview is read-only and does not create a command.
+
+Frontend candidate:
+
+- executable rows in Live Opportunity Board expose `PRÉPARER DEMO`;
+- the backend preview fills symbol, side, SL, TP and risk in the existing form;
+- explicit `CONFIRMER DEMO` remains mandatory.
+
+Validation: 23 targeted tests, 222 full backend tests, Ruff and Vite build pass.
+Deployment remains blocked while the current Trading-New PAPER/broker position is open.

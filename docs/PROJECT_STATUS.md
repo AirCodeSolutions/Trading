@@ -1272,3 +1272,25 @@ Current production read-only result at validation time:
 - review-ready strategies = 0.
 
 This is visibility only. It does not change admission, PAPER/DEMO authority, risk, sizing, signal detection or LIVE.
+
+
+## 2026-09-23 — first automatic broker DEMO execution observed
+
+Trading-New has now completed its first qualified automatic DEMO entry path.
+
+- strategy: `BTCUSD:structural_displacement_sequence`;
+- PAPER signal: SELL at 2026-09-23 09:30 Europe/Athens;
+- PAPER reference entry 86398.00, SL 86581.2868, TP 86214.7132;
+- broker DEMO ticket 185258524 filled at 86385.37 for 0.02 lot;
+- broker SL 86581.29 / TP 86214.71;
+- fill-based theoretical stop loss is about 3.43 EUR versus the 4 EUR base-risk budget;
+- LIVE remains OFF.
+
+The position is currently owned by the Trading-New bridge. While its PAPER/broker
+position is open, no merge, deployment or runtime restart is authorized.
+
+A separate isolated branch adds a guarded manual handoff from a currently
+`signal_executable` opportunity to the existing DEMO preview. It never submits
+an order directly: the backend recomputes target geometry from the live broker
+quote and the signal stop/target-R, then the existing explicit confirmation is
+still required.

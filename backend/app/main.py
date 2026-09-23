@@ -22,6 +22,7 @@ from app.domain.execution_audit import ExecutionQualitySummary
 from app.domain.live_market import LiveMarketQuote
 from app.domain.macro import MacroGateStatus
 from app.domain.manual_demo import (
+    ManualDemoOpportunityRequest,
     ManualDemoSubmitRequest,
     ManualDemoTradePreview,
     ManualDemoTradeRequest,
@@ -66,6 +67,7 @@ from app.services.execution_cost_history import summarize_execution_costs
 from app.services.live_market_quality import build_live_market_quality
 from app.services.macro_gate import load_macro_events, macro_gate_status
 from app.services.manual_demo import (
+    build_manual_demo_opportunity_preview,
     build_manual_demo_preview,
     submit_manual_demo_close,
     submit_manual_demo_order,
@@ -538,6 +540,34 @@ def demo_execution_status() -> DemoExecutionStatus:
             )
         }
     )
+
+
+@app.post(
+    f"{settings.api_prefix}/execution/demo/manual/opportunity-preview",
+    response_model=ManualDemoTradePreview,
+)
+def preview_manual_demo_opportunity(
+    request: ManualDemoOpportunityRequest,
+) -> ManualDemoTradePreview:
+    now = datetime.now(tz=_server_timezone())
+    files_dir = _mt4_files_dir()
+    overview = build_trading_overview(
+        files_dir,
+        settings.shadow_ledger_dir,
+        now,
+    )
+    macro = macro_gate_status(settings.macro_events_path, now)
+    try:
+        return build_manual_demo_opportunity_preview(
+            files_dir=files_dir,
+            runtime_dir=settings.shadow_ledger_dir,
+            overview=overview,
+            macro=macro,
+            request=request,
+            now=now,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.post(

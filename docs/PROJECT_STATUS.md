@@ -1194,3 +1194,34 @@ Safety contract:
 - no risk, lot, spread, stop, target, macro or LIVE rule changes.
 
 Opportunity Funnel now exposes separately the number of unqualified executable probes, resolved/open counts, R expectancy and win/loss evidence. The dashboard Research view surfaces the same information.
+
+
+## 2026-09-23 — PR #84 executable-unqualified probes deployed
+
+Status: **MERGED + DEPLOYED** at `13398a3`.
+
+Deployment safety was checked directly from runtime artifacts immediately before each required restart:
+
+- 24 current `*_paper_state.json` files, 0 open PAPER trade;
+- empty `demo_collection_state`;
+- 0 Trading-New bridge position;
+- no pending Trading-New open or close command;
+- one broker-observed position belonging outside the Trading-New bridge remained untouched.
+
+Deployment scope:
+
+- backend restarted to expose the extended Opportunity Funnel API;
+- SHADOW worker restarted under the singleton guard to activate prospective unqualified executable probes;
+- frontend process was not restarted; Vite serves the merged Command Center source from `main`;
+- LIVE remained OFF.
+
+Post-deployment proof:
+
+- session READY 5/5 and worker heartbeat OK;
+- 24 SHADOW scanners unchanged;
+- 6 qualified PAPER/demo-collection collectors unchanged;
+- 18 isolated `*_unqualified_probe_state.json` files created only for non-PAPER-admitted scanner pairs;
+- 0 unqualified trade result at the first cycle because no signal was present at that instant;
+- 0 PAPER open, 0 Trading-New broker position and 0 pending command after deployment.
+
+This layer cannot enter Portfolio Manager selection or the DEMO bridge. Its purpose is to measure the future R of technically executable signals that were previously counted but not resolved, so research can identify additional collector candidates from prospective evidence without relaxing admission or risk.

@@ -1104,3 +1104,21 @@ Operational result after a worker-only restart and the first full cycle:
 - no broker order, PAPER position or LIVE authority created.
 
 The backend/frontend processes were not restarted for this deployment. Runtime remains READY 5/5 and AUTO-DEMO remains armed while waiting for an executable qualified PAPER signal.
+
+
+## 2026-09-23 — executable-but-unqualified evidence capture
+
+Backend:
+
+- every SHADOW scanner still uses the existing admission policy for real PAPER;
+- when PAPER entry is not admitted, an executable signal can now open an isolated research probe;
+- the probe uses the exact same entry/stop/target/bar-resolution model as PAPER but is stored outside the PAPER registry;
+- Opportunity Funnel reports aggregate and per-strategy unqualified-probe evidence.
+
+Frontend:
+
+- Research / Opportunity Funnel adds `Exec. non qualifiées suivies`;
+- it shows resolved/open counts, total R, expectancy and W/L;
+- per-strategy executable counts display the observed unqualified-probe expectancy when available.
+
+Validation complete: 217 backend tests pass, Ruff clean and the frontend TypeScript/Vite build passes. Isolated runtime dry-run: 24 diagnostics, 18 unqualified-probe states (none for the 6 PAPER-eligible collectors), no current signal, and zero production-runtime writes.

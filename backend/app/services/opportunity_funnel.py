@@ -7,8 +7,9 @@ from pathlib import Path
 from app.domain.blocked_probe import BlockedOpportunityProbe
 from app.domain.opportunity_funnel import OpportunityFunnel, OpportunityFunnelStrategy
 from app.domain.shadow import ShadowOpportunityDiagnostic, ShadowSignalState
-from app.domain.shadow_paper import PaperTradeStatus
+from app.domain.shadow_paper import PaperTradeStatus, ShadowPaperTrade
 from app.services.blocked_probe import load_blocked_probe_state, load_closed_probes
+from app.services.shadow_paper import load_closed_trades, load_shadow_paper_state
 
 _CAPITAL_BLOCK_REASON = "minimum broker lot exceeds the risk budget"
 _EPSILON = 1e-12
@@ -54,22 +55,41 @@ def build_opportunity_funnel(
         window_end=now,
         allowed=allowed,
     )
+    unqualified_probes = _load_unqualified_probes(
+        runtime_dir,
+        window_start=window_start,
+        window_end=now,
+        allowed=allowed,
+    )
 
     grouped_signals: dict[str, list[ShadowOpportunityDiagnostic]] = defaultdict(list)
     grouped_probes: dict[str, list[BlockedOpportunityProbe]] = defaultdict(list)
+    grouped_unqualified: dict[str, list[ShadowPaperTrade]] = defaultdict(list)
 
     for row in signal_rows:
         grouped_signals[f"{row.symbol}:{row.mechanism.value}"].append(row)
     for probe in probes:
         grouped_probes[f"{probe.symbol}:{probe.mechanism.value}"].append(probe)
+    for probe in unqualified_probes:
+        grouped_unqualified[f"{probe.symbol}:{probe.mechanism.value}"].append(probe)
 
-    strategy_ids = sorted(set(grouped_signals) | set(grouped_probes))
+    strategy_ids = sorted(
+        set(grouped_signals) | set(grouped_probes) | set(grouped_unqualified)
+    )
     strategies: list[OpportunityFunnelStrategy] = []
     for strategy_id in strategy_ids:
         rows = grouped_signals[strategy_id]
         strategy_probes = grouped_probes[strategy_id]
-        sample = rows[0] if rows else strategy_probes[0]
+        strategy_unqualified = grouped_unqualified[strategy_id]
+        sample = (
+            rows[0]
+            if rows
+            else strategy_probes[0]
+            if strategy_probes
+            else strategy_unqualified[0]
+        )
         results = _resolved_results(strategy_probes)
+        unqualified_results = _resolved_trade_results(strategy_unqualified)
         capitals = [
             probe.required_capital_base_risk_eur
             for probe in strategy_probes
@@ -98,6 +118,24 @@ def build_opportunity_funnel(
                 ),
                 executable_signal_rows=sum(
                     row.state == ShadowSignalState.SIGNAL_EXECUTABLE for row in rows
+                ),
+                tracked_unqualified_probes=len(strategy_unqualified),
+                resolved_unqualified_probes=len(unqualified_results),
+                open_unqualified_probes=sum(
+                    probe.status == PaperTradeStatus.OPEN
+                    for probe in strategy_unqualified
+                ),
+                unqualified_probe_wins=sum(
+                    result > 0 for result in unqualified_results
+                ),
+                unqualified_probe_losses=sum(
+                    result < 0 for result in unqualified_results
+                ),
+                unqualified_probe_total_r=sum(unqualified_results),
+                unqualified_probe_expectancy_r=(
+                    sum(unqualified_results) / len(unqualified_results)
+                    if unqualified_results
+                    else 0.0
                 ),
                 tracked_blocked_probes=len(strategy_probes),
                 resolved_blocked_probes=len(results),
@@ -141,6 +179,7 @@ def build_opportunity_funnel(
         )
 
     all_results = _resolved_results(probes)
+    all_unqualified_results = _resolved_trade_results(unqualified_probes)
     all_reasons = Counter(
         row.base_risk.reason
         for row in signal_rows
@@ -167,6 +206,19 @@ def build_opportunity_funnel(
         ),
         executable_signal_rows=sum(
             row.state == ShadowSignalState.SIGNAL_EXECUTABLE for row in signal_rows
+        ),
+        tracked_unqualified_probes=len(unqualified_probes),
+        resolved_unqualified_probes=len(all_unqualified_results),
+        open_unqualified_probes=sum(
+            probe.status == PaperTradeStatus.OPEN for probe in unqualified_probes
+        ),
+        unqualified_probe_wins=sum(result > 0 for result in all_unqualified_results),
+        unqualified_probe_losses=sum(result < 0 for result in all_unqualified_results),
+        unqualified_probe_total_r=sum(all_unqualified_results),
+        unqualified_probe_expectancy_r=(
+            sum(all_unqualified_results) / len(all_unqualified_results)
+            if all_unqualified_results
+            else 0.0
         ),
         tracked_blocked_probes=len(probes),
         resolved_blocked_probes=len(all_results),
@@ -258,7 +310,42 @@ def _load_probes(
     return probes
 
 
+def _load_unqualified_probes(
+    runtime_dir: Path,
+    *,
+    window_start: datetime,
+    window_end: datetime,
+    allowed: set[str] | None,
+) -> list[ShadowPaperTrade]:
+    probes: list[ShadowPaperTrade] = []
+    for path in sorted(runtime_dir.glob("*_unqualified_probes.jsonl")):
+        for probe in load_closed_trades(path):
+            if allowed is not None and probe.symbol.upper() not in allowed:
+                continue
+            if window_start <= probe.signal_at <= window_end:
+                probes.append(probe)
+
+    for state_path in sorted(runtime_dir.glob("*_unqualified_probe_state.json")):
+        state = load_shadow_paper_state(state_path)
+        probe = state.open_trade
+        if probe is None:
+            continue
+        if allowed is not None and probe.symbol.upper() not in allowed:
+            continue
+        if window_start <= probe.signal_at <= window_end:
+            probes.append(probe)
+    return probes
+
+
 def _resolved_results(probes: list[BlockedOpportunityProbe]) -> list[float]:
+    return [
+        probe.result_r
+        for probe in probes
+        if probe.status != PaperTradeStatus.OPEN and probe.result_r is not None
+    ]
+
+
+def _resolved_trade_results(probes: list[ShadowPaperTrade]) -> list[float]:
     return [
         probe.result_r
         for probe in probes

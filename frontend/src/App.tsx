@@ -424,6 +424,20 @@ type OpportunityFunnel = {
   unqualified_probe_total_r: number;
   unqualified_probe_expectancy_r: number;
   unqualified_probe_review_ready_strategies?: number;
+  unqualified_probe_review_queue?: {
+    strategy_id: string;
+    symbol: string;
+    mechanism: string;
+    qualification: {
+      state: "collecting" | "failed" | "supports_review";
+      closed_trades: number;
+      minimum_trades: number;
+      expectancy_r: number;
+      profit_factor: number;
+      max_drawdown_r: number;
+      reason: string;
+    };
+  }[];
   most_observed_unqualified_candidate?: {
     strategy_id: string;
     symbol: string;
@@ -603,6 +617,8 @@ type DailyTradingReport = {
   bridge_open_positions: number;
   bridge_unrealized_pnl_eur: number;
   broker_realized_pnl_eur_today: number | null;
+  broker_closed_trades_today: number;
+  broker_history_complete: boolean;
   market_opportunities_24h: number;
   captured_opportunities_24h: number;
   missed_opportunities_24h: number;
@@ -1969,9 +1985,18 @@ export default function App() {
             <strong>
               {dailyReport?.broker_realized_pnl_eur_today == null
                 ? "UNKNOWN"
-                : dailyReport.broker_realized_pnl_eur_today.toFixed(2) + " €"}
+                : (dailyReport.broker_realized_pnl_eur_today >= 0 ? "+" : "") +
+                  dailyReport.broker_realized_pnl_eur_today.toFixed(2) +
+                  " €"}
             </strong>
-            <p>Le bridge actuel n’exporte pas encore le PnL réalisé des tickets fermés.</p>
+            <p>
+              {dailyReport
+                ? dailyReport.broker_history_complete
+                  ? dailyReport.broker_closed_trades_today +
+                    " ticket(s) Trading-New clôturé(s) rapproché(s) avec l’historique MT4."
+                  : "Historique incomplet : au moins un ticket Trading-New clôturé manque côté MT4."
+                : "Rapprochement broker indisponible."}
+            </p>
           </div>
         </div>
 
@@ -2806,6 +2831,54 @@ export default function App() {
             </p>
           </div>
         </div>
+
+        {(opportunityFunnel?.unqualified_probe_review_queue?.length ?? 0) > 0 ? (
+          <div className="review-queue">
+            <div className="review-queue-heading">
+              <div>
+                <span className="label">FILE DE REVUE RESEARCH</span>
+                <strong>
+                  {opportunityFunnel?.unqualified_probe_review_queue?.length ?? 0} famille(s)
+                </strong>
+              </div>
+              <p>
+                Ces familles ont atteint SUPPORTS_REVIEW. Elles exigent encore un replay
+                dédié et une décision humaine avant toute modification d’admission.
+              </p>
+            </div>
+            <div className="review-queue-table">
+              <div className="review-queue-row review-queue-head">
+                <span>Stratégie</span>
+                <span>Échantillon</span>
+                <span>Expectancy</span>
+                <span>PF</span>
+                <span>DD</span>
+                <span>Action</span>
+              </div>
+              {opportunityFunnel?.unqualified_probe_review_queue?.map((item) => (
+                <div className="review-queue-row" key={item.strategy_id}>
+                  <strong>{item.strategy_id}</strong>
+                  <span>
+                    {item.qualification.closed_trades}/{item.qualification.minimum_trades}
+                  </span>
+                  <span
+                    className={
+                      item.qualification.expectancy_r >= 0
+                        ? "positive-text"
+                        : "negative-text"
+                    }
+                  >
+                    {item.qualification.expectancy_r >= 0 ? "+" : ""}
+                    {item.qualification.expectancy_r.toFixed(2)} R
+                  </span>
+                  <span>{item.qualification.profit_factor.toFixed(2)}</span>
+                  <span>{item.qualification.max_drawdown_r.toFixed(2)} R</span>
+                  <span>REPLAY DÉDIÉ REQUIS</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {opportunityFunnel?.strategies.length ? (
           <div className="funnel-table">

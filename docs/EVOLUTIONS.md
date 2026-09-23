@@ -1221,3 +1221,53 @@ New operational safety primitive:
 No strategy, admission, risk, lot, cap, spread, stop/target or LIVE rule changes.
 
 Validation: 224 backend tests pass, Ruff clean, frontend Vite build clean.
+
+
+## 2026-09-23 — P0 broker realized PnL reconciliation
+
+New read-only broker-history reconciliation:
+
+- starts from closed Trading-New tickets recorded by the execution audit;
+- searches MT4 `mt4_history_*.json` exports by ticket and magic 560619;
+- reports exact daily realized broker PnL only when every closed ticket is found;
+- otherwise keeps broker realized PnL UNKNOWN and lists missing tickets;
+- dashboard now shows exact realized PnL and number of reconciled Trading-New
+  tickets instead of the previous permanent UNKNOWN placeholder.
+
+Runtime dry-run on the first automatic trade: 1/1 ticket reconciled, +2.64 EUR.
+Validation: 231 backend tests pass, Ruff clean and frontend Vite build passes.
+## 2026-09-23 — P1 explicit probe review queue
+
+Opportunity Funnel now returns `unqualified_probe_review_queue` for every
+strategy whose prospective executable-probe evidence reaches
+`SUPPORTS_REVIEW`.
+
+The Research dashboard renders the queue with:
+
+- strategy/mechanism;
+- resolved sample / minimum sample;
+- expectancy R;
+- profit factor;
+- max drawdown R;
+- explicit `REPLAY DÉDIÉ REQUIS` action.
+
+No automatic promotion is possible from this queue.
+Validation: 228 backend tests pass, Ruff clean and Vite build passes.
+
+
+## 2026-09-23 — P3 Review Pack + Trailing Manager roadmap
+
+A read-only `review_probe_candidate.py` workflow now turns a future
+`SUPPORTS_REVIEW` family into a reproducible dedicated replay pack:
+
+- verifies that the family is actually in the prospective review queue;
+- reruns exactly that symbol/mechanism on frozen train/validation/holdout;
+- attaches current historical admission and split performance;
+- never writes runtime admissions or changes PAPER/DEMO authority.
+
+This is the safe bridge from prospective probe evidence to a possible future
+frequency increase.
+
+Trailing Manager is added to the roadmap as a separate exit-management
+experiment. It starts replay-only and is constrained to never widen the initial
+stop or increase initial monetary risk.

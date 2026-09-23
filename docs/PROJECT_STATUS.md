@@ -1334,3 +1334,90 @@ A dedicated runtime drain is now implemented on an isolated branch:
 Validation: 34 targeted drain tests, 224 full backend tests, Ruff clean and Vite
 build clean. The feature is not deployed while the current Trading-New BTC
 PAPER/broker position remains open.
+
+
+## 2026-09-23 — PR #92 deployed, drain released, first broker cycle reconciled
+
+PR #92 is **MERGED + DEPLOYED** at `cd779ea`.
+
+Deployment procedure:
+
+- Trading-New book confirmed flat before merge/restart;
+- native runtime drain created ON before process restart;
+- exact pre-drain admission registry restored and verified with `cmp`;
+- backend, SHADOW worker and frontend restarted once;
+- post-deploy READY 5/5, 24 scanners, 6 qualified collectors, 0 PAPER open,
+  0 bridge position and 0 pending open/close command;
+- native DRAIN then switched OFF through `/api/v1/runtime/drain`;
+- auto-DEMO is armed again and LIVE remains OFF.
+
+First automatic broker DEMO cycle is now fully observed:
+
+- strategy: `BTCUSD:structural_displacement_sequence`;
+- PAPER: timeout close at 86292.60, +0.5751R, +1.8453 EUR;
+- broker ticket 185258524: open 86385.37, close 86234.48, realized +2.64 EUR;
+- broker history magic = 560619, proving ownership by Trading-New.
+
+P0 follow-up adds ticket-driven MT4-history reconciliation so broker realized PnL
+is reported exactly when every closed Trading-New ticket is present, and remains
+UNKNOWN if any closed ticket is missing.
+## 2026-09-23 — P1 executable-probe review queue candidate
+
+The prospective executable-unqualified probe layer now exposes an explicit
+research review queue.
+
+A strategy enters this queue only when its existing probe qualification reaches
+`SUPPORTS_REVIEW` (minimum 20 resolved probes + the unchanged prospective
+expectancy/PF/DD contract). The queue exposes strategy id, symbol, mechanism,
+sample size, expectancy, profit factor and drawdown.
+
+This remains research-only: queue membership does not modify admission files,
+PAPER authority, DEMO collection, risk, sizing or LIVE.
+
+
+## 2026-09-23 — P2/P3 research outcome + Trailing Manager chantier
+
+Two fixed, causal inter-market hypotheses were tested with unchanged XAU signal
+geometry, frozen execution costs and the existing 400 EUR / 1% policy.
+
+### P2 — XAU failed-auction × USD pressure
+
+Filter: on the last three closed M5 bars before entry, EURUSD and GBPUSD must
+both confirm the expected USD direction (both rising for XAU BUY / USD weakness,
+both falling for XAU SELL / USD strength).
+
+Execution-aware results:
+
+- train: 16 trades, +0.1643R expectancy;
+- validation: 27 trades, -0.1290R;
+- holdout: 12 trades, -0.5059R.
+
+Decision: **REJECTED**. No runtime filter or admission change.
+
+### P3 — XAU post-shock × USD pressure
+
+Same fixed inter-market confirmation, different family after P2 rejection:
+
+- train: 3 trades, -0.0667R;
+- validation: 7 trades, -0.6000R;
+- holdout: 3 trades, -1.0000R.
+
+Decision: **REJECTED**. No new collector is activated. Useful trade frequency
+cannot be manufactured by accepting negative independent evidence.
+
+### Planned chantier — Trailing Manager
+
+A new exit-management research track is now scheduled. Safety contract:
+
+1. initial monetary risk is immutable;
+2. trailing SL may only preserve or reduce initial loss; it may never widen;
+3. target changes are evaluated causally from closed market bars only;
+4. target extension cannot justify increasing stop risk;
+5. first implementation is replay-only, then SHADOW hypothetical adjustments,
+   then PAPER; broker DEMO modification is forbidden until those stages prove
+   improved expectancy / drawdown without hidden risk;
+6. one family at a time, with static-exit control vs trailing-exit treatment.
+
+The intended manager will study market-structure / ATR / favorable-excursion
+state to move SL and TP with the market, rather than using a fixed-distance
+trailing stop.

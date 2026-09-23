@@ -1294,3 +1294,20 @@ A separate isolated branch adds a guarded manual handoff from a currently
 an order directly: the backend recomputes target geometry from the live broker
 quote and the signal stop/target-R, then the existing explicit confirmation is
 still required.
+## 2026-09-23 — broker fill risk fidelity candidate
+
+The first automatic DEMO execution proved the broker path works, but also exposed
+normal market-fill drift between the PAPER reference entry and the broker fill.
+
+Observed first BTC sequence trade:
+
+- PAPER reference risk: about 3.21 EUR;
+- broker-fill stop risk: about 3.43 EUR;
+- base risk budget: 4.00 EUR;
+- PAPER target geometry: 1.00R;
+- broker-fill reward/risk geometry: about 0.87R.
+
+The current trade remains inside the monetary risk budget, but the execution
+audit is being extended so every future fill records these deltas automatically.
+This is measurement only; sizing, SL, TP, risk policy and bridge behavior remain
+unchanged. Deployment is blocked while the current Trading-New position is open.

@@ -50,7 +50,12 @@ def test_execution_audit_pairs_command_and_fill(tmp_path: Path) -> None:
         slippage_points=20,
         proposal_status=ProposalStatus.AUTHORIZED,
     )
-    append_open_command_event(path,command,reference_entry_price=1.1000)
+    append_open_command_event(
+        path,
+        command,
+        reference_entry_price=1.1000,
+        reference_risk_eur=4.0,
+    )
     result=DemoBridgeResult(
         command_id="cmd-1",
         status=DemoBridgeCommandStatus.FILLED,
@@ -74,6 +79,18 @@ def test_execution_audit_pairs_command_and_fill(tmp_path: Path) -> None:
     sample=summary.samples[0]
     assert round(sample.adverse_slippage_price,6)==0.0002
     assert round(sample.slippage_r,3)==0.2
+    assert sample.reference_risk_eur == 4.0
+    assert round(sample.fill_risk_eur or 0, 3) == 4.8
+    assert round(sample.risk_delta_eur or 0, 3) == 0.8
+    assert round(sample.risk_delta_pct or 0, 3) == 20.0
+    assert round(summary.average_risk_delta_eur, 3) == 0.8
+    assert round(summary.max_risk_increase_eur, 3) == 0.8
+    assert round(summary.max_risk_increase_pct, 3) == 20.0
+    assert round(sample.reference_reward_risk_ratio or 0, 3) == 2.0
+    assert round(sample.fill_reward_risk_ratio or 0, 3) == 1.5
+    assert round(sample.rr_delta or 0, 3) == -0.5
+    assert round(summary.average_rr_delta, 3) == -0.5
+    assert round(summary.minimum_fill_reward_risk_ratio, 3) == 1.5
 
 
 def _overview(qualification: ProspectiveQualification) -> TradingOverview:

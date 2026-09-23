@@ -1109,3 +1109,26 @@ BTC SHADOW/PAPER) et #78/#79 (singleton worker + documentation).
 Validation de reprise : 17 tests cibles sequence/execution/parite passent.
 Aucun changement de runtime, risque, sizing, stop, target, spread ou LIVE n a
 ete effectue pendant cette reprise.
+
+
+## 2026-09-23 — DEMO readiness / no-trade visibility
+
+Runtime diagnosis confirmed before modification:
+
+- session READY 5/5, worker healthy;
+- DEMO collection ON, bridge ON, LIVE OFF;
+- 23 PAPER states checked, 0 open trade;
+- 5 SHADOW collectors are currently PAPER/demo-collection eligible;
+- portfolio action remains NO_TRADE only because none of those five collectors currently has an executable PAPER trade;
+- the 24 h opportunity funnel can contain executable signals from non-qualified strategies; those remain intentionally excluded from broker execution.
+
+The DEMO execution status now distinguishes four concepts instead of collapsing them into a single ready boolean:
+
+- transport armed;
+- automatic collection armed;
+- waiting for a qualified trade;
+- current order ready.
+
+The Command Center uses this distinction and shows qualified executable opportunities versus all executable opportunities over 24 h. It also provides a direct navigation action to the existing guarded manual DEMO form. Manual submission still requires preview + explicit confirmation and remains blocked by the existing risk, macro, PAPER-position and Trading-New isolation guards.
+
+No admission, signal threshold, spread threshold, risk fraction, lot rule, cap, LIVE flag or broker isolation rule changes in this chantier.

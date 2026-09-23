@@ -1647,6 +1647,63 @@ h1 {
   line-height: 1.2;
 }
 
+.no-trade-insight {
+  margin-top: 10px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border: 1px solid #24384b;
+  border-radius: 16px;
+  background: rgba(10, 20, 30, 0.8);
+}
+
+.no-trade-insight h2 {
+  margin: 4px 0 8px;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.no-trade-insight p {
+  margin: 0;
+  max-width: 780px;
+  color: #aebbc9;
+  line-height: 1.5;
+}
+
+.no-trade-insight small {
+  display: block;
+  margin-top: 8px;
+  color: #718297;
+  line-height: 1.45;
+}
+
+.no-trade-actions {
+  min-width: 210px;
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+}
+
+.no-trade-actions button {
+  min-height: 40px;
+  padding: 9px 13px;
+  border: 1px solid rgba(120, 216, 199, 0.34);
+  border-radius: 10px;
+  color: #dff8f3;
+  background: rgba(120, 216, 199, 0.1);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.no-trade-actions button:hover {
+  background: rgba(120, 216, 199, 0.16);
+}
+
 .dashboard-nav {
   position: sticky;
   top: 10px;
@@ -1749,6 +1806,21 @@ h1 {
 
   .command-center-heading {
     align-items: flex-start;
+  }
+
+  .no-trade-insight {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .no-trade-actions {
+    min-width: 0;
+    width: 100%;
+    justify-items: stretch;
+  }
+
+  .no-trade-actions .command-status {
+    width: fit-content;
   }
 
   .dashboard-nav {

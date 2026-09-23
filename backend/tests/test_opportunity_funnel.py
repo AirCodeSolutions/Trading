@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.core.config import settings
 from app.domain.blocked_probe import BlockedOpportunityProbe, BlockedProbeState
 from app.domain.opportunity import OpportunityMechanism
+from app.domain.opportunity_funnel import ResearchProbeQualificationState
 from app.domain.regime import MarketRegime
 from app.domain.shadow import (
     ShadowOpportunityDiagnostic,
@@ -232,6 +233,73 @@ def test_funnel_aggregates_unqualified_executable_probes(tmp_path: Path) -> None
     assert funnel.unqualified_probe_total_r == 0.5
     assert funnel.unqualified_probe_expectancy_r == 0.25
     assert funnel.strategies[0].tracked_unqualified_probes == 3
+    qualification = funnel.strategies[0].unqualified_probe_qualification
+    assert qualification is not None
+    assert qualification.state == ResearchProbeQualificationState.COLLECTING
+    assert qualification.closed_trades == 2
+    assert qualification.minimum_trades == 20
+    assert funnel.unqualified_probe_review_ready_strategies == 0
+
+
+def test_funnel_marks_positive_probe_evidence_for_review(tmp_path: Path) -> None:
+    closed = [
+        unqualified_probe(
+            f"positive-{index}",
+            NOW - timedelta(minutes=5 * (20 - index)),
+            1.5,
+            PaperTradeStatus.TARGET,
+        )
+        for index in range(20)
+    ]
+    (tmp_path / "BTCUSD_directional_transition_unqualified_probes.jsonl").write_text(
+        "".join(row.model_dump_json() + "\n" for row in closed),
+        encoding="utf-8",
+    )
+
+    funnel = build_opportunity_funnel(
+        tmp_path,
+        now=NOW,
+        window_hours=24,
+        symbols=("BTCUSD",),
+    )
+
+    qualification = funnel.strategies[0].unqualified_probe_qualification
+    assert qualification is not None
+    assert qualification.state == ResearchProbeQualificationState.SUPPORTS_REVIEW
+    assert qualification.closed_trades == 20
+    assert qualification.expectancy_r == 1.5
+    assert qualification.profit_factor == 99.0
+    assert funnel.unqualified_probe_review_ready_strategies == 1
+
+
+def test_funnel_marks_negative_probe_evidence_failed(tmp_path: Path) -> None:
+    closed = [
+        unqualified_probe(
+            f"negative-{index}",
+            NOW - timedelta(minutes=5 * (20 - index)),
+            -1.0,
+            PaperTradeStatus.STOP,
+        )
+        for index in range(20)
+    ]
+    (tmp_path / "BTCUSD_directional_transition_unqualified_probes.jsonl").write_text(
+        "".join(row.model_dump_json() + "\n" for row in closed),
+        encoding="utf-8",
+    )
+
+    funnel = build_opportunity_funnel(
+        tmp_path,
+        now=NOW,
+        window_hours=24,
+        symbols=("BTCUSD",),
+    )
+
+    qualification = funnel.strategies[0].unqualified_probe_qualification
+    assert qualification is not None
+    assert qualification.state == ResearchProbeQualificationState.FAILED
+    assert qualification.closed_trades == 20
+    assert qualification.expectancy_r == -1.0
+    assert funnel.unqualified_probe_review_ready_strategies == 0
 
 
 def test_funnel_aggregates_closed_and_open_blocked_probes(tmp_path: Path) -> None:

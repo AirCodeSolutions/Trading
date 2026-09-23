@@ -366,6 +366,15 @@ type OpportunityFunnelStrategy = {
   unqualified_probe_losses: number;
   unqualified_probe_total_r: number;
   unqualified_probe_expectancy_r: number;
+  unqualified_probe_qualification?: {
+    state: "collecting" | "failed" | "supports_review";
+    closed_trades: number;
+    minimum_trades: number;
+    expectancy_r: number;
+    profit_factor: number;
+    max_drawdown_r: number;
+    reason: string;
+  } | null;
   tracked_blocked_probes: number;
   resolved_blocked_probes: number;
   open_blocked_probes: number;
@@ -404,6 +413,7 @@ type OpportunityFunnel = {
   unqualified_probe_losses: number;
   unqualified_probe_total_r: number;
   unqualified_probe_expectancy_r: number;
+  unqualified_probe_review_ready_strategies?: number;
   tracked_blocked_probes: number;
   resolved_blocked_probes: number;
   open_blocked_probes: number;
@@ -2478,6 +2488,22 @@ export default function App() {
             </p>
           </div>
           <div className="gate-card">
+            <span className="label">Familles prêtes à revoir</span>
+            <strong
+              className={
+                (opportunityFunnel?.unqualified_probe_review_ready_strategies ?? 0) > 0
+                  ? "positive-text"
+                  : ""
+              }
+            >
+              {opportunityFunnel?.unqualified_probe_review_ready_strategies ?? 0}
+            </strong>
+            <p>
+              SUPPORTS_REVIEW signifie seulement que les probes ont atteint le contrat
+              prospectif ; aucune autorisation PAPER/DEMO n’est automatique.
+            </p>
+          </div>
+          <div className="gate-card">
             <span className="label">Probes bloqués</span>
             <strong>{opportunityFunnel?.tracked_blocked_probes ?? "—"}</strong>
             <p>
@@ -2595,6 +2621,9 @@ export default function App() {
                       {row.executable_signal_rows}
                       {row.resolved_unqualified_probes
                         ? ` · UQ exp. ${row.unqualified_probe_expectancy_r >= 0 ? "+" : ""}${row.unqualified_probe_expectancy_r.toFixed(2)}R`
+                        : ""}
+                      {row.unqualified_probe_qualification
+                        ? ` · ${row.unqualified_probe_qualification.closed_trades}/${row.unqualified_probe_qualification.minimum_trades} ${row.unqualified_probe_qualification.state.replaceAll("_", " ").toUpperCase()}`
                         : ""}
                     </span>
                     <span>

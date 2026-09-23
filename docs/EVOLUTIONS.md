@@ -1138,3 +1138,16 @@ Runtime result:
 - frontend remained hot-served on port 5180 without restart.
 
 Safety after deployment: READY 5/5, LIVE OFF, 0 PAPER open, 0 Trading-New bridge position, 0 pending open/close command. No risk, lot, cap, spread, stop/target, macro or admission threshold was changed.
+
+
+## 2026-09-23 — probe qualification visibility
+
+Opportunity Funnel now computes an all-history research qualification for executable-but-unqualified probes using the existing prospective thresholds. The public state is deliberately renamed `SUPPORTS_REVIEW` instead of `SUPPORTS_DEMO` so the research signal cannot be confused with execution authority.
+
+Frontend Research view adds:
+
+- number of mechanism/symbol pairs ready for dedicated review;
+- per-strategy `n/20` progress and research state;
+- explicit copy that review readiness does not authorize PAPER or DEMO.
+
+No worker, scanner, signal, risk, sizing, spread, stop/target or admission behavior changes in this branch.

@@ -5,10 +5,17 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from app.domain.blocked_probe import BlockedOpportunityProbe
-from app.domain.opportunity_funnel import OpportunityFunnel, OpportunityFunnelStrategy
+from app.domain.opportunity_funnel import (
+    OpportunityFunnel,
+    OpportunityFunnelStrategy,
+    ResearchProbeQualification,
+    ResearchProbeQualificationState,
+)
+from app.domain.portfolio import ProspectiveQualificationState
 from app.domain.shadow import ShadowOpportunityDiagnostic, ShadowSignalState
-from app.domain.shadow_paper import PaperTradeStatus, ShadowPaperTrade
+from app.domain.shadow_paper import PaperTradeStatus, ShadowPaperSummary, ShadowPaperTrade
 from app.services.blocked_probe import load_blocked_probe_state, load_closed_probes
+from app.services.prospective_qualification import MIN_PROSPECTIVE_TRADES, assess_prospective
 from app.services.shadow_paper import load_closed_trades, load_shadow_paper_state
 
 _CAPITAL_BLOCK_REASON = "minimum broker lot exceeds the risk budget"
@@ -61,10 +68,15 @@ def build_opportunity_funnel(
         window_end=now,
         allowed=allowed,
     )
+    all_unqualified_probes = _load_all_unqualified_probes(
+        runtime_dir,
+        allowed=allowed,
+    )
 
     grouped_signals: dict[str, list[ShadowOpportunityDiagnostic]] = defaultdict(list)
     grouped_probes: dict[str, list[BlockedOpportunityProbe]] = defaultdict(list)
     grouped_unqualified: dict[str, list[ShadowPaperTrade]] = defaultdict(list)
+    grouped_unqualified_all: dict[str, list[ShadowPaperTrade]] = defaultdict(list)
 
     for row in signal_rows:
         grouped_signals[f"{row.symbol}:{row.mechanism.value}"].append(row)
@@ -72,24 +84,36 @@ def build_opportunity_funnel(
         grouped_probes[f"{probe.symbol}:{probe.mechanism.value}"].append(probe)
     for probe in unqualified_probes:
         grouped_unqualified[f"{probe.symbol}:{probe.mechanism.value}"].append(probe)
+    for probe in all_unqualified_probes:
+        grouped_unqualified_all[f"{probe.symbol}:{probe.mechanism.value}"].append(probe)
 
     strategy_ids = sorted(
-        set(grouped_signals) | set(grouped_probes) | set(grouped_unqualified)
+        set(grouped_signals)
+        | set(grouped_probes)
+        | set(grouped_unqualified)
+        | set(grouped_unqualified_all)
     )
     strategies: list[OpportunityFunnelStrategy] = []
     for strategy_id in strategy_ids:
         rows = grouped_signals[strategy_id]
         strategy_probes = grouped_probes[strategy_id]
         strategy_unqualified = grouped_unqualified[strategy_id]
+        strategy_unqualified_all = grouped_unqualified_all[strategy_id]
         sample = (
             rows[0]
             if rows
             else strategy_probes[0]
             if strategy_probes
             else strategy_unqualified[0]
+            if strategy_unqualified
+            else strategy_unqualified_all[0]
         )
         results = _resolved_results(strategy_probes)
         unqualified_results = _resolved_trade_results(strategy_unqualified)
+        unqualified_qualification = _assess_unqualified_probe_evidence(
+            strategy_id,
+            strategy_unqualified_all,
+        )
         capitals = [
             probe.required_capital_base_risk_eur
             for probe in strategy_probes
@@ -137,6 +161,7 @@ def build_opportunity_funnel(
                     if unqualified_results
                     else 0.0
                 ),
+                unqualified_probe_qualification=unqualified_qualification,
                 tracked_blocked_probes=len(strategy_probes),
                 resolved_blocked_probes=len(results),
                 open_blocked_probes=sum(
@@ -219,6 +244,12 @@ def build_opportunity_funnel(
             sum(all_unqualified_results) / len(all_unqualified_results)
             if all_unqualified_results
             else 0.0
+        ),
+        unqualified_probe_review_ready_strategies=sum(
+            row.unqualified_probe_qualification is not None
+            and row.unqualified_probe_qualification.state
+            == ResearchProbeQualificationState.SUPPORTS_REVIEW
+            for row in strategies
         ),
         tracked_blocked_probes=len(probes),
         resolved_blocked_probes=len(all_results),
@@ -335,6 +366,92 @@ def _load_unqualified_probes(
         if window_start <= probe.signal_at <= window_end:
             probes.append(probe)
     return probes
+
+
+
+def _load_all_unqualified_probes(
+    runtime_dir: Path,
+    *,
+    allowed: set[str] | None,
+) -> list[ShadowPaperTrade]:
+    probes: list[ShadowPaperTrade] = []
+    for path in sorted(runtime_dir.glob("*_unqualified_probes.jsonl")):
+        for probe in load_closed_trades(path):
+            if allowed is None or probe.symbol.upper() in allowed:
+                probes.append(probe)
+
+    for state_path in sorted(runtime_dir.glob("*_unqualified_probe_state.json")):
+        state = load_shadow_paper_state(state_path)
+        probe = state.open_trade
+        if probe is not None and (allowed is None or probe.symbol.upper() in allowed):
+            probes.append(probe)
+    return probes
+
+
+def _assess_unqualified_probe_evidence(
+    strategy_id: str,
+    probes: list[ShadowPaperTrade],
+) -> ResearchProbeQualification | None:
+    closed = sorted(
+        (
+            probe
+            for probe in probes
+            if probe.status != PaperTradeStatus.OPEN and probe.result_r is not None
+        ),
+        key=lambda probe: probe.signal_at,
+    )
+    open_probe = next(
+        (probe for probe in probes if probe.status == PaperTradeStatus.OPEN),
+        None,
+    )
+    if not closed and open_probe is None:
+        return None
+
+    results = [probe.result_r for probe in closed if probe.result_r is not None]
+    gains = sum(result for result in results if result > 0)
+    losses = -sum(result for result in results if result < 0)
+    profit_factor = gains / losses if losses > 0 else (99.0 if gains > 0 else 0.0)
+    equity = 0.0
+    peak = 0.0
+    max_drawdown = 0.0
+    for result in results:
+        equity += result
+        peak = max(peak, equity)
+        max_drawdown = max(max_drawdown, peak - equity)
+
+    summary = ShadowPaperSummary(
+        closed_trades=len(closed),
+        wins=sum(result > 0 for result in results),
+        losses=sum(result < 0 for result in results),
+        total_r=sum(results),
+        expectancy_r=(sum(results) / len(results)) if results else 0.0,
+        profit_factor=profit_factor,
+        max_drawdown_r=max_drawdown,
+        total_pnl_eur=sum(probe.pnl_eur or 0.0 for probe in closed),
+        open_trade=open_probe,
+    )
+    qualification = assess_prospective(strategy_id, summary)
+    state = {
+        ProspectiveQualificationState.COLLECTING: ResearchProbeQualificationState.COLLECTING,
+        ProspectiveQualificationState.FAILED: ResearchProbeQualificationState.FAILED,
+        ProspectiveQualificationState.SUPPORTS_DEMO: ResearchProbeQualificationState.SUPPORTS_REVIEW,
+    }[qualification.state]
+    reason = qualification.reason
+    if state == ResearchProbeQualificationState.SUPPORTS_REVIEW:
+        reason = (
+            "prospective executable-probe evidence meets the existing paper "
+            "thresholds; dedicated validation is required before any admission change"
+        )
+
+    return ResearchProbeQualification(
+        state=state,
+        closed_trades=qualification.closed_trades,
+        minimum_trades=MIN_PROSPECTIVE_TRADES,
+        expectancy_r=qualification.expectancy_r,
+        profit_factor=qualification.profit_factor,
+        max_drawdown_r=qualification.max_drawdown_r,
+        reason=reason,
+    )
 
 
 def _resolved_results(probes: list[BlockedOpportunityProbe]) -> list[float]:

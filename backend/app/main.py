@@ -586,6 +586,7 @@ def preview_manual_demo_opportunity(
         now,
     )
     macro = macro_gate_status(settings.macro_events_path, now)
+    drain = load_runtime_drain(settings.shadow_ledger_dir / DRAIN_FILE)
     try:
         return build_manual_demo_opportunity_preview(
             files_dir=files_dir,
@@ -594,6 +595,7 @@ def preview_manual_demo_opportunity(
             macro=macro,
             request=request,
             now=now,
+            drain_enabled=drain.enabled,
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

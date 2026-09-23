@@ -52,6 +52,7 @@ def build_manual_demo_opportunity_preview(
     macro: MacroGateStatus,
     request: ManualDemoOpportunityRequest,
     now: datetime,
+    drain_enabled: bool = False,
 ) -> ManualDemoTradePreview:
     symbol = request.symbol.upper()
     diagnostic = next(
@@ -113,6 +114,7 @@ def build_manual_demo_opportunity_preview(
             risk_fraction=settings.risk_per_trade_fraction,
         ),
         now=now,
+        drain_enabled=drain_enabled,
     )
 
 

@@ -230,6 +230,31 @@ def test_opportunity_preview_uses_live_quote_and_shadow_geometry(
     assert not (tmp_path / "trading_demo_command.csv").exists()
 
 
+def test_opportunity_preview_rejects_runtime_drain(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    configure_demo(monkeypatch)
+    patch_market(monkeypatch)
+    patch_executable_shadow(monkeypatch, executable_shadow())
+
+    preview = build_manual_demo_opportunity_preview(
+        files_dir=tmp_path,
+        runtime_dir=tmp_path,
+        overview=overview(),
+        macro=clear_macro(),
+        request=ManualDemoOpportunityRequest(
+            symbol="EURUSD",
+            mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+        ),
+        now=NOW,
+        drain_enabled=True,
+    )
+
+    assert preview.approved is False
+    assert "runtime drain is enabled" in preview.reasons
+
+
 def test_opportunity_preview_rejects_non_executable_shadow(
     tmp_path: Path,
     monkeypatch,

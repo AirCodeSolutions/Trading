@@ -1271,3 +1271,28 @@ frequency increase.
 Trailing Manager is added to the roadmap as a separate exit-management
 experiment. It starts replay-only and is constrained to never widen the initial
 stop or increase initial monetary risk.
+
+
+## 2026-09-23 — Trailing Manager v0 replay + prospective SHADOW
+
+New research-only exit-management components:
+
+- `TrailingManagerConfig` separates stop trailing from target extension so each
+  hypothesis can be tested independently;
+- causal replay consumes closed M5 bars only;
+- invariant checks forbid widening the initial stop or increasing initial risk;
+- paired research runner preserves the exact static entry sample;
+- dedicated CLI compares static vs treatment train/validation/holdout;
+- stop-only policy is rejected on expectancy;
+- target-only policy improves expectancy in all three independent windows with
+  unchanged drawdown, but only 10 adjustments exist historically;
+- prospective SHADOW collector therefore records future counterfactual results
+  without modifying PAPER or broker execution;
+- `/api/v1/research/trailing-shadow` exposes read-only progress;
+- Research dashboard shows resolved count, expectancy delta, improved/worsened
+  count and total adjustments.
+
+No admission, PAPER authority, DEMO order, SL, TP, risk, lot, cap, spread guard
+or LIVE setting is changed by this candidate.
+
+Validation: 241 backend tests pass, Ruff clean and frontend build passes.

@@ -31,6 +31,7 @@ from app.services.trading_intelligence import (
     build_trading_intelligence,
     write_trading_intelligence,
 )
+from app.services.trailing_shadow import advance_trailing_shadow_once
 
 
 def main() -> None:
@@ -164,6 +165,15 @@ def _update_observability(
     now: datetime,
 ) -> list[str]:
     errors: list[str] = []
+
+    try:
+        advance_trailing_shadow_once(
+            settings.mt4_files_dir,
+            settings.shadow_ledger_dir,
+            now,
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        errors.append(f"trailing_shadow: {exc!r}")
 
     try:
         append_bridge_result_if_new(

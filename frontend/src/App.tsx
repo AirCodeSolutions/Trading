@@ -21,6 +21,19 @@ type RuntimeDrainState = {
   reason: string;
 };
 
+type TrailingShadowSummary = {
+  strategy_id: string;
+  started_at: string | null;
+  resolved: number;
+  improved: number;
+  worsened: number;
+  unchanged: number;
+  static_total_r: number;
+  trailing_total_r: number;
+  expectancy_delta_r: number;
+  total_adjustments: number;
+};
+
 type ShadowSizing = {
   approved: boolean;
   reason: string;
@@ -805,6 +818,7 @@ export default function App() {
   const [blockedProbes, setBlockedProbes] = useState<BlockedProbeRuntime[]>([]);
   const [opportunityFunnel, setOpportunityFunnel] = useState<OpportunityFunnel | null>(null);
   const [intelligence, setIntelligence] = useState<TradingIntelligence | null>(null);
+  const [trailingShadow, setTrailingShadow] = useState<TrailingShadowSummary | null>(null);
   const [economicFeasibility, setEconomicFeasibility] = useState<EconomicFeasibilityReport | null>(null);
   const [dailyReport, setDailyReport] = useState<DailyTradingReport | null>(null);
   const [qualificationHistory, setQualificationHistory] = useState<QualificationHistoryEvent[]>([]);
@@ -853,6 +867,7 @@ export default function App() {
           blockedProbesResponse,
           opportunityFunnelResponse,
           intelligenceResponse,
+          trailingShadowResponse,
           economicFeasibilityResponse,
           dailyReportResponse,
           qualificationHistoryResponse
@@ -873,6 +888,7 @@ export default function App() {
           fetch("/api/v1/shadow/blocked-probes"),
           fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           fetch("/api/v1/intelligence/overview?hours=24"),
+          fetch("/api/v1/research/trailing-shadow"),
           fetch("/api/v1/research/economic-feasibility"),
           fetch("/api/v1/reports/daily"),
           fetch("/api/v1/qualification/history?limit=50")
@@ -907,6 +923,9 @@ export default function App() {
         const intelligencePayload = intelligenceResponse.ok
           ? await intelligenceResponse.json()
           : null;
+        const trailingShadowPayload = trailingShadowResponse.ok
+          ? await trailingShadowResponse.json()
+          : null;
         const economicFeasibilityPayload = economicFeasibilityResponse.ok
           ? await economicFeasibilityResponse.json()
           : null;
@@ -934,6 +953,7 @@ export default function App() {
         setBlockedProbes(blockedProbesPayload);
         setOpportunityFunnel(opportunityFunnelPayload);
         setIntelligence(intelligencePayload);
+        setTrailingShadow(trailingShadowPayload);
         setEconomicFeasibility(economicFeasibilityPayload);
         setDailyReport(dailyReportPayload);
         setQualificationHistory(qualificationHistoryPayload);
@@ -1886,6 +1906,36 @@ export default function App() {
         </div>
 
         <div className="intelligence-grid">
+          <div className="intelligence-card">
+            <span className="label">Trailing Manager · TP dynamique</span>
+            <strong
+              className={
+                (trailingShadow?.expectancy_delta_r ?? 0) > 0
+                  ? "positive-text"
+                  : (trailingShadow?.expectancy_delta_r ?? 0) < 0
+                    ? "negative-text"
+                    : ""
+              }
+            >
+              {trailingShadow
+                ? trailingShadow.resolved +
+                  " résolu(s) · Δ " +
+                  (trailingShadow.expectancy_delta_r >= 0 ? "+" : "") +
+                  trailingShadow.expectancy_delta_r.toFixed(3) +
+                  "R"
+                : "—"}
+            </strong>
+            <p>
+              {trailingShadow?.started_at
+                ? trailingShadow.improved +
+                  " amélioré(s) · " +
+                  trailingShadow.worsened +
+                  " dégradé(s) · " +
+                  trailingShadow.total_adjustments +
+                  " ajustement(s). Research-only, aucun TP/SL broker modifié."
+                : "Collecte prospective non initialisée. Research-only."}
+            </p>
+          </div>
           <div className="intelligence-card">
             <span className="label">Mouvements market-first</span>
             <strong>{dailyReport?.market_opportunities_24h ?? "—"}</strong>

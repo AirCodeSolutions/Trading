@@ -1272,3 +1272,65 @@ Current production read-only result at validation time:
 - review-ready strategies = 0.
 
 This is visibility only. It does not change admission, PAPER/DEMO authority, risk, sizing, signal detection or LIVE.
+
+
+## 2026-09-23 — first automatic broker DEMO execution observed
+
+Trading-New has now completed its first qualified automatic DEMO entry path.
+
+- strategy: `BTCUSD:structural_displacement_sequence`;
+- PAPER signal: SELL at 2026-09-23 09:30 Europe/Athens;
+- PAPER reference entry 86398.00, SL 86581.2868, TP 86214.7132;
+- broker DEMO ticket 185258524 filled at 86385.37 for 0.02 lot;
+- broker SL 86581.29 / TP 86214.71;
+- fill-based theoretical stop loss is about 3.43 EUR versus the 4 EUR base-risk budget;
+- LIVE remains OFF.
+
+The position is currently owned by the Trading-New bridge. While its PAPER/broker
+position is open, no merge, deployment or runtime restart is authorized.
+
+A separate isolated branch adds a guarded manual handoff from a currently
+`signal_executable` opportunity to the existing DEMO preview. It never submits
+an order directly: the backend recomputes target geometry from the live broker
+quote and the signal stop/target-R, then the existing explicit confirmation is
+still required.
+## 2026-09-23 — broker fill risk fidelity candidate
+
+The first automatic DEMO execution proved the broker path works, but also exposed
+normal market-fill drift between the PAPER reference entry and the broker fill.
+
+Observed first BTC sequence trade:
+
+- PAPER reference risk: about 3.21 EUR;
+- broker-fill stop risk: about 3.43 EUR;
+- base risk budget: 4.00 EUR;
+- PAPER target geometry: 1.00R;
+- broker-fill reward/risk geometry: about 0.87R.
+
+The current trade remains inside the monetary risk budget, but the execution
+audit is being extended so every future fill records these deltas automatically.
+This is measurement only; sizing, SL, TP, risk policy and bridge behavior remain
+unchanged. Deployment is blocked while the current Trading-New position is open.
+## 2026-09-23 — runtime drain control candidate
+
+Trading-New previously had no real deployment drain. The nearest static setting
+(`demo_collection_enabled`) is process-loaded and therefore unsuitable for safe
+hot deployment control.
+
+A dedicated runtime drain is now implemented on an isolated branch:
+
+- persistent `shadow/drain_state.json`;
+- hot GET/POST API at `/api/v1/runtime/drain`;
+- worker reloads drain state every cycle without restart;
+- DRAIN ON blocks new PAPER entries;
+- DRAIN ON blocks new automatic broker DEMO entries;
+- DRAIN ON blocks manual DEMO preview/submission;
+- already-open PAPER and broker DEMO positions continue to resolve and close;
+- research scanners, blocked probes and executable-unqualified probes continue
+  collecting evidence;
+- dashboard Trading view exposes explicit DRAIN ON / DRAIN OFF controls with
+  confirmation.
+
+Validation: 34 targeted drain tests, 224 full backend tests, Ruff clean and Vite
+build clean. The feature is not deployed while the current Trading-New BTC
+PAPER/broker position remains open.

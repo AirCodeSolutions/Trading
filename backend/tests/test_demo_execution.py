@@ -174,6 +174,36 @@ def test_demo_guard_distinguishes_armed_transport_from_waiting_portfolio(
     assert "portfolio is not demo eligible" in guard.reasons
 
 
+def test_demo_guard_reports_runtime_drain_as_disarmed_collection(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "execution_mode", ExecutionMode.DEMO)
+    monkeypatch.setattr(settings, "demo_execution_bridge_enabled", True)
+    monkeypatch.setattr(settings, "demo_collection_enabled", True)
+    monkeypatch.setattr(settings, "live_trading_enabled", False)
+    current = overview()
+    current.portfolio.action = PortfolioAction.NO_TRADE
+    current.portfolio.selected_strategy_id = None
+    current.paper_strategies[0].historical_state = AdmissionState.SHADOW
+    current.paper_strategies[0].paper_entry_allowed = True
+    current.paper_strategies[0].summary.open_trade = None
+
+    guard = build_demo_guard(
+        current,
+        clear_macro(),
+        NOW,
+        bridge_positions=[],
+        drain_enabled=True,
+    )
+
+    assert guard.ready is False
+    assert guard.transport_armed is True
+    assert guard.auto_collection_armed is False
+    assert guard.drain_enabled is True
+    assert guard.waiting_for_qualified_trade is False
+    assert "runtime drain is enabled" in guard.reasons
+
+
 def test_demo_guard_reports_collection_disarmed_separately(
     monkeypatch,
 ) -> None:

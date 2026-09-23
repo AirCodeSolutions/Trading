@@ -23,6 +23,7 @@ class ExecutionAuditEvent(BaseModel):
     side: Side | None = None
     lots: float | None = Field(default=None, gt=0)
     reference_entry_price: float | None = Field(default=None, gt=0)
+    reference_risk_eur: float | None = Field(default=None, gt=0)
     stop_loss: float | None = Field(default=None, gt=0)
     take_profit: float | None = Field(default=None, gt=0)
     ticket: int = Field(default=0, ge=0)
@@ -43,6 +44,13 @@ class ExecutionQualitySample(BaseModel):
     slippage_price: float
     adverse_slippage_price: float
     slippage_r: float
+    reference_risk_eur: float | None = Field(default=None, gt=0)
+    fill_risk_eur: float | None = Field(default=None, gt=0)
+    risk_delta_eur: float | None = None
+    risk_delta_pct: float | None = None
+    reference_reward_risk_ratio: float | None = Field(default=None, ge=0)
+    fill_reward_risk_ratio: float | None = Field(default=None, ge=0)
+    rr_delta: float | None = None
     ticket: int = Field(gt=0)
 
 
@@ -55,4 +63,9 @@ class ExecutionQualitySummary(BaseModel):
     average_adverse_slippage_price: float = Field(ge=0)
     max_adverse_slippage_price: float = Field(ge=0)
     average_slippage_r: float
+    average_risk_delta_eur: float = 0.0
+    max_risk_increase_eur: float = Field(default=0.0, ge=0)
+    max_risk_increase_pct: float = Field(default=0.0, ge=0)
+    average_rr_delta: float = 0.0
+    minimum_fill_reward_risk_ratio: float = Field(default=0.0, ge=0)
     samples: list[ExecutionQualitySample] = Field(default_factory=list)

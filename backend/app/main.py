@@ -22,6 +22,7 @@ from app.domain.execution_audit import ExecutionQualitySummary
 from app.domain.live_market import LiveMarketQuote
 from app.domain.macro import MacroGateStatus
 from app.domain.manual_demo import (
+    ManualDemoOpportunityRequest,
     ManualDemoSubmitRequest,
     ManualDemoTradePreview,
     ManualDemoTradeRequest,
@@ -38,6 +39,7 @@ from app.domain.opportunity_funnel import OpportunityFunnel
 from app.domain.portfolio import MarketUniverseAsset, TradingOverview
 from app.domain.qualification_history import QualificationHistoryEvent
 from app.domain.regime import RegimeSnapshot
+from app.domain.runtime_control import RuntimeDrainRequest, RuntimeDrainState
 from app.domain.session import SessionPreflight
 from app.domain.shadow import ShadowCollectionResult, ShadowOpportunityDiagnostic
 from app.domain.shadow_paper import ShadowPaperSummary
@@ -66,6 +68,7 @@ from app.services.execution_cost_history import summarize_execution_costs
 from app.services.live_market_quality import build_live_market_quality
 from app.services.macro_gate import load_macro_events, macro_gate_status
 from app.services.manual_demo import (
+    build_manual_demo_opportunity_preview,
     build_manual_demo_preview,
     submit_manual_demo_close,
     submit_manual_demo_order,
@@ -90,6 +93,11 @@ from app.services.research_execution_model import (
     load_research_execution_model,
 )
 from app.services.runtime_admission_registry import save_research_admissions
+from app.services.runtime_control import (
+    DRAIN_FILE,
+    load_runtime_drain,
+    save_runtime_drain,
+)
 from app.services.session_preflight import build_session_preflight
 from app.services.shadow_collector import collect_btc_break_retest_once
 from app.services.shadow_overview import load_shadow_overview
@@ -183,6 +191,27 @@ def runtime_config() -> dict[str, object]:
         "historical_validation_min_trades": MIN_VALIDATION_TRADES,
         "historical_holdout_min_trades": MIN_HOLDOUT_TRADES,
     }
+
+
+@app.get(
+    f"{settings.api_prefix}/runtime/drain",
+    response_model=RuntimeDrainState,
+)
+def runtime_drain_status() -> RuntimeDrainState:
+    return load_runtime_drain(settings.shadow_ledger_dir / DRAIN_FILE)
+
+
+@app.post(
+    f"{settings.api_prefix}/runtime/drain",
+    response_model=RuntimeDrainState,
+)
+def update_runtime_drain(request: RuntimeDrainRequest) -> RuntimeDrainState:
+    return save_runtime_drain(
+        settings.shadow_ledger_dir / DRAIN_FILE,
+        enabled=request.enabled,
+        updated_at=datetime.now(tz=_server_timezone()),
+        reason=request.reason,
+    )
 
 
 @app.post(f"{settings.api_prefix}/risk/size", response_model=PositionSizeResult)
@@ -525,11 +554,13 @@ def demo_execution_status() -> DemoExecutionStatus:
         now,
     )
     macro = macro_gate_status(settings.macro_events_path, now)
+    drain = load_runtime_drain(settings.shadow_ledger_dir / DRAIN_FILE)
     status = build_demo_status(
         files_dir=_mt4_files_dir(),
         overview=overview,
         macro=macro,
         now=now,
+        drain_enabled=drain.enabled,
     )
     return status.model_copy(
         update={
@@ -538,6 +569,36 @@ def demo_execution_status() -> DemoExecutionStatus:
             )
         }
     )
+
+
+@app.post(
+    f"{settings.api_prefix}/execution/demo/manual/opportunity-preview",
+    response_model=ManualDemoTradePreview,
+)
+def preview_manual_demo_opportunity(
+    request: ManualDemoOpportunityRequest,
+) -> ManualDemoTradePreview:
+    now = datetime.now(tz=_server_timezone())
+    files_dir = _mt4_files_dir()
+    overview = build_trading_overview(
+        files_dir,
+        settings.shadow_ledger_dir,
+        now,
+    )
+    macro = macro_gate_status(settings.macro_events_path, now)
+    drain = load_runtime_drain(settings.shadow_ledger_dir / DRAIN_FILE)
+    try:
+        return build_manual_demo_opportunity_preview(
+            files_dir=files_dir,
+            runtime_dir=settings.shadow_ledger_dir,
+            overview=overview,
+            macro=macro,
+            request=request,
+            now=now,
+            drain_enabled=drain.enabled,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.post(
@@ -555,12 +616,14 @@ def preview_manual_demo_execution(
         now,
     )
     macro = macro_gate_status(settings.macro_events_path, now)
+    drain = load_runtime_drain(settings.shadow_ledger_dir / DRAIN_FILE)
     return build_manual_demo_preview(
         files_dir=files_dir,
         overview=overview,
         macro=macro,
         request=request,
         now=now,
+        drain_enabled=drain.enabled,
     )
 
 
@@ -579,6 +642,7 @@ def submit_manual_demo_execution(
         now,
     )
     macro = macro_gate_status(settings.macro_events_path, now)
+    drain = load_runtime_drain(settings.shadow_ledger_dir / DRAIN_FILE)
     try:
         return submit_manual_demo_order(
             files_dir=files_dir,
@@ -587,6 +651,7 @@ def submit_manual_demo_execution(
             request=request,
             now=now,
             audit_path=settings.shadow_ledger_dir / "demo_execution_audit.jsonl",
+            drain_enabled=drain.enabled,
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

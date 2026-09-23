@@ -15,6 +15,12 @@ type RuntimeConfig = {
   historical_holdout_min_trades: number;
 };
 
+type RuntimeDrainState = {
+  enabled: boolean;
+  updated_at: string | null;
+  reason: string;
+};
+
 type ShadowSizing = {
   approved: boolean;
   reason: string;
@@ -37,6 +43,9 @@ type ShadowDiagnostic = {
   momentum_12_atr: number | null;
   efficiency: number;
   latest_closed_m5_at: string;
+  structural_stop: number | null;
+  target_r: number | null;
+  max_holding_bars: number | null;
   base_risk: ShadowSizing | null;
   reason: string;
 };
@@ -195,6 +204,7 @@ type DemoExecutionStatus = {
     ready: boolean;
     transport_armed: boolean;
     auto_collection_armed: boolean;
+    drain_enabled: boolean;
     waiting_for_qualified_trade: boolean;
     qualified_collectors: number;
     execution_mode: string;
@@ -606,6 +616,25 @@ type DailyTradingReport = {
     average_adverse_slippage_price: number;
     max_adverse_slippage_price: number;
     average_slippage_r: number;
+    average_risk_delta_eur?: number;
+    max_risk_increase_eur?: number;
+    max_risk_increase_pct?: number;
+    average_rr_delta?: number;
+    minimum_fill_reward_risk_ratio?: number;
+    samples?: {
+      command_id: string;
+      symbol: string;
+      strategy_id: string;
+      side: "buy" | "sell";
+      reference_risk_eur: number | null;
+      fill_risk_eur: number | null;
+      risk_delta_eur: number | null;
+      risk_delta_pct: number | null;
+      reference_reward_risk_ratio: number | null;
+      fill_reward_risk_ratio: number | null;
+      rr_delta: number | null;
+      ticket: number;
+    }[];
   };
   assets: {
     symbol: string;
@@ -753,6 +782,8 @@ function MarketCard({ quote }: { quote: MarketQuote }) {
 
 export default function App() {
   const [config, setConfig] = useState<RuntimeConfig | null>(null);
+  const [drain, setDrain] = useState<RuntimeDrainState | null>(null);
+  const [drainBusy, setDrainBusy] = useState(false);
   const [shadow, setShadow] = useState<ShadowDiagnostic | null>(null);
   const [opportunities, setOpportunities] = useState<ShadowDiagnostic[]>([]);
   const [blockedProbes, setBlockedProbes] = useState<BlockedProbeRuntime[]>([]);
@@ -792,6 +823,7 @@ export default function App() {
         const [
           healthResponse,
           configResponse,
+          drainResponse,
           shadowResponse,
           paperResponse,
           universeResponse,
@@ -811,6 +843,7 @@ export default function App() {
         ] = await Promise.all([
           fetch("/api/v1/health"),
           fetch("/api/v1/config"),
+          fetch("/api/v1/runtime/drain"),
           fetch("/api/v1/shadow/mt4/btc/break-retest"),
           fetch("/api/v1/shadow/mt4/btc/break-retest/paper"),
           fetch("/api/v1/market/mt4/universe"),
@@ -834,6 +867,7 @@ export default function App() {
 
         const health = await healthResponse.json();
         const runtime = await configResponse.json();
+        const drainPayload = drainResponse.ok ? await drainResponse.json() : null;
         const shadowPayload = shadowResponse.ok ? await shadowResponse.json() : null;
         const paperPayload = paperResponse.ok ? await paperResponse.json() : null;
         const universePayload = universeResponse.ok ? await universeResponse.json() : [];
@@ -870,6 +904,7 @@ export default function App() {
         if (!active) return;
         setStatus(health.status === "ok" ? "Opérationnel" : "Dégradé");
         setConfig(runtime);
+        setDrain(drainPayload);
         setShadow(shadowPayload);
         setPaper(paperPayload);
         setUniverse(universePayload);
@@ -939,6 +974,7 @@ export default function App() {
   );
   const prospectiveTarget = config?.prospective_min_trades ?? 20;
   const prospectiveProgress = bestProspective?.summary.closed_trades ?? 0;
+  const drainEnabled = drain?.enabled ?? demo?.guard.drain_enabled ?? false;
   const demoTransportArmed =
     demo?.guard.transport_armed ??
     (
@@ -1034,6 +1070,7 @@ export default function App() {
     );
   const tradingNewPositions = demo?.bridge_positions.length ?? 0;
   const paperPnlToday = dailyReport?.paper_closed_pnl_eur_today ?? 0;
+  const latestExecutionRiskSample = dailyReport?.execution_quality.samples?.[0] ?? null;
   const systemReady = preflight?.status === "ready";
   const autoDemoState = tradingNewPositions
     ? "POSITION OUVERTE"
@@ -1046,14 +1083,44 @@ export default function App() {
           : "DÉSARMÉ";
 
   const refreshExecutionState = async () => {
-    const [overviewResponse, demoResponse, preflightResponse] = await Promise.all([
-      fetch("/api/v1/portfolio/overview"),
-      fetch("/api/v1/execution/demo/status"),
-      fetch("/api/v1/session/preflight")
-    ]);
+    const [overviewResponse, demoResponse, preflightResponse, drainResponse] =
+      await Promise.all([
+        fetch("/api/v1/portfolio/overview"),
+        fetch("/api/v1/execution/demo/status"),
+        fetch("/api/v1/session/preflight"),
+        fetch("/api/v1/runtime/drain")
+      ]);
     if (overviewResponse.ok) setOverview(await overviewResponse.json());
     if (demoResponse.ok) setDemo(await demoResponse.json());
     if (preflightResponse.ok) setPreflight(await preflightResponse.json());
+    if (drainResponse.ok) setDrain(await drainResponse.json());
+  };
+
+  const toggleDrain = async (enabled: boolean) => {
+    const confirmation = window.confirm(
+      enabled
+        ? "Activer le DRAIN ? Aucune nouvelle entrée PAPER/DEMO/manuelle ne sera autorisée. Les positions existantes continueront à être gérées et fermées."
+        : "Désactiver le DRAIN ? Les nouvelles entrées qualifiées pourront repartir immédiatement."
+    );
+    if (!confirmation) return;
+
+    setDrainBusy(true);
+    try {
+      const response = await fetch("/api/v1/runtime/drain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled,
+          reason: enabled ? "dashboard deployment drain" : "dashboard drain released"
+        })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error("Impossible de modifier le drain.");
+      setDrain(payload as RuntimeDrainState);
+      await refreshExecutionState();
+    } finally {
+      setDrainBusy(false);
+    }
   };
 
   const manualPayload = () => ({
@@ -1063,6 +1130,51 @@ export default function App() {
     take_profit: Number(manualTarget),
     risk_fraction: Number(manualRiskPct) / 100
   });
+
+  const prepareManualFromOpportunity = async (item: ShadowDiagnostic) => {
+    if (item.state !== "signal_executable" || !item.side) return;
+
+    setManualBusy(true);
+    setManualMessage("");
+    try {
+      const response = await fetch("/api/v1/execution/demo/manual/opportunity-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          symbol: item.symbol,
+          mechanism: item.mechanism
+        })
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.detail ?? "Cette opportunité n’est plus exécutable.");
+      }
+      const preview = payload as ManualDemoPreview;
+      setManualSymbol(preview.symbol);
+      setManualSide(preview.side);
+      setManualStop(String(preview.stop_loss));
+      setManualTarget(String(preview.take_profit));
+      setManualRiskPct(String(preview.risk_fraction * 100));
+      setManualPreview(preview);
+      setManualMessage(
+        preview.approved
+          ? "Signal chargé depuis le moteur. Vérifie le preview avant confirmation DEMO."
+          : preview.reasons.join(" · ")
+      );
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById("manual-demo-trade")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    } catch (error) {
+      setManualPreview(null);
+      setManualMessage(
+        error instanceof Error ? error.message : "Prévisualisation de l’opportunité impossible."
+      );
+    } finally {
+      setManualBusy(false);
+    }
+  };
 
   const previewManualTrade = async () => {
     const payload = manualPayload();
@@ -1486,6 +1598,33 @@ export default function App() {
         </p>
 
         <div className="gate-grid">
+          <div className="gate-card drain-control-card">
+            <span className="label">Drain déploiement</span>
+            <strong className={drainEnabled ? "negative-text" : "positive-text"}>
+              {drainEnabled ? "ON" : "OFF"}
+            </strong>
+            <p>
+              {drainEnabled
+                ? "Nouvelles entrées bloquées ; les positions existantes restent gérées jusqu’à fermeture."
+                : "Entrées qualifiées autorisées selon les guards normaux."}
+            </p>
+            <div className="drain-actions">
+              <button
+                type="button"
+                disabled={drainBusy || drainEnabled}
+                onClick={() => void toggleDrain(true)}
+              >
+                DRAIN ON
+              </button>
+              <button
+                type="button"
+                disabled={drainBusy || !drainEnabled}
+                onClick={() => void toggleDrain(false)}
+              >
+                DRAIN OFF
+              </button>
+            </div>
+          </div>
           <div className="gate-card">
             <span className="label">Mode runtime</span>
             <strong>{config?.execution_mode.toUpperCase() ?? "—"}</strong>
@@ -1578,7 +1717,11 @@ export default function App() {
         </div>
       </section>
 
-      <section className="manual-trade-panel" hidden={activeView !== "trading"}>
+      <section
+        id="manual-demo-trade"
+        className="manual-trade-panel"
+        hidden={activeView !== "trading"}
+      >
         <div className="section-heading">
           <div>
             <p className="eyebrow">MANUAL DEMO TRADE</p>
@@ -1775,6 +1918,42 @@ export default function App() {
                   dailyReport.execution_quality.average_slippage_r.toFixed(3) +
                   "R"
                 : "—"}
+            </p>
+          </div>
+          <div className="intelligence-card">
+            <span className="label">Fidélité risque au fill</span>
+            <strong
+              className={
+                (latestExecutionRiskSample?.risk_delta_eur ?? 0) > 0
+                  ? "negative-text"
+                  : "positive-text"
+              }
+            >
+              {latestExecutionRiskSample?.fill_risk_eur != null
+                ? latestExecutionRiskSample.fill_risk_eur.toFixed(2) + " €"
+                : "—"}
+            </strong>
+            <p>
+              {latestExecutionRiskSample?.reference_risk_eur != null &&
+              latestExecutionRiskSample?.risk_delta_eur != null
+                ? "prévu " +
+                  latestExecutionRiskSample.reference_risk_eur.toFixed(2) +
+                  " € · Δ " +
+                  (latestExecutionRiskSample.risk_delta_eur >= 0 ? "+" : "") +
+                  latestExecutionRiskSample.risk_delta_eur.toFixed(2) +
+                  " € (" +
+                  (latestExecutionRiskSample.risk_delta_pct != null
+                    ? latestExecutionRiskSample.risk_delta_pct.toFixed(1) + " %"
+                    : "—") +
+                  ") · RR " +
+                  (latestExecutionRiskSample.reference_reward_risk_ratio != null
+                    ? latestExecutionRiskSample.reference_reward_risk_ratio.toFixed(2)
+                    : "—") +
+                  " → " +
+                  (latestExecutionRiskSample.fill_reward_risk_ratio != null
+                    ? latestExecutionRiskSample.fill_reward_risk_ratio.toFixed(2)
+                    : "—")
+                : "Mesuré à partir des prochains fills instrumentés."}
             </p>
           </div>
           <div className="intelligence-card">
@@ -2449,6 +2628,7 @@ export default function App() {
             <span>Side</span>
             <span>Dernière M5</span>
             <span>Diagnostic</span>
+            <span>Action</span>
           </div>
           {opportunities.map((item) => (
             <div
@@ -2464,6 +2644,20 @@ export default function App() {
               <span>{item.side?.toUpperCase() ?? "—"}</span>
               <span>{new Date(item.latest_closed_m5_at).toLocaleTimeString("fr-FR")}</span>
               <span className="opportunity-reason">{item.reason}</span>
+              <span>
+                {item.state === "signal_executable" && item.side ? (
+                  <button
+                    type="button"
+                    className="opportunity-trade-button"
+                    disabled={manualBusy || !demoTransportArmed}
+                    onClick={() => void prepareManualFromOpportunity(item)}
+                  >
+                    PRÉPARER DEMO
+                  </button>
+                ) : (
+                  "—"
+                )}
+              </span>
             </div>
           ))}
         </div>

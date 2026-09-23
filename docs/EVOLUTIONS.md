@@ -1169,3 +1169,55 @@ Backend Opportunity Funnel adds a compact research-progress candidate selected o
 Frontend Command Center adds a `Recherche · candidat le plus observé` card showing symbol, resolved/minimum sample, mechanism, research state and expectancy. The card is descriptive and does not rank strategies by profitability.
 
 Validation: 219 backend tests pass, Ruff clean, targeted frontend build passes, and a read-only production calculation returns XAUUSD post-shock continuation at 1/20 / -1R / COLLECTING.
+
+
+## 2026-09-23 — executable opportunity → guarded manual DEMO preview
+
+Backend candidate:
+
+- new `/execution/demo/manual/opportunity-preview` endpoint;
+- accepts only the retained symbol + existing mechanism;
+- requires the latest SHADOW diagnostic to still be `signal_executable`;
+- rejects stale diagnostics (>3 minutes), stale/missing broker quotes and invalid
+  current stop geometry;
+- derives TP from the live broker entry, structural stop and mechanism `target_r`;
+- reuses the existing manual DEMO sizing/risk/macro/position guards at base risk;
+- preview is read-only and does not create a command.
+
+Frontend candidate:
+
+- executable rows in Live Opportunity Board expose `PRÉPARER DEMO`;
+- the backend preview fills symbol, side, SL, TP and risk in the existing form;
+- explicit `CONFIRMER DEMO` remains mandatory.
+
+Validation: 23 targeted tests, 222 full backend tests, Ruff and Vite build pass.
+Deployment remains blocked while the current Trading-New PAPER/broker position is open.
+## 2026-09-23 — PAPER → broker fill fidelity
+
+Execution audit candidate:
+
+- open-command audit records the reference monetary risk;
+- filled orders derive fill-based stop risk from the same reference risk model;
+- each execution sample reports risk delta EUR / %, reference RR, fill RR and RR delta;
+- summary reports average risk delta, maximum observed risk increase and minimum
+  fill RR;
+- manual and automatic DEMO orders use the same instrumentation;
+- dashboard Trading Intelligence adds a fill-risk fidelity card.
+
+No execution authority or guard changes. Validation: 26 targeted tests, 219 full
+backend tests, Ruff clean and frontend Vite build clean.
+## 2026-09-23 — hot runtime deployment drain
+
+New operational safety primitive:
+
+- atomic runtime drain state outside static process configuration;
+- worker checks drain on every collection cycle;
+- PAPER and broker DEMO new-entry paths honor the same drain state;
+- existing trade lifecycle and close commands bypass the new-entry block so
+  draining cannot strand an open Trading-New position;
+- manual DEMO is also blocked while drained;
+- frontend shows and controls the drain explicitly.
+
+No strategy, admission, risk, lot, cap, spread, stop/target or LIVE rule changes.
+
+Validation: 224 backend tests pass, Ruff clean, frontend Vite build clean.

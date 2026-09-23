@@ -32,6 +32,7 @@ class DemoExecutionGuard(BaseModel):
     ready: bool
     transport_armed: bool = False
     auto_collection_armed: bool = False
+    drain_enabled: bool = False
     waiting_for_qualified_trade: bool = False
     qualified_collectors: int = Field(default=0, ge=0)
     execution_mode: str

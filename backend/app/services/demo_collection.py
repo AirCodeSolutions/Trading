@@ -32,6 +32,8 @@ def advance_demo_collection(
     overview: TradingOverview,
     macro: MacroGateStatus,
     now: datetime,
+    *,
+    allow_new_entries: bool = True,
 ) -> DemoCollectionState:
     state_path = runtime_dir / STATE_FILE
     state = load_demo_collection_state(state_path)
@@ -109,6 +111,10 @@ def advance_demo_collection(
             elif state.close_command_id is None:
                 state.close_command_id = pending_close.command_id
 
+        save_demo_collection_state(state_path, state)
+        return state
+
+    if not allow_new_entries:
         save_demo_collection_state(state_path, state)
         return state
 

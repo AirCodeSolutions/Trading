@@ -26,6 +26,7 @@ def append_open_command_event(
     command: DemoOrderCommand,
     *,
     reference_entry_price: float,
+    reference_risk_eur: float | None = None,
 ) -> ExecutionAuditEvent:
     event = ExecutionAuditEvent(
         event_id=uuid4().hex,
@@ -37,6 +38,7 @@ def append_open_command_event(
         side=command.side,
         lots=command.lots,
         reference_entry_price=reference_entry_price,
+        reference_risk_eur=reference_risk_eur,
         stop_loss=command.stop_loss,
         take_profit=command.take_profit,
     )
@@ -101,6 +103,9 @@ def append_bridge_result_if_new(
         lots=command.lots if command is not None else None,
         reference_entry_price=(
             command.reference_entry_price if command is not None else None
+        ),
+        reference_risk_eur=(
+            command.reference_risk_eur if command is not None else None
         ),
         stop_loss=command.stop_loss if command is not None else None,
         take_profit=command.take_profit if command is not None else None,
@@ -184,6 +189,28 @@ def build_execution_quality_summary(path: Path) -> ExecutionQualitySummary:
         adverse = max(0.0, slippage)
         risk_distance = abs(command.reference_entry_price - command.stop_loss)
         slippage_r = slippage / risk_distance if risk_distance > 0 else 0.0
+        fill_stop_distance = abs(result.fill_price - command.stop_loss)
+        reference_reward_risk_ratio = None
+        fill_reward_risk_ratio = None
+        rr_delta = None
+        if command.take_profit is not None and risk_distance > 0 and fill_stop_distance > 0:
+            reference_reward_risk_ratio = (
+                abs(command.take_profit - command.reference_entry_price) / risk_distance
+            )
+            fill_reward_risk_ratio = (
+                abs(command.take_profit - result.fill_price) / fill_stop_distance
+            )
+            rr_delta = fill_reward_risk_ratio - reference_reward_risk_ratio
+
+        fill_risk_eur = None
+        risk_delta_eur = None
+        risk_delta_pct = None
+        if command.reference_risk_eur is not None and risk_distance > 0:
+            fill_risk_eur = (
+                command.reference_risk_eur * fill_stop_distance / risk_distance
+            )
+            risk_delta_eur = fill_risk_eur - command.reference_risk_eur
+            risk_delta_pct = 100.0 * risk_delta_eur / command.reference_risk_eur
         samples.append(
             ExecutionQualitySample(
                 command_id=command.command_id,
@@ -197,11 +224,34 @@ def build_execution_quality_summary(path: Path) -> ExecutionQualitySummary:
                 slippage_price=slippage,
                 adverse_slippage_price=adverse,
                 slippage_r=slippage_r,
+                reference_risk_eur=command.reference_risk_eur,
+                fill_risk_eur=fill_risk_eur,
+                risk_delta_eur=risk_delta_eur,
+                risk_delta_pct=risk_delta_pct,
+                reference_reward_risk_ratio=reference_reward_risk_ratio,
+                fill_reward_risk_ratio=fill_reward_risk_ratio,
+                rr_delta=rr_delta,
                 ticket=result.ticket,
             )
         )
 
     adverse_values = [sample.adverse_slippage_price for sample in samples]
+    risk_deltas = [
+        sample.risk_delta_eur
+        for sample in samples
+        if sample.risk_delta_eur is not None
+    ]
+    risk_delta_pcts = [
+        sample.risk_delta_pct
+        for sample in samples
+        if sample.risk_delta_pct is not None
+    ]
+    rr_deltas = [sample.rr_delta for sample in samples if sample.rr_delta is not None]
+    fill_rr_values = [
+        sample.fill_reward_risk_ratio
+        for sample in samples
+        if sample.fill_reward_risk_ratio is not None
+    ]
     return ExecutionQualitySummary(
         commands=len(commands),
         fills=sum(
@@ -221,5 +271,10 @@ def build_execution_quality_summary(path: Path) -> ExecutionQualitySummary:
         average_slippage_r=(
             fmean(sample.slippage_r for sample in samples) if samples else 0.0
         ),
+        average_risk_delta_eur=fmean(risk_deltas) if risk_deltas else 0.0,
+        max_risk_increase_eur=max([0.0, *risk_deltas]),
+        max_risk_increase_pct=max([0.0, *risk_delta_pcts]),
+        average_rr_delta=fmean(rr_deltas) if rr_deltas else 0.0,
+        minimum_fill_reward_risk_ratio=min(fill_rr_values) if fill_rr_values else 0.0,
         samples=samples[-50:][::-1],
     )

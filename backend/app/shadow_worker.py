@@ -25,6 +25,7 @@ from app.services.mt4_csv import _server_timezone
 from app.services.multi_shadow_collector import collect_all_shadow_once
 from app.services.portfolio_overview import build_trading_overview
 from app.services.qualification_history import record_qualification_history
+from app.services.runtime_control import DRAIN_FILE, load_runtime_drain
 from app.services.trading_intelligence import (
     INTELLIGENCE_FILE,
     build_trading_intelligence,
@@ -53,10 +54,12 @@ def main() -> None:
                 now,
                 symbols=settings.session_watch_symbols,
             )
+            drain = load_runtime_drain(settings.shadow_ledger_dir / DRAIN_FILE)
             results = collect_all_shadow_once(
                 settings.mt4_files_dir,
                 settings.shadow_ledger_dir,
                 now,
+                allow_paper_entries=not drain.enabled,
             )
             overview = build_trading_overview(
                 settings.mt4_files_dir,
@@ -71,6 +74,7 @@ def main() -> None:
                     overview,
                     macro,
                     now,
+                    allow_new_entries=not drain.enabled,
                 )
             observability_errors = _update_observability(
                 audit_path=audit_path,

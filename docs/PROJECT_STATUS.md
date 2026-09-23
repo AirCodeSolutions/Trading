@@ -1334,3 +1334,30 @@ A dedicated runtime drain is now implemented on an isolated branch:
 Validation: 34 targeted drain tests, 224 full backend tests, Ruff clean and Vite
 build clean. The feature is not deployed while the current Trading-New BTC
 PAPER/broker position remains open.
+
+
+## 2026-09-23 — PR #92 deployed, drain released, first broker cycle reconciled
+
+PR #92 is **MERGED + DEPLOYED** at `cd779ea`.
+
+Deployment procedure:
+
+- Trading-New book confirmed flat before merge/restart;
+- native runtime drain created ON before process restart;
+- exact pre-drain admission registry restored and verified with `cmp`;
+- backend, SHADOW worker and frontend restarted once;
+- post-deploy READY 5/5, 24 scanners, 6 qualified collectors, 0 PAPER open,
+  0 bridge position and 0 pending open/close command;
+- native DRAIN then switched OFF through `/api/v1/runtime/drain`;
+- auto-DEMO is armed again and LIVE remains OFF.
+
+First automatic broker DEMO cycle is now fully observed:
+
+- strategy: `BTCUSD:structural_displacement_sequence`;
+- PAPER: timeout close at 86292.60, +0.5751R, +1.8453 EUR;
+- broker ticket 185258524: open 86385.37, close 86234.48, realized +2.64 EUR;
+- broker history magic = 560619, proving ownership by Trading-New.
+
+P0 follow-up adds ticket-driven MT4-history reconciliation so broker realized PnL
+is reported exactly when every closed Trading-New ticket is present, and remains
+UNKNOWN if any closed ticket is missing.

@@ -1221,3 +1221,18 @@ New operational safety primitive:
 No strategy, admission, risk, lot, cap, spread, stop/target or LIVE rule changes.
 
 Validation: 224 backend tests pass, Ruff clean, frontend Vite build clean.
+
+
+## 2026-09-23 — P0 broker realized PnL reconciliation
+
+New read-only broker-history reconciliation:
+
+- starts from closed Trading-New tickets recorded by the execution audit;
+- searches MT4 `mt4_history_*.json` exports by ticket and magic 560619;
+- reports exact daily realized broker PnL only when every closed ticket is found;
+- otherwise keeps broker realized PnL UNKNOWN and lists missing tickets;
+- dashboard now shows exact realized PnL and number of reconciled Trading-New
+  tickets instead of the previous permanent UNKNOWN placeholder.
+
+Runtime dry-run on the first automatic trade: 1/1 ticket reconciled, +2.64 EUR.
+Validation: 231 backend tests pass, Ruff clean and frontend Vite build passes.

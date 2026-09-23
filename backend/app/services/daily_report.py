@@ -15,6 +15,7 @@ from app.domain.trading_intelligence import (
     OpportunityCaptureState,
     TradingIntelligenceOverview,
 )
+from app.services.broker_history import summarize_trading_new_closed_tickets
 from app.services.demo_execution import build_demo_status
 from app.services.execution_audit import (
     AUDIT_FILE,
@@ -52,6 +53,12 @@ def build_daily_trading_report(
             now=now,
         )
     quality=build_execution_quality_summary(runtime_dir/AUDIT_FILE)
+    broker_closed = summarize_trading_new_closed_tickets(
+        files_dir,
+        runtime_dir / AUDIT_FILE,
+        magic_number=settings.demo_magic_number,
+        report_date=now.date(),
+    )
     asset_rows=[]
     by_symbol={row.symbol:row for row in intelligence.assets}
     for symbol in settings.session_watch_symbols:
@@ -123,7 +130,11 @@ def build_daily_trading_report(
         paper_open_risk_eur=overview.risk.research_paper_open_risk_eur,
         bridge_open_positions=len(demo.bridge_positions),
         bridge_unrealized_pnl_eur=sum(row.profit for row in demo.bridge_positions),
-        broker_realized_pnl_eur_today=None,
+        broker_realized_pnl_eur_today=(
+            broker_closed.realized_pnl_eur if broker_closed.complete else None
+        ),
+        broker_closed_trades_today=broker_closed.trades,
+        broker_history_complete=broker_closed.complete,
         market_opportunities_24h=len(intelligence.opportunities),
         captured_opportunities_24h=captured_total,
         missed_opportunities_24h=missed_total,
@@ -131,7 +142,16 @@ def build_daily_trading_report(
         execution_quality=quality,
         assets=asset_rows,
         limitations=[
-            "broker realized PnL for closed Trading-New tickets is not exported by the current MT4 bridge",
+            *(
+                [
+                    (
+                        "broker realized PnL is incomplete: closed Trading-New "
+                        f"tickets missing from MT4 history {broker_closed.missing_tickets}"
+                    )
+                ]
+                if not broker_closed.complete
+                else []
+            ),
             *intelligence.limitations,
         ],
     )

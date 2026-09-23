@@ -1311,3 +1311,26 @@ The current trade remains inside the monetary risk budget, but the execution
 audit is being extended so every future fill records these deltas automatically.
 This is measurement only; sizing, SL, TP, risk policy and bridge behavior remain
 unchanged. Deployment is blocked while the current Trading-New position is open.
+## 2026-09-23 — runtime drain control candidate
+
+Trading-New previously had no real deployment drain. The nearest static setting
+(`demo_collection_enabled`) is process-loaded and therefore unsuitable for safe
+hot deployment control.
+
+A dedicated runtime drain is now implemented on an isolated branch:
+
+- persistent `shadow/drain_state.json`;
+- hot GET/POST API at `/api/v1/runtime/drain`;
+- worker reloads drain state every cycle without restart;
+- DRAIN ON blocks new PAPER entries;
+- DRAIN ON blocks new automatic broker DEMO entries;
+- DRAIN ON blocks manual DEMO preview/submission;
+- already-open PAPER and broker DEMO positions continue to resolve and close;
+- research scanners, blocked probes and executable-unqualified probes continue
+  collecting evidence;
+- dashboard Trading view exposes explicit DRAIN ON / DRAIN OFF controls with
+  confirmation.
+
+Validation: 34 targeted drain tests, 224 full backend tests, Ruff clean and Vite
+build clean. The feature is not deployed while the current Trading-New BTC
+PAPER/broker position remains open.

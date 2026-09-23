@@ -304,6 +304,26 @@ def test_manual_preview_sizes_from_live_quote_and_existing_risk_engine(
     assert preview.sizing.spread_to_stop <= 0.15
 
 
+def test_manual_preview_rejects_runtime_drain(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    configure_demo(monkeypatch)
+    patch_market(monkeypatch)
+
+    preview = build_manual_demo_preview(
+        files_dir=tmp_path,
+        overview=overview(),
+        macro=clear_macro(),
+        request=valid_request(),
+        now=NOW,
+        drain_enabled=True,
+    )
+
+    assert preview.approved is False
+    assert "runtime drain is enabled" in preview.reasons
+
+
 def test_manual_preview_rejects_risk_above_absolute_limit(
     tmp_path: Path,
     monkeypatch,

@@ -1206,3 +1206,18 @@ Execution audit candidate:
 
 No execution authority or guard changes. Validation: 26 targeted tests, 219 full
 backend tests, Ruff clean and frontend Vite build clean.
+## 2026-09-23 — hot runtime deployment drain
+
+New operational safety primitive:
+
+- atomic runtime drain state outside static process configuration;
+- worker checks drain on every collection cycle;
+- PAPER and broker DEMO new-entry paths honor the same drain state;
+- existing trade lifecycle and close commands bypass the new-entry block so
+  draining cannot strand an open Trading-New position;
+- manual DEMO is also blocked while drained;
+- frontend shows and controls the drain explicitly.
+
+No strategy, admission, risk, lot, cap, spread, stop/target or LIVE rule changes.
+
+Validation: 224 backend tests pass, Ruff clean, frontend Vite build clean.

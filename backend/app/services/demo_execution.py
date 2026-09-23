@@ -35,6 +35,7 @@ def build_demo_guard(
     now: datetime,
     *,
     bridge_positions: list[DemoBridgePosition] | None = None,
+    drain_enabled: bool = False,
 ) -> DemoExecutionGuard:
     reasons: list[str] = []
     broker_is_demo = bool(overview.broker and overview.broker.is_demo)
@@ -51,13 +52,19 @@ def build_demo_guard(
         and not settings.live_trading_enabled
         and broker_is_demo
     )
-    auto_collection_armed = transport_armed and settings.demo_collection_enabled
+    auto_collection_armed = (
+        transport_armed
+        and settings.demo_collection_enabled
+        and not drain_enabled
+    )
     waiting_for_qualified_trade = (
         auto_collection_armed
         and overview.portfolio.action == PortfolioAction.NO_TRADE
         and qualified_collectors > 0
     )
 
+    if drain_enabled:
+        reasons.append("runtime drain is enabled")
     if settings.execution_mode != ExecutionMode.DEMO:
         reasons.append("execution mode is not demo")
     if not settings.demo_execution_bridge_enabled:
@@ -90,6 +97,7 @@ def build_demo_guard(
         ready=not reasons,
         transport_armed=transport_armed,
         auto_collection_armed=auto_collection_armed,
+        drain_enabled=drain_enabled,
         waiting_for_qualified_trade=waiting_for_qualified_trade,
         qualified_collectors=qualified_collectors,
         execution_mode=settings.execution_mode.value,
@@ -185,6 +193,7 @@ def build_demo_status(
     overview: TradingOverview,
     macro: MacroGateStatus,
     now: datetime,
+    drain_enabled: bool = False,
 ) -> DemoExecutionStatus:
     bridge_positions = read_demo_positions(files_dir / POSITIONS_FILE)
     return DemoExecutionStatus(
@@ -193,6 +202,7 @@ def build_demo_status(
             macro,
             now,
             bridge_positions=bridge_positions,
+            drain_enabled=drain_enabled,
         ),
         pending_command=read_pending_command(files_dir / COMMAND_FILE),
         pending_close_command=read_pending_close_command(

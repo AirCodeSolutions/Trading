@@ -436,8 +436,18 @@ def _assess_unqualified_probe_evidence(
         ProspectiveQualificationState.FAILED: ResearchProbeQualificationState.FAILED,
         ProspectiveQualificationState.SUPPORTS_DEMO: ResearchProbeQualificationState.SUPPORTS_REVIEW,
     }[qualification.state]
-    reason = qualification.reason
-    if state == ResearchProbeQualificationState.SUPPORTS_REVIEW:
+    if state == ResearchProbeQualificationState.COLLECTING:
+        reason = (
+            f"{qualification.closed_trades}/{MIN_PROSPECTIVE_TRADES} resolved "
+            "executable probes; minimum research-review sample not reached"
+        )
+    elif state == ResearchProbeQualificationState.FAILED:
+        reason = qualification.reason.replace(
+            "prospective ",
+            "prospective executable-probe ",
+            1,
+        )
+    else:
         reason = (
             "prospective executable-probe evidence meets the existing paper "
             "thresholds; dedicated validation is required before any admission change"

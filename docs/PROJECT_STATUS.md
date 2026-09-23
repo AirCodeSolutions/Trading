@@ -1239,3 +1239,20 @@ Safety semantics:
 - no admission file, Portfolio Manager state, PAPER permission, DEMO bridge or LIVE flag is modified automatically.
 
 Validation on the isolated branch: 219 backend tests pass, Ruff clean and frontend build clean. A read-only calculation over current production data detected one open unqualified probe, `XAUUSD:post_shock_continuation`, correctly reported as `COLLECTING 0/20`.
+
+
+## 2026-09-23 — PR #86 probe qualification deployed
+
+Status: **MERGED + DEPLOYED** at `2bd46db`.
+
+The backend was restarted only after a direct safety check confirmed 24 PAPER states with 0 open PAPER trade, empty DEMO collection state, 0 Trading-New bridge position and no pending open/close command. The SHADOW worker was not restarted because PR #86 changes only read-only funnel qualification and frontend presentation.
+
+Post-deployment:
+
+- READY 5/5, worker healthy, AUTO-DEMO armed, LIVE OFF;
+- dashboard exposes research-only review readiness and per-family `n/20` progress;
+- first live executable-unqualified probe is `XAUUSD:post_shock_continuation`, SELL, still open and correctly research-only;
+- current review-ready family count = 0;
+- 0 PAPER open, 0 Trading-New broker position, 0 pending command.
+
+A follow-up copy fix ensures COLLECTING/FAILED reasons explicitly say executable-probe evidence rather than PAPER evidence. This does not alter any qualification threshold or authority.

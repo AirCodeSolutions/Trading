@@ -1151,3 +1151,12 @@ Frontend Research view adds:
 - explicit copy that review readiness does not authorize PAPER or DEMO.
 
 No worker, scanner, signal, risk, sizing, spread, stop/target or admission behavior changes in this branch.
+
+
+## 2026-09-23 — PR #86 deployed + probe-copy hardening
+
+Probe qualification visibility from PR #86 is active. The frontend can now show `COLLECTING`, `FAILED` and `SUPPORTS_REVIEW` with resolved-sample progress while execution authority remains unchanged.
+
+The first deployed probe is XAUUSD post-shock continuation and remains outside PAPER/DEMO.
+
+A targeted follow-up hardens wording so research-probe states can never be mistaken for PAPER evidence: collecting reasons report `n/20 resolved executable probes`, and failed reasons are explicitly labelled `executable-probe`.

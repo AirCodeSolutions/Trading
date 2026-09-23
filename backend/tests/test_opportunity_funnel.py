@@ -238,6 +238,9 @@ def test_funnel_aggregates_unqualified_executable_probes(tmp_path: Path) -> None
     assert qualification.state == ResearchProbeQualificationState.COLLECTING
     assert qualification.closed_trades == 2
     assert qualification.minimum_trades == 20
+    assert qualification.reason == (
+        "2/20 resolved executable probes; minimum research-review sample not reached"
+    )
     assert funnel.unqualified_probe_review_ready_strategies == 0
 
 
@@ -299,6 +302,7 @@ def test_funnel_marks_negative_probe_evidence_failed(tmp_path: Path) -> None:
     assert qualification.state == ResearchProbeQualificationState.FAILED
     assert qualification.closed_trades == 20
     assert qualification.expectancy_r == -1.0
+    assert "executable-probe" in qualification.reason
     assert funnel.unqualified_probe_review_ready_strategies == 0
 
 

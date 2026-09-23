@@ -1689,3 +1689,20 @@ Trading Intelligence also exposes precursor-to-signal conversion rate, signal-wi
 This is attribution only. It changes no signal detector, admission, PAPER/DEMO authority, risk, sizing or LIVE state.
 
 Validation: 15 targeted tests, 245 full backend tests, Ruff clean and frontend Vite build clean.
+
+
+## 2026-09-23 — PR #102 deployed, precursor conversion funnel live
+
+PR #102 `Add precursor conversion funnel attribution` is **MERGED + DEPLOYED** at `8636bc8`.
+
+Deployment safety:
+
+- BOOK_FLAT confirmed before deployment;
+- native DRAIN ON and second BOOK_FLAT proof passed;
+- backend, SHADOW worker and frontend restarted once;
+- postflight READY 5/5, worker OK, 24 scanners, 6 PAPER/demo collectors;
+- 0 PAPER open, 0 Trading-New bridge position, 0 pending command;
+- Research frontend exposes the new conversion funnel;
+- DRAIN released OFF after verification; auto-DEMO armed; LIVE OFF.
+
+The prospective first_seen denominator is still 0 immediately after deployment because the collector only started at 21:08:36 Europe/Athens and each market-first opportunity requires the full 12-M5 future horizon before it can be classified. This is expected and prevents premature conclusions.

@@ -33,7 +33,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--mode",
-        choices=("stop-only", "target-only", "stop-plus-target"),
+        choices=(
+            "stop-only",
+            "target-only",
+            "stop-plus-target",
+            "target-plus-protection",
+        ),
         default="stop-only",
     )
     return parser.parse_args()
@@ -67,10 +72,21 @@ def main() -> None:
         macro_events=load_macro_events(settings.macro_events_path),
     )
     policy = TrailingManagerConfig(
-        enable_stop_trailing=args.mode != "target-only",
-        enable_target_extension=args.mode != "stop-only",
+        enable_stop_trailing=args.mode in {
+            "stop-only",
+            "stop-plus-target",
+            "target-plus-protection",
+        },
+        enable_target_extension=args.mode in {
+            "target-only",
+            "stop-plus-target",
+            "target-plus-protection",
+        },
         target_extension_requires_protected_stop=(
             args.mode == "stop-plus-target"
+        ),
+        stop_trailing_requires_extended_target=(
+            args.mode == "target-plus-protection"
         ),
     )
     report = run_trailing_manager_research(

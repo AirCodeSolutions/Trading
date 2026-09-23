@@ -1077,3 +1077,14 @@ Frontend:
 - direct navigation to the guarded manual DEMO form is available without submitting an order automatically.
 
 Validation in the isolated worktree: 26 targeted backend tests passed, Ruff clean, frontend TypeScript/Vite build passed.
+
+
+## 2026-09-23 — XAU Asia sweep SHADOW/PAPER scope
+
+The existing Asia session sweep/reversal mechanism is extended from GBPUSD-only runtime scope to GBPUSD + XAUUSD, without changing the mechanism itself.
+
+Purpose: collect prospective evidence on XAU where validation/holdout historical expectancy is positive but sample size is too small for promotion. This creates no ACTIVE or LIVE authority.
+
+Validation so far: RED scope test first, then 19 targeted tests green; /tmp dry-run produces 24 scanners with exactly one new XAU Asia sweep scanner and no production-runtime writes.
+
+Related scope checks remain rejected: directional pullback is not extended to EUR/XAU/BTC, and EUR Asia sweep remains disabled because it has no executable validation/holdout evidence under the current broker/capital contract.

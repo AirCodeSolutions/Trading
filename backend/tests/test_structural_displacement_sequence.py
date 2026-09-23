@@ -171,7 +171,7 @@ def test_sequence_evidence_is_shadow_but_paper_collection_candidate() -> None:
     assert paper_entry_allowed(decision) is True
 
 
-def test_sequence_adds_exactly_one_runtime_scanner() -> None:
+def test_sequence_remains_exactly_one_runtime_scanner() -> None:
     symbols = ("BTCUSD", "EURUSD", "GBPUSD", "XAUUSD", "XAGUSD")
     enabled = [
         (symbol, mechanism)
@@ -180,7 +180,7 @@ def test_sequence_adds_exactly_one_runtime_scanner() -> None:
         if shadow_mechanism_enabled(symbol, mechanism)
     ]
 
-    assert len(enabled) == 23
+    assert len(enabled) == 24
     sequence_rows = [
         row
         for row in enabled

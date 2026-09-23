@@ -1386,3 +1386,19 @@ Frontend:
 
 No trading authority or risk geometry changes.
 Validation: 245 backend tests, Ruff clean, Vite build clean.
+
+
+## 2026-09-23 — deployed causal first_seen collector
+
+The prospective causal precursor collector from PR #100 is active in production as research-only observability.
+
+Operational behavior:
+
+- starts from an explicit prospective timestamp;
+- no historical first_seen backfill;
+- one observation maximum per symbol / closed M5;
+- only directional causal states already known by the existing classifier are persisted;
+- market-first opportunities can now expose earliest aligned pre-birth first_seen and lead time;
+- only opportunities born after collection startup enter the first_seen coverage denominator.
+
+Deployment preserved all trading authority and risk settings. Postflight: READY 5/5, 24 scanners, 6 qualified collectors, DRAIN OFF, LIVE OFF, 0 PAPER / bridge position / pending command.

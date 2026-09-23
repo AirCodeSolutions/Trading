@@ -1643,3 +1643,31 @@ Validation:
 
 Runtime execution remains unchanged: six qualified collectors, base risk 1%,
 existing spread/lot/cap guards, DRAIN OFF and LIVE OFF.
+
+
+## 2026-09-23 — PR #100 deployed, precursor collection live
+
+PR #100 `Add prospective causal precursor first-seen research` is **MERGED + DEPLOYED** at `e0c127c`.
+
+Deployment procedure:
+
+- Trading-New book confirmed flat before deployment;
+- native DRAIN switched ON and a second BOOK_FLAT proof confirmed: 0 PAPER, 0 bridge position, 0 pending open/close command;
+- backend, SHADOW worker and frontend restarted once;
+- postflight READY 5/5, worker OK, 24 scanners, 6 PAPER/demo-eligible collectors, 0 position and 0 pending command;
+- Research frontend confirmed active on :5180 with the new `Précurseur causal · first_seen` card;
+- native DRAIN released OFF after verification; auto-DEMO is armed again;
+- LIVE remains OFF.
+
+Prospective precursor collection started at 2026-09-23T21:08:36.454941+03:00. The first production cycle persisted only directional patterns observable on the latest closed M5: BTCUSD, GBPUSD and XAUUSD each produced one row. No historical first_seen backfill occurred.
+
+Current runtime after drain release:
+
+- READY 5/5;
+- DRAIN OFF;
+- 6 qualified collectors;
+- 0 PAPER open;
+- 0 Trading-New bridge position;
+- 0 pending Trading-New command.
+
+PR tracking cleanup: #93 is confirmed CLOSED as superseded by merged #95. PRs #96, #97, #98, #99 and #100 are all MERGED.

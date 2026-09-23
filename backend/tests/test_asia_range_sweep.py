@@ -196,22 +196,30 @@ def test_asia_range_sweep_uses_only_first_qualifying_london_sweep() -> None:
     assert _asia_range_sweep_signal(bars, [0.0020] * len(bars)) is None
 
 
-def test_asia_range_sweep_runtime_scope_is_gbpusd_only() -> None:
+def test_asia_range_sweep_runtime_scope_is_gbpusd_and_xauusd() -> None:
     mechanism = OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL
     assert shadow_mechanism_enabled("GBPUSD", mechanism) is True
+    assert shadow_mechanism_enabled("XAUUSD", mechanism) is True
     assert shadow_mechanism_enabled("EURUSD", mechanism) is False
     assert shadow_mechanism_enabled("BTCUSD", mechanism) is False
-    assert shadow_mechanism_enabled("XAUUSD", mechanism) is False
+    assert shadow_mechanism_enabled("XAGUSD", mechanism) is False
 
 
 def test_asia_range_sweep_registry_parsing() -> None:
-    expected = (
+    expected_gbp = (
         "GBPUSD",
         OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL,
         "GBPUSD_asia_range_sweep",
     )
-    assert parse_paper_state(Path("GBPUSD_asia_range_sweep_paper_state.json")) == expected
-    assert parse_probe_state(Path("GBPUSD_asia_range_sweep_blocked_probe_state.json")) == expected
+    expected_xau = (
+        "XAUUSD",
+        OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL,
+        "XAUUSD_asia_range_sweep",
+    )
+    assert parse_paper_state(Path("GBPUSD_asia_range_sweep_paper_state.json")) == expected_gbp
+    assert parse_probe_state(Path("GBPUSD_asia_range_sweep_blocked_probe_state.json")) == expected_gbp
+    assert parse_paper_state(Path("XAUUSD_asia_range_sweep_paper_state.json")) == expected_xau
+    assert parse_probe_state(Path("XAUUSD_asia_range_sweep_blocked_probe_state.json")) == expected_xau
 
 
 def test_asia_range_sweep_keeps_macro_blackout_gate() -> None:

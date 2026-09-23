@@ -1132,3 +1132,21 @@ The DEMO execution status now distinguishes four concepts instead of collapsing 
 The Command Center uses this distinction and shows qualified executable opportunities versus all executable opportunities over 24 h. It also provides a direct navigation action to the existing guarded manual DEMO form. Manual submission still requires preview + explicit confirmation and remains blocked by the existing risk, macro, PAPER-position and Trading-New isolation guards.
 
 No admission, signal threshold, spread threshold, risk fraction, lot rule, cap, LIVE flag or broker isolation rule changes in this chantier.
+
+
+## 2026-09-23 — XAU Asia sweep prospective collector
+
+Single-hypothesis extension under validation: enable the existing asia_range_sweep_reversal mechanism on XAUUSD for SHADOW/PAPER evidence collection only.
+
+Historical replay at the unchanged 400 EUR / 1% contract:
+
+- 68 candidates, 12 executable, 56 rejected by minimum-lot risk geometry;
+- train: 8 trades, -0.375R expectancy, PF 0.500;
+- validation: 2 trades, +1.500R expectancy;
+- holdout: 2 trades, +0.250R expectancy, PF 1.500;
+- admission remains SHADOW / insufficient independent evidence;
+- current policy allows prospective PAPER collection because independent validation and holdout expectancy are positive.
+
+The runtime scope change is limited to allowing Asia sweep on GBPUSD + XAUUSD. Directional pullback remains GBP-only. Risk, entry logic, stop, target, macro, sizing, spread guards, LIVE lock and broker isolation are unchanged.
+
+Dry-run against current MT4 data in /tmp: 24 diagnostics total versus 23 deployed, with exactly one additional XAUUSD Asia sweep scanner; current XAU state is NO_SIGNAL.

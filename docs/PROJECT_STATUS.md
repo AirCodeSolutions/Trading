@@ -1177,3 +1177,20 @@ First completed post-deployment cycle:
 - AUTO-DEMO transport and collection remain armed; LIVE remains OFF.
 
 The new collector does not create ACTIVE authority. It exists only to accumulate prospective evidence under the unchanged 400 EUR / 1% contract.
+
+
+## 2026-09-23 — unqualified executable research probes
+
+A learning gap was identified after PR #82: executable SHADOW signals from strategies that are not PAPER-admitted are counted by the funnel but previously had no future R outcome recorded. Only economically blocked signals had counterfactual probes.
+
+The new research-probe layer tracks these executable-but-unqualified signals prospectively with the exact existing PAPER resolution engine, but writes to isolated `*_unqualified_probe_state.json` / `*_unqualified_probes.jsonl` files.
+
+Safety contract:
+
+- these files do not match the `*_paper_state.json` registry;
+- they cannot enter Portfolio Manager selection;
+- they cannot be mirrored by DEMO collection;
+- they do not change admissions automatically;
+- no risk, lot, spread, stop, target, macro or LIVE rule changes.
+
+Opportunity Funnel now exposes separately the number of unqualified executable probes, resolved/open counts, R expectancy and win/loss evidence. The dashboard Research view surfaces the same information.

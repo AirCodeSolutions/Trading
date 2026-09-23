@@ -12,6 +12,13 @@ class OpportunityFunnelStrategy(BaseModel):
     signal_rows: int = Field(ge=0)
     blocked_signal_rows: int = Field(ge=0)
     executable_signal_rows: int = Field(ge=0)
+    tracked_unqualified_probes: int = Field(default=0, ge=0)
+    resolved_unqualified_probes: int = Field(default=0, ge=0)
+    open_unqualified_probes: int = Field(default=0, ge=0)
+    unqualified_probe_wins: int = Field(default=0, ge=0)
+    unqualified_probe_losses: int = Field(default=0, ge=0)
+    unqualified_probe_total_r: float = 0.0
+    unqualified_probe_expectancy_r: float = 0.0
     tracked_blocked_probes: int = Field(ge=0)
     resolved_blocked_probes: int = Field(ge=0)
     open_blocked_probes: int = Field(ge=0)
@@ -43,6 +50,13 @@ class OpportunityFunnel(BaseModel):
     signal_rows: int = Field(ge=0)
     blocked_signal_rows: int = Field(ge=0)
     executable_signal_rows: int = Field(ge=0)
+    tracked_unqualified_probes: int = Field(default=0, ge=0)
+    resolved_unqualified_probes: int = Field(default=0, ge=0)
+    open_unqualified_probes: int = Field(default=0, ge=0)
+    unqualified_probe_wins: int = Field(default=0, ge=0)
+    unqualified_probe_losses: int = Field(default=0, ge=0)
+    unqualified_probe_total_r: float = 0.0
+    unqualified_probe_expectancy_r: float = 0.0
     tracked_blocked_probes: int = Field(ge=0)
     resolved_blocked_probes: int = Field(ge=0)
     open_blocked_probes: int = Field(ge=0)

@@ -1,9 +1,14 @@
+from pathlib import Path
+
 from app.domain.admission import AdmissionDecision, AdmissionState
 from app.domain.opportunity import OpportunityMechanism
 from app.services.multi_shadow_collector import (
     paper_entry_allowed,
     shadow_mechanism_enabled,
+    should_advance_unqualified_probe,
+    unqualified_probe_entry_allowed,
 )
+from app.services.paper_registry import _parse_state_name
 
 
 def decision(
@@ -28,6 +33,43 @@ def test_missing_admission_cannot_open_new_paper_trade() -> None:
 
 def test_rejected_admission_cannot_open_new_paper_trade() -> None:
     assert paper_entry_allowed(decision(AdmissionState.REJECTED)) is False
+
+
+def test_unqualified_probe_tracks_only_non_paper_admissions() -> None:
+    assert unqualified_probe_entry_allowed(None) is True
+    assert unqualified_probe_entry_allowed(decision(AdmissionState.REJECTED)) is True
+    assert (
+        unqualified_probe_entry_allowed(
+            decision(AdmissionState.SHADOW, weakest_expectancy_r=-0.01)
+        )
+        is True
+    )
+    assert unqualified_probe_entry_allowed(decision(AdmissionState.SHADOW)) is False
+    assert unqualified_probe_entry_allowed(decision(AdmissionState.ACTIVE)) is False
+
+
+def test_unqualified_probe_continues_existing_state_after_promotion(tmp_path: Path) -> None:
+    state_path = tmp_path / "existing_unqualified_probe_state.json"
+    state_path.write_text("{}", encoding="utf-8")
+
+    assert should_advance_unqualified_probe(decision(AdmissionState.ACTIVE), state_path) is True
+    assert (
+        should_advance_unqualified_probe(
+            decision(AdmissionState.ACTIVE),
+            tmp_path / "missing_state.json",
+        )
+        is False
+    )
+
+
+
+def test_unqualified_probe_state_is_not_a_paper_registry_state() -> None:
+    assert (
+        _parse_state_name(
+            Path("BTCUSD_directional_transition_unqualified_probe_state.json")
+        )
+        is None
+    )
 
 
 def test_positive_shadow_admission_can_open_new_paper_trade() -> None:

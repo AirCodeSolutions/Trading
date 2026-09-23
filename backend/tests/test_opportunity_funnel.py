@@ -12,7 +12,7 @@ from app.domain.shadow import (
     ShadowSignalState,
     ShadowSizingSnapshot,
 )
-from app.domain.shadow_paper import PaperTradeStatus
+from app.domain.shadow_paper import PaperTradeStatus, ShadowPaperState, ShadowPaperTrade
 from app.domain.trading import Side
 from app.main import app
 from app.services.opportunity_funnel import build_opportunity_funnel
@@ -112,6 +112,38 @@ def blocked_probe(
     )
 
 
+def unqualified_probe(
+    trade_id: str,
+    signal_at: datetime,
+    result_r: float | None,
+    status: PaperTradeStatus,
+) -> ShadowPaperTrade:
+    return ShadowPaperTrade(
+        trade_id=trade_id,
+        symbol="BTCUSD",
+        mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+        side=Side.SELL,
+        signal_at=signal_at,
+        entry_bar_at=signal_at,
+        opened_at=signal_at,
+        entry_price=100.0,
+        stop_price=101.0,
+        target_price=98.5,
+        spread_at_entry=0.1,
+        lots=0.01,
+        risk_eur=2.0,
+        risk_distance=1.0,
+        target_r=1.5,
+        max_holding_bars=18,
+        status=status,
+        exit_at=signal_at + timedelta(minutes=10) if result_r is not None else None,
+        exit_price=98.5 if result_r and result_r > 0 else 101.0 if result_r is not None else None,
+        result_r=result_r,
+        pnl_eur=result_r * 2.0 if result_r is not None else None,
+        bars_held=2 if result_r is not None else 0,
+    )
+
+
 def test_funnel_counts_signals_in_window_and_block_reasons(tmp_path: Path) -> None:
     write_diagnostics(
         tmp_path / "BTCUSD_directional_transition.jsonl",
@@ -160,6 +192,46 @@ def test_funnel_counts_signals_in_window_and_block_reasons(tmp_path: Path) -> No
     }
     assert len(funnel.strategies) == 1
     assert funnel.strategies[0].signal_rows == 2
+
+
+def test_funnel_aggregates_unqualified_executable_probes(tmp_path: Path) -> None:
+    closed = [
+        unqualified_probe(
+            "u1", NOW - timedelta(hours=4), 1.5, PaperTradeStatus.TARGET
+        ),
+        unqualified_probe(
+            "u2", NOW - timedelta(hours=2), -1.0, PaperTradeStatus.STOP
+        ),
+    ]
+    (tmp_path / "BTCUSD_directional_transition_unqualified_probes.jsonl").write_text(
+        "".join(row.model_dump_json() + "\n" for row in closed),
+        encoding="utf-8",
+    )
+    open_probe = unqualified_probe(
+        "u3", NOW - timedelta(minutes=30), None, PaperTradeStatus.OPEN
+    )
+    (
+        tmp_path / "BTCUSD_directional_transition_unqualified_probe_state.json"
+    ).write_text(
+        ShadowPaperState(open_trade=open_probe).model_dump_json(),
+        encoding="utf-8",
+    )
+
+    funnel = build_opportunity_funnel(
+        tmp_path,
+        now=NOW,
+        window_hours=24,
+        symbols=("BTCUSD",),
+    )
+
+    assert funnel.tracked_unqualified_probes == 3
+    assert funnel.resolved_unqualified_probes == 2
+    assert funnel.open_unqualified_probes == 1
+    assert funnel.unqualified_probe_wins == 1
+    assert funnel.unqualified_probe_losses == 1
+    assert funnel.unqualified_probe_total_r == 0.5
+    assert funnel.unqualified_probe_expectancy_r == 0.25
+    assert funnel.strategies[0].tracked_unqualified_probes == 3
 
 
 def test_funnel_aggregates_closed_and_open_blocked_probes(tmp_path: Path) -> None:

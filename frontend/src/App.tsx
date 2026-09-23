@@ -359,6 +359,13 @@ type OpportunityFunnelStrategy = {
   signal_rows: number;
   blocked_signal_rows: number;
   executable_signal_rows: number;
+  tracked_unqualified_probes: number;
+  resolved_unqualified_probes: number;
+  open_unqualified_probes: number;
+  unqualified_probe_wins: number;
+  unqualified_probe_losses: number;
+  unqualified_probe_total_r: number;
+  unqualified_probe_expectancy_r: number;
   tracked_blocked_probes: number;
   resolved_blocked_probes: number;
   open_blocked_probes: number;
@@ -390,6 +397,13 @@ type OpportunityFunnel = {
   signal_rows: number;
   blocked_signal_rows: number;
   executable_signal_rows: number;
+  tracked_unqualified_probes: number;
+  resolved_unqualified_probes: number;
+  open_unqualified_probes: number;
+  unqualified_probe_wins: number;
+  unqualified_probe_losses: number;
+  unqualified_probe_total_r: number;
+  unqualified_probe_expectancy_r: number;
   tracked_blocked_probes: number;
   resolved_blocked_probes: number;
   open_blocked_probes: number;
@@ -2434,6 +2448,36 @@ export default function App() {
             </p>
           </div>
           <div className="gate-card">
+            <span className="label">Exec. non qualifiées suivies</span>
+            <strong>{opportunityFunnel?.tracked_unqualified_probes ?? "—"}</strong>
+            <p>
+              {opportunityFunnel
+                ? `${opportunityFunnel.resolved_unqualified_probes} résolues · ${opportunityFunnel.open_unqualified_probes} ouvertes`
+                : "—"}
+            </p>
+          </div>
+          <div className="gate-card">
+            <span className="label">Edge non qualifiée observée</span>
+            <strong
+              className={
+                opportunityFunnel?.resolved_unqualified_probes
+                  ? opportunityFunnel.unqualified_probe_total_r >= 0
+                    ? "positive-text"
+                    : "negative-text"
+                  : ""
+              }
+            >
+              {opportunityFunnel?.resolved_unqualified_probes
+                ? `${opportunityFunnel.unqualified_probe_total_r >= 0 ? "+" : ""}${opportunityFunnel.unqualified_probe_total_r.toFixed(2)} R`
+                : "—"}
+            </strong>
+            <p>
+              {opportunityFunnel?.resolved_unqualified_probes
+                ? `Exp. ${opportunityFunnel.unqualified_probe_expectancy_r >= 0 ? "+" : ""}${opportunityFunnel.unqualified_probe_expectancy_r.toFixed(2)} R · W/L ${opportunityFunnel.unqualified_probe_wins}/${opportunityFunnel.unqualified_probe_losses}`
+                : "Aucune occurrence résolue."}
+            </p>
+          </div>
+          <div className="gate-card">
             <span className="label">Probes bloqués</span>
             <strong>{opportunityFunnel?.tracked_blocked_probes ?? "—"}</strong>
             <p>
@@ -2547,7 +2591,12 @@ export default function App() {
                     </strong>
                     <span>{row.signal_rows}</span>
                     <span>{row.blocked_signal_rows}</span>
-                    <span>{row.executable_signal_rows}</span>
+                    <span>
+                      {row.executable_signal_rows}
+                      {row.resolved_unqualified_probes
+                        ? ` · UQ exp. ${row.unqualified_probe_expectancy_r >= 0 ? "+" : ""}${row.unqualified_probe_expectancy_r.toFixed(2)}R`
+                        : ""}
+                    </span>
                     <span>
                       {row.resolved_blocked_probes}
                       {row.open_blocked_probes ? ` +${row.open_blocked_probes} open` : ""}

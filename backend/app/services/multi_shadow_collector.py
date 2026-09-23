@@ -98,6 +98,20 @@ def collect_all_shadow_once(
                     )
                 ),
             )
+            unqualified_state_path = (
+                runtime_dir / f"{prefix}_unqualified_probe_state.json"
+            )
+            unqualified_allowed = unqualified_probe_entry_allowed(admission)
+            if should_advance_unqualified_probe(admission, unqualified_state_path):
+                advance_shadow_paper_book(
+                    diagnostic=diagnostic,
+                    spec=spec,
+                    bars_m5=bars_m5,
+                    state_path=unqualified_state_path,
+                    trades_path=runtime_dir / f"{prefix}_unqualified_probes.jsonl",
+                    evaluated_at=evaluated_at,
+                    allow_new_entries=unqualified_allowed,
+                )
             advance_blocked_probe_book(
                 diagnostic=diagnostic,
                 spec=spec,
@@ -117,6 +131,13 @@ def collect_all_shadow_once(
 
     return results
 
+
+def should_advance_unqualified_probe(admission, state_path: Path) -> bool:
+    return unqualified_probe_entry_allowed(admission) or state_path.is_file()
+
+
+def unqualified_probe_entry_allowed(admission) -> bool:
+    return not paper_entry_allowed(admission)
 
 
 def shadow_mechanism_enabled(

@@ -86,6 +86,10 @@ class MarketOpportunityEpisode(BaseModel):
     move_atr: float = Field(ge=0)
     capture_state: OpportunityCaptureState
     matching_strategies: list[str] = Field(default_factory=list)
+    precursor_first_seen_at: datetime | None = None
+    precursor_pattern: OpportunityCausalPattern | None = None
+    precursor_lead_minutes: float | None = Field(default=None, ge=0)
+    precursor_observations: int = Field(default=0, ge=0)
     causal_context: OpportunityCausalContext = Field(
         default_factory=OpportunityCausalContext
     )
@@ -114,6 +118,11 @@ class TradingIntelligenceOverview(BaseModel):
     window_end: datetime
     market_move_threshold_atr: float = Field(gt=0)
     market_move_horizon_bars: int = Field(gt=0)
+    precursor_collection_started_at: datetime | None = None
+    precursor_eligible_opportunities: int = Field(default=0, ge=0)
+    precursor_seen_opportunities: int = Field(default=0, ge=0)
+    precursor_seen_rate: float = Field(default=0.0, ge=0, le=1)
+    average_precursor_lead_minutes: float = Field(default=0.0, ge=0)
     trades: list[TradeIntelligence] = Field(default_factory=list)
     opportunities: list[MarketOpportunityEpisode] = Field(default_factory=list)
     assets: list[AssetIntelligence] = Field(default_factory=list)

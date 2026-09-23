@@ -6,6 +6,7 @@ from pathlib import Path
 from statistics import fmean
 
 from app.domain.blocked_probe import BlockedOpportunityProbe
+from app.domain.causal_precursor import CausalPrecursorObservation
 from app.domain.market import MarketBar, Timeframe
 from app.domain.shadow import ShadowOpportunityDiagnostic, ShadowSignalState
 from app.domain.shadow_paper import PaperTradeStatus, ShadowPaperTrade
@@ -21,6 +22,10 @@ from app.domain.trading_intelligence import (
     TradingIntelligenceOverview,
 )
 from app.services.blocked_probe import load_blocked_probe_state, load_closed_probes
+from app.services.causal_precursor import (
+    load_causal_precursor_collection_state,
+    load_causal_precursors,
+)
 from app.services.mt4_market_data import load_recent_closed_market_bars
 from app.services.shadow_paper import load_closed_trades, load_shadow_paper_state
 
@@ -54,6 +59,14 @@ def build_trading_intelligence(
         window_start=window_start,
         window_end=now,
         allowed=set(allowed) if allowed else None,
+    )
+    precursor_state = load_causal_precursor_collection_state(runtime_dir)
+    precursor_rows = load_causal_precursors(
+        runtime_dir,
+        window_start=window_start
+        - timedelta(minutes=5 * SIGNAL_CAPTURE_WINDOW_BARS),
+        window_end=now,
+        symbols=allowed,
     )
 
     paper_trades = _load_paper_trades(
@@ -109,6 +122,12 @@ def build_trading_intelligence(
     for rows in signals_by_symbol.values():
         rows.sort(key=lambda row: row.evaluated_at)
 
+    precursors_by_symbol: dict[str, list[CausalPrecursorObservation]] = defaultdict(list)
+    for row in precursor_rows:
+        precursors_by_symbol[row.symbol.upper()].append(row)
+    for rows in precursors_by_symbol.values():
+        rows.sort(key=lambda row: row.first_seen_at)
+
     opportunities: list[MarketOpportunityEpisode] = []
     for symbol, bars in bars_by_symbol.items():
         opportunities.extend(
@@ -116,6 +135,7 @@ def build_trading_intelligence(
                 symbol=symbol,
                 bars=bars,
                 signals=signals_by_symbol.get(symbol, []),
+                precursors=precursors_by_symbol.get(symbol, []),
                 window_start=window_start,
                 window_end=now,
                 threshold_atr=market_move_threshold_atr,
@@ -123,6 +143,26 @@ def build_trading_intelligence(
             )
         )
     opportunities.sort(key=lambda row: row.birth_at, reverse=True)
+
+    precursor_started_at = (
+        precursor_state.started_at if precursor_state is not None else None
+    )
+    precursor_eligible = [
+        row
+        for row in opportunities
+        if precursor_started_at is not None
+        and row.birth_at >= precursor_started_at
+    ]
+    precursor_seen = [
+        row
+        for row in precursor_eligible
+        if row.precursor_first_seen_at is not None
+    ]
+    precursor_leads = [
+        row.precursor_lead_minutes
+        for row in precursor_seen
+        if row.precursor_lead_minutes is not None
+    ]
 
     assets = _asset_summaries(
         symbols=sorted(discovered_symbols),
@@ -137,6 +177,17 @@ def build_trading_intelligence(
         window_end=now,
         market_move_threshold_atr=market_move_threshold_atr,
         market_move_horizon_bars=market_move_horizon_bars,
+        precursor_collection_started_at=precursor_started_at,
+        precursor_eligible_opportunities=len(precursor_eligible),
+        precursor_seen_opportunities=len(precursor_seen),
+        precursor_seen_rate=(
+            len(precursor_seen) / len(precursor_eligible)
+            if precursor_eligible
+            else 0.0
+        ),
+        average_precursor_lead_minutes=(
+            fmean(precursor_leads) if precursor_leads else 0.0
+        ),
         trades=trade_rows[:100],
         opportunities=opportunities[:200],
         assets=assets,
@@ -147,8 +198,8 @@ def build_trading_intelligence(
                 "a 1.5 ATR M5 move inside the next 12 M5 bars, deduplicated by horizon."
             ),
             (
-                "Value-of-waiting currently starts at the engine signal timestamp; "
-                "a true pre-signal first_seen timestamp is not yet persisted."
+                "Causal precursor first_seen is prospective-only and starts at "
+                "the deployed collector timestamp; no historical first_seen is backfilled."
             ),
             (
                 "MFE/MAE are reconstructed from M5 OHLC bars; intrabar path ordering "
@@ -599,6 +650,7 @@ def _market_opportunity_episodes(
     symbol: str,
     bars: list[MarketBar],
     signals: list[ShadowOpportunityDiagnostic],
+    precursors: list[CausalPrecursorObservation] | None = None,
     window_start: datetime,
     window_end: datetime,
     threshold_atr: float,
@@ -665,6 +717,17 @@ def _market_opportunity_episodes(
         strategies = sorted(
             {f"{row.symbol}:{row.mechanism.value}" for row in matches}
         )
+        aligned_precursors = [
+            row
+            for row in (precursors or [])
+            if row.side == side
+            and capture_window_start <= row.first_seen_at <= birth_at
+        ]
+        earliest_precursor = (
+            min(aligned_precursors, key=lambda row: row.first_seen_at)
+            if aligned_precursors
+            else None
+        )
         causal_context = _classify_causal_context(
             bars=bars,
             atr=atr,
@@ -683,6 +746,23 @@ def _market_opportunity_episodes(
                 move_atr=move_atr,
                 capture_state=capture_state,
                 matching_strategies=strategies,
+                precursor_first_seen_at=(
+                    earliest_precursor.first_seen_at
+                    if earliest_precursor is not None
+                    else None
+                ),
+                precursor_pattern=(
+                    earliest_precursor.pattern
+                    if earliest_precursor is not None
+                    else None
+                ),
+                precursor_lead_minutes=(
+                    (birth_at - earliest_precursor.first_seen_at).total_seconds()
+                    / 60.0
+                    if earliest_precursor is not None
+                    else None
+                ),
+                precursor_observations=len(aligned_precursors),
                 causal_context=causal_context,
             )
         )

@@ -1357,3 +1357,32 @@ Rejected and therefore inactive:
 
 Current auto-DEMO execution remains unchanged: six admitted SHADOW collectors,
 base risk 1%, existing spread/lot/cap guards, LIVE OFF.
+
+
+## 2026-09-23 — prospective causal first_seen observability
+
+Backend candidate:
+
+- new isolated causal precursor ledger per symbol;
+- atomic prospective collection-start state;
+- one observation maximum per symbol / closed M5;
+- reuses the existing causal classifier instead of defining new signal
+  thresholds;
+- Trading Intelligence attaches earliest aligned pre-birth precursor, pattern,
+  lead time and observation count to market opportunities;
+- top-level precursor denominator excludes opportunities born before collection
+  startup.
+
+Worker:
+
+- collection executes as observability only;
+- precursor errors are reported independently and cannot block the main SHADOW
+  scan / PAPER / bridge lifecycle.
+
+Frontend:
+
+- Research view shows prospective opportunities seen before birth, eligible
+  denominator, coverage rate and average lead time.
+
+No trading authority or risk geometry changes.
+Validation: 245 backend tests, Ruff clean, Vite build clean.

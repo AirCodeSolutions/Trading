@@ -1520,3 +1520,25 @@ A follow-up hardens `ops/stop_trading.sh`:
 
 Validation: isolated orphan backend/worker/frontend cleanup PASS on temporary
 ports, `bash -n` clean, executable mode preserved, and 241 backend tests pass.
+
+
+## 2026-09-23 — Trailing Manager protective-stop follow-up
+
+A third incremental replay was tested on the same paired
+`BTCUSD:structural_displacement_sequence` entries.
+
+Baseline for this comparison is the already-promising TP-only policy. The only
+new behavior is that, once the target has been extended, the stop may tighten
+toward structure / break-even. The stop cannot move before target extension and
+can never increase initial risk.
+
+Results versus TP-only:
+
+- train: expectancy 0.0424R -> 0.0653R; max DD 5.0464R -> 4.6879R;
+- validation: expectancy 0.1717R -> 0.1717R; DD unchanged;
+- holdout: expectancy 0.2571R -> 0.2571R; DD unchanged;
+- 0 added-risk violations.
+
+Decision: **REJECTED FOR PROSPECTIVE ACTIVATION**. The extra SL protection has no
+incremental validation or holdout benefit. The deployed Trailing SHADOW remains
+TP-only. The protective-stop mode stays research-only for future evidence.

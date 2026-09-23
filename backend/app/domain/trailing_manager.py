@@ -9,6 +9,7 @@ class TrailingManagerConfig(BaseModel):
     enable_stop_trailing: bool = True
     enable_target_extension: bool = False
     target_extension_requires_protected_stop: bool = True
+    stop_trailing_requires_extended_target: bool = False
     structure_window: int = Field(default=3, ge=2, le=12)
     atr_window: int = Field(default=14, ge=3, le=100)
     atr_buffer_multiple: float = Field(default=0.25, ge=0, le=2)

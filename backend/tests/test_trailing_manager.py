@@ -191,3 +191,59 @@ def test_target_only_mode_extends_target_without_moving_stop() -> None:
     assert adjustment is not None
     assert adjustment.stop_after == t.stop_price
     assert adjustment.target_after == 103.0
+
+
+def test_protective_stop_moves_only_after_target_extension() -> None:
+    t = trade()
+    bars = [
+        bar(0, open_=100.0, high=100.8, low=99.9, close=100.6),
+        bar(1, open_=100.6, high=101.4, low=100.5, close=101.2),
+        bar(2, open_=101.2, high=101.8, low=101.1, close=101.6),
+    ]
+    config = TrailingManagerConfig(
+        enable_stop_trailing=True,
+        enable_target_extension=True,
+        target_extension_requires_protected_stop=False,
+        stop_trailing_requires_extended_target=True,
+    )
+
+    adjustment = propose_trailing_adjustment(
+        trade=t,
+        closed_bars=bars,
+        current_stop=t.stop_price,
+        current_target=t.target_price,
+        config=config,
+    )
+
+    assert adjustment is not None
+    assert adjustment.target_after == 103.0
+    assert adjustment.stop_after >= t.entry_price
+    assert "target_extended_on_protected_momentum" in adjustment.reason
+    assert (
+        "break_even_locked" in adjustment.reason
+        or "structure_stop_tightened" in adjustment.reason
+    )
+
+
+def test_protective_stop_does_nothing_without_extended_target() -> None:
+    t = trade()
+    bars = [
+        bar(0, open_=100.0, high=100.4, low=99.9, close=100.2),
+        bar(1, open_=100.2, high=100.5, low=100.0, close=100.3),
+        bar(2, open_=100.3, high=100.6, low=100.1, close=100.4),
+    ]
+
+    adjustment = propose_trailing_adjustment(
+        trade=t,
+        closed_bars=bars,
+        current_stop=t.stop_price,
+        current_target=t.target_price,
+        config=TrailingManagerConfig(
+            enable_stop_trailing=True,
+            enable_target_extension=True,
+            target_extension_requires_protected_stop=False,
+            stop_trailing_requires_extended_target=True,
+        ),
+    )
+
+    assert adjustment is None

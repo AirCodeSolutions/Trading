@@ -32,34 +32,20 @@ def propose_trailing_adjustment(
     reasons: list[str] = []
 
     structure = closed_bars[-config.structure_window :]
-    if config.enable_stop_trailing and trade.side == Side.BUY:
-        structure_stop = min(bar.low for bar in structure) - config.atr_buffer_multiple * atr
-        if structure_stop < last.close:
-            tightened = max(stop_after, structure_stop, trade.stop_price)
-            if tightened > stop_after:
-                stop_after = tightened
-                reasons.append("structure_stop_tightened")
-        if (
-            favorable_close_r >= config.break_even_activation_r
-            and trade.entry_price < last.close
-            and trade.entry_price > stop_after
-        ):
-            stop_after = trade.entry_price
-            reasons.append("break_even_locked")
-    elif config.enable_stop_trailing:
-        structure_stop = max(bar.high for bar in structure) + config.atr_buffer_multiple * atr
-        if structure_stop > last.close:
-            tightened = min(stop_after, structure_stop, trade.stop_price)
-            if tightened < stop_after:
-                stop_after = tightened
-                reasons.append("structure_stop_tightened")
-        if (
-            favorable_close_r >= config.break_even_activation_r
-            and trade.entry_price > last.close
-            and trade.entry_price < stop_after
-        ):
-            stop_after = trade.entry_price
-            reasons.append("break_even_locked")
+    if (
+        config.enable_stop_trailing
+        and not config.stop_trailing_requires_extended_target
+    ):
+        stop_after, stop_reasons = _tighten_stop(
+            trade=trade,
+            structure=structure,
+            last=last,
+            atr=atr,
+            favorable_close_r=favorable_close_r,
+            current_stop=stop_after,
+            config=config,
+        )
+        reasons.extend(stop_reasons)
 
     protected = (
         stop_after >= trade.entry_price
@@ -83,6 +69,22 @@ def propose_trailing_adjustment(
             target_after = extended
             reasons.append("target_extended_on_protected_momentum")
 
+    if (
+        config.enable_stop_trailing
+        and config.stop_trailing_requires_extended_target
+        and target_after != trade.target_price
+    ):
+        stop_after, stop_reasons = _tighten_stop(
+            trade=trade,
+            structure=structure,
+            last=last,
+            atr=atr,
+            favorable_close_r=favorable_close_r,
+            current_stop=stop_after,
+            config=config,
+        )
+        reasons.extend(stop_reasons)
+
     if stop_after == current_stop and target_after == current_target:
         return None
 
@@ -97,6 +99,57 @@ def propose_trailing_adjustment(
         atr=atr,
         reason="; ".join(reasons),
     )
+
+
+def _tighten_stop(
+    *,
+    trade: ShadowPaperTrade,
+    structure: Sequence[MarketBar],
+    last: MarketBar,
+    atr: float,
+    favorable_close_r: float,
+    current_stop: float,
+    config: TrailingManagerConfig,
+) -> tuple[float, list[str]]:
+    stop_after = current_stop
+    reasons: list[str] = []
+
+    if trade.side == Side.BUY:
+        structure_stop = (
+            min(bar.low for bar in structure)
+            - config.atr_buffer_multiple * atr
+        )
+        if structure_stop < last.close:
+            tightened = max(stop_after, structure_stop, trade.stop_price)
+            if tightened > stop_after:
+                stop_after = tightened
+                reasons.append("structure_stop_tightened")
+        if (
+            favorable_close_r >= config.break_even_activation_r
+            and trade.entry_price < last.close
+            and trade.entry_price > stop_after
+        ):
+            stop_after = trade.entry_price
+            reasons.append("break_even_locked")
+    else:
+        structure_stop = (
+            max(bar.high for bar in structure)
+            + config.atr_buffer_multiple * atr
+        )
+        if structure_stop > last.close:
+            tightened = min(stop_after, structure_stop, trade.stop_price)
+            if tightened < stop_after:
+                stop_after = tightened
+                reasons.append("structure_stop_tightened")
+        if (
+            favorable_close_r >= config.break_even_activation_r
+            and trade.entry_price > last.close
+            and trade.entry_price < stop_after
+        ):
+            stop_after = trade.entry_price
+            reasons.append("break_even_locked")
+
+    return stop_after, reasons
 
 
 def replay_trailing_trade(

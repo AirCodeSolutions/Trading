@@ -1318,3 +1318,17 @@ closed on unexpected port occupants and waits for confirmed process exit.
 Isolated test: orphan backend listener + worker + frontend listener all stopped
 on temporary ports without touching the live runtime. Full backend suite:
 241 passed.
+
+
+## 2026-09-23 — research-only target + protective-stop mode
+
+Trailing Manager research now supports an incremental
+`target-plus-protection` mode:
+
+- target extension keeps the same causal trigger as TP-only;
+- SL movement is disabled until the target is already extended;
+- once enabled, the same no-widen / no-added-risk stop invariant applies.
+
+Replay improved train only and produced no incremental validation/holdout
+benefit. Therefore the mode is not used by the live SHADOW collector and does
+not change PAPER/broker behavior.

@@ -517,6 +517,12 @@ type TradingIntelligence = {
   precursor_eligible_opportunities: number;
   precursor_seen_opportunities: number;
   precursor_seen_rate: number;
+  precursor_only_opportunities: number;
+  precursor_unseen_opportunities: number;
+  precursor_signal_blocked_opportunities: number;
+  precursor_signal_executable_opportunities: number;
+  signal_without_precursor_opportunities: number;
+  precursor_to_signal_conversion_rate: number;
   average_precursor_lead_minutes: number;
   trades: TradeIntelligence[];
   opportunities: {
@@ -529,6 +535,11 @@ type TradingIntelligence = {
     atr_m5: number;
     move_atr: number;
     capture_state: "executable" | "blocked" | "missed";
+    detection_stage:
+      | "unseen"
+      | "precursor_only"
+      | "signal_blocked"
+      | "signal_executable";
     matching_strategies: string[];
     precursor_first_seen_at: string | null;
     precursor_pattern:
@@ -1983,10 +1994,17 @@ export default function App() {
             </strong>
             <p>
               {intelligence?.precursor_collection_started_at
-                ? (intelligence.precursor_seen_rate * 100).toFixed(1) +
-                  " % vus avant naissance · avance moyenne " +
+                ? intelligence.precursor_only_opportunities +
+                  " vus sans signal · " +
+                  (intelligence.precursor_signal_blocked_opportunities +
+                    intelligence.precursor_signal_executable_opportunities) +
+                  " convertis · " +
+                  intelligence.precursor_unseen_opportunities +
+                  " jamais vus · conversion " +
+                  (intelligence.precursor_to_signal_conversion_rate * 100).toFixed(1) +
+                  " % · avance " +
                   intelligence.average_precursor_lead_minutes.toFixed(1) +
-                  " min. Prospectif uniquement."
+                  " min."
                 : "Collecte prospective non initialisée. Aucun historique first_seen n’est backfillé."}
             </p>
           </div>

@@ -1402,3 +1402,18 @@ Operational behavior:
 - only opportunities born after collection startup enter the first_seen coverage denominator.
 
 Deployment preserved all trading authority and risk settings. Postflight: READY 5/5, 24 scanners, 6 qualified collectors, DRAIN OFF, LIVE OFF, 0 PAPER / bridge position / pending command.
+
+
+## 2026-09-23 — precursor conversion attribution
+
+Trading Intelligence now classifies the prospective opportunity funnel into UNSEEN, PRECURSOR_ONLY, SIGNAL_BLOCKED and SIGNAL_EXECUTABLE.
+
+New aggregate metrics separate:
+
+- causal detection failures;
+- precursor-to-signal conversion failures;
+- execution blocks;
+- executable capture;
+- signals that appear without a persisted precursor.
+
+The frontend first_seen card reports the conversion funnel and average causal lead time. No execution behavior changes.

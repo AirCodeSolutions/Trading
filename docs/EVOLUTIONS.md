@@ -1122,3 +1122,19 @@ Frontend:
 - per-strategy executable counts display the observed unqualified-probe expectancy when available.
 
 Validation complete: 217 backend tests pass, Ruff clean and the frontend TypeScript/Vite build passes. Isolated runtime dry-run: 24 diagnostics, 18 unqualified-probe states (none for the 6 PAPER-eligible collectors), no current signal, and zero production-runtime writes.
+
+
+## 2026-09-23 — PR #84 deployed
+
+`Track executable unqualified signals prospectively` is merged and active at `13398a3`.
+
+Runtime result:
+
+- backend loaded the new funnel schema;
+- worker loaded the new isolated research-probe path;
+- 18 non-qualified scanner states are tracked outside the PAPER registry;
+- qualified collectors remain 6 and scanners remain 24;
+- dashboard Research view exposes unqualified-probe counts, expectancy and W/L;
+- frontend remained hot-served on port 5180 without restart.
+
+Safety after deployment: READY 5/5, LIVE OFF, 0 PAPER open, 0 Trading-New bridge position, 0 pending open/close command. No risk, lot, cap, spread, stop/target, macro or admission threshold was changed.

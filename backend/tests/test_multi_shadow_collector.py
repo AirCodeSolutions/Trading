@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 from app.domain.admission import AdmissionDecision, AdmissionState
 from app.domain.opportunity import OpportunityMechanism
@@ -6,6 +7,7 @@ from app.services.multi_shadow_collector import (
     paper_entry_allowed,
     shadow_mechanism_enabled,
     should_advance_unqualified_probe,
+    symbol_has_open_paper_elsewhere,
     unqualified_probe_entry_allowed,
 )
 from app.services.paper_registry import _parse_state_name
@@ -152,4 +154,29 @@ def test_rejected_strategy_never_collects_paper_even_if_candidate_flag_is_true()
             )
         )
         is False
+    )
+
+
+def test_symbol_paper_guard_blocks_only_same_symbol_other_family(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    existing = tmp_path / "XAUUSD_structural_displacement_sequence_paper_state.json"
+    existing.write_text("{}", encoding="utf-8")
+    current = tmp_path / "XAUUSD_structural_persistence_sequence_paper_state.json"
+
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.load_shadow_paper_state",
+        lambda path: SimpleNamespace(open_trade=object() if path == existing else None),
+    )
+
+    assert symbol_has_open_paper_elsewhere(
+        tmp_path,
+        "XAUUSD",
+        current_state_path=current,
+    )
+    assert not symbol_has_open_paper_elsewhere(
+        tmp_path,
+        "BTCUSD",
+        current_state_path=tmp_path / "BTCUSD_break_retest_paper_state.json",
     )

@@ -227,7 +227,7 @@ def test_sequence_has_exactly_btc_and_xau_runtime_scanners() -> None:
         if shadow_mechanism_enabled(symbol, mechanism)
     ]
 
-    assert len(enabled) == 25
+    assert len(enabled) == 26
     sequence_rows = [
         row
         for row in enabled

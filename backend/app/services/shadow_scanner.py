@@ -18,6 +18,7 @@ from app.services.opportunity_strategies import (
     _asia_range_sweep_signal,
     _atr_series,
     _structural_displacement_sequence_signal,
+    _structural_persistence_sequence_signal,
 )
 from app.services.replay import RegimeReplay
 from app.services.session_continuity import reopen_warmup_remaining
@@ -128,6 +129,7 @@ def scan_shadow_opportunity(
     if mechanism in {
         OpportunityMechanism.DIRECTIONAL_TRANSITION,
         OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE,
+        OpportunityMechanism.STRUCTURAL_PERSISTENCE_SEQUENCE,
     }:
         if side == Side.BUY:
             structural_stop = entry - stop_atr
@@ -230,6 +232,8 @@ def _detect_signal(
         return _asia_range_sweep_signal(bars, atr)
     if mechanism == OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE:
         return _structural_displacement_sequence_signal(bars, atr)
+    if mechanism == OpportunityMechanism.STRUCTURAL_PERSISTENCE_SEQUENCE:
+        return _structural_persistence_sequence_signal(bars, atr)
     return None
 
 

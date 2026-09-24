@@ -17,7 +17,10 @@ from app.services.prospective_qualification import (
 from app.services.runtime_admission_registry import load_research_admissions
 from app.services.runtime_capital import resolve_demo_sizing_capital
 from app.services.shadow_ledger import append_shadow_observation
-from app.services.shadow_paper import advance_shadow_paper_book
+from app.services.shadow_paper import (
+    advance_shadow_paper_book,
+    load_shadow_paper_state,
+)
 from app.services.shadow_scanner import scan_shadow_opportunity
 
 _MECHANISM_SLUG = {
@@ -28,6 +31,7 @@ _MECHANISM_SLUG = {
     OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION: "directional_pullback",
     OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL: "asia_range_sweep",
     OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE: "structural_displacement_sequence",
+    OpportunityMechanism.STRUCTURAL_PERSISTENCE_SEQUENCE: "structural_persistence_sequence",
 }
 
 
@@ -90,14 +94,21 @@ def collect_all_shadow_once(
             appended = append_shadow_observation(ledger_path, diagnostic)
             strategy_id = f"{asset.symbol}:{mechanism.value}"
             admission = admissions.get(strategy_id)
+            state_path = runtime_dir / f"{prefix}_paper_state.json"
             allow_new_entries = (
-                allow_paper_entries and paper_entry_allowed(admission)
+                allow_paper_entries
+                and paper_entry_allowed(admission)
+                and not symbol_has_open_paper_elsewhere(
+                    runtime_dir,
+                    asset.symbol,
+                    current_state_path=state_path,
+                )
             )
             paper = advance_shadow_paper_book(
                 diagnostic=diagnostic,
                 spec=spec,
                 bars_m5=bars_m5,
-                state_path=runtime_dir / f"{prefix}_paper_state.json",
+                state_path=state_path,
                 trades_path=runtime_dir / f"{prefix}_paper_trades.jsonl",
                 evaluated_at=evaluated_at,
                 allow_new_entries=allow_new_entries,
@@ -142,6 +153,22 @@ def collect_all_shadow_once(
     return results
 
 
+def symbol_has_open_paper_elsewhere(
+    runtime_dir: Path,
+    symbol: str,
+    *,
+    current_state_path: Path,
+) -> bool:
+    pattern = f"{symbol.upper()}_*_paper_state.json"
+    current = current_state_path.resolve()
+    for state_path in runtime_dir.glob(pattern):
+        if state_path.resolve() == current:
+            continue
+        if load_shadow_paper_state(state_path).open_trade is not None:
+            return True
+    return False
+
+
 def should_advance_unqualified_probe(admission, state_path: Path) -> bool:
     return unqualified_probe_entry_allowed(admission) or state_path.is_file()
 
@@ -156,6 +183,8 @@ def shadow_mechanism_enabled(
 ) -> bool:
     if mechanism == OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE:
         return symbol.upper() in {"BTCUSD", "XAUUSD"}
+    if mechanism == OpportunityMechanism.STRUCTURAL_PERSISTENCE_SEQUENCE:
+        return symbol.upper() == "XAUUSD"
     if mechanism == OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION:
         return symbol.upper() == "GBPUSD"
     if mechanism == OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL:

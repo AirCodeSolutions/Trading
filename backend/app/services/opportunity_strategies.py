@@ -30,6 +30,11 @@ STRUCTURAL_DISPLACEMENT_SEQUENCE_PATTERNS = {
         OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
     ),
 }
+STRUCTURAL_PERSISTENCE_SEQUENCE_PATTERN = (
+    OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+    OpportunityCausalPattern.STRUCTURAL_EXTREME,
+    OpportunityCausalPattern.STRUCTURAL_EXTREME,
+)
 
 
 def _true_ranges(bars: Sequence[MarketBar]) -> list[float]:
@@ -108,6 +113,16 @@ def generate_candidates(
 
         if mechanism == OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE:
             candidate = _structural_displacement_sequence_candidate(
+                bars_m5,
+                atr_m5,
+                index,
+            )
+            if candidate is not None:
+                candidates.append(candidate)
+            continue
+
+        if mechanism == OpportunityMechanism.STRUCTURAL_PERSISTENCE_SEQUENCE:
+            candidate = _structural_persistence_sequence_candidate(
                 bars_m5,
                 atr_m5,
                 index,
@@ -433,6 +448,111 @@ def _structural_displacement_sequence_signal(
         None,
         None,
         _structural_displacement_sequence_reason(bar.symbol),
+    )
+
+
+def _structural_persistence_sequence_side(
+    bars: Sequence[MarketBar],
+    atr: Sequence[float],
+    index: int,
+) -> Side | None:
+    if index < 26 or index >= len(bars) or index >= len(atr):
+        return None
+    if bars[index].symbol.upper() != "XAUUSD":
+        return None
+
+    contexts = [
+        _classify_causal_context(
+            bars=bars,  # type: ignore[arg-type]
+            atr=atr,  # type: ignore[arg-type]
+            index=context_index,
+            episode_side=Side.BUY,
+        )
+        for context_index in range(index - 2, index + 1)
+    ]
+    patterns = tuple(context.pattern for context in contexts)
+    if patterns != STRUCTURAL_PERSISTENCE_SEQUENCE_PATTERN:
+        return None
+
+    for context in reversed(contexts):
+        if context.side is not None:
+            return context.side
+    return None
+
+
+def _structural_persistence_sequence_candidate(
+    bars: Sequence[MarketBar],
+    atr: Sequence[float],
+    index: int,
+) -> OpportunityCandidate | None:
+    if index + 1 >= len(bars):
+        return None
+    side = _structural_persistence_sequence_side(bars, atr, index)
+    if side is None:
+        return None
+
+    atr_value = atr[index]
+    if atr_value <= 0:
+        return None
+    entry = bars[index + 1]
+    stop_distance = 1.50 * atr_value
+    stop = (
+        entry.open - stop_distance
+        if side == Side.BUY
+        else entry.open + stop_distance
+    )
+    if stop <= 0:
+        return None
+
+    signal = bars[index]
+    return OpportunityCandidate(
+        symbol=signal.symbol,
+        mechanism=OpportunityMechanism.STRUCTURAL_PERSISTENCE_SEQUENCE,
+        side=side,
+        signal_at=signal.timestamp + timedelta(minutes=5),
+        entry_at=entry.timestamp,
+        signal_index=index,
+        entry_index=index + 1,
+        structural_stop=stop,
+        target_r=1.0,
+        max_holding_bars=12,
+        reason=(
+            "causal three-state sequence: directional_displacement -> "
+            "structural_extreme -> structural_extreme"
+        ),
+    )
+
+
+def _structural_persistence_sequence_signal(
+    bars: Sequence[MarketBar],
+    atr: Sequence[float],
+):
+    if len(bars) < 27:
+        return None
+    index = len(bars) - 1
+    side = _structural_persistence_sequence_side(bars, atr, index)
+    if side is None:
+        return None
+
+    atr_value = atr[index]
+    if atr_value <= 0:
+        return None
+    bar = bars[index]
+    raw_stop = bar.low if side == Side.BUY else bar.high
+    return (
+        side,
+        raw_stop,
+        1.0,
+        12,
+        1.50 * atr_value,
+        None,
+        None,
+        None,
+        None,
+        (
+            "causal three-state sequence: directional_displacement -> "
+            "structural_extreme -> structural_extreme"
+        ),
     )
 
 

@@ -1649,3 +1649,9 @@ Deployed the hard 5-lot Trading-New ceiling end-to-end. Broker-equity sizing rem
 Post-deployment research re-ran broker-equity length-2 sequences and a fixed contrarian directional-displacement family. Both were rejected across independent windows, so no new runtime family was added.
 
 Current bottleneck is signal production: the seven PAPER-eligible collectors produced zero SHADOW signals in the measured 24 h window. Research focus moves to macro-attention context and market-first unseen-opportunity discovery.
+
+## 2026-09-24 — Unseen Opportunity Radar
+
+Extended Trading Intelligence with a prospective `unseen_patterns` summary and added a Research dashboard table showing invisible opportunity birth signatures by pattern, symbol, side, opposition rate, move ATR, 6-M5 stretch and compression.
+
+Also closed two fixed hypotheses without runtime changes: pre-event volume/range attention conditioning and structural-extreme-stretch exhaustion reversal. Both fail Trading-New historical evidence.

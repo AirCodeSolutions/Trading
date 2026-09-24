@@ -2610,3 +2610,59 @@ Decision:
 - keep PR #124 macro context prospective collection active;
 - next research priority is attention-aware macro conditioning using data actually available to Trading-New (pre-event ATR/volume/context), plus continued XAU M1 signal snapshots;
 - second priority is a market-first discriminator for the completely unseen opportunity class, not another threshold on existing families.
+
+## 2026-09-24 — Unseen Opportunity Radar + rejected attention/stretch hypotheses
+
+Post-PR127 performance work keeps the market-first denominator as the source of truth. Runtime remains READY 5/5 with the hard 5-lot ceiling active; no new strategy authority is added by this work.
+
+### External strategy/research refresh
+
+Recent evidence reviewed:
+- Federal Reserve FEDS 2025-022, `How Markets Process Macro News: The Importance of Investor Attention`: higher pre-announcement attention is associated with stronger reactions to CPI, Employment Report and Fed announcements;
+- Federal Reserve FEDS May 2026, `The Effect of the Federal Reserve on the Stock Market: Magnitudes, Channels and Shocks`: FOMC effects contain multiple shock/information channels and announcement-window dynamics;
+- August 2026 SSRN, `Order Flow Imbalance and Short-Horizon FX Returns`: a broad FX/metals/bond-CFD OFI proxy produces no relationship surviving multiple-testing correction;
+- 2026 World Gold Council mid-year outlook: gold price discovery remains strongly session-dependent, with notable Asia/US asymmetry;
+- recent high-frequency gold research finds return/volatility adjustment can continue beyond the first five minutes after FOMC shocks;
+- July 2026 FX intraday-momentum research finds persistent London-open signals but emphasizes transaction-cost barriers.
+
+System decision remains: do not import generic momentum/ORB/OFI recipes. Translate external evidence only into fixed, falsifiable hypotheses using data Trading-New actually owns.
+
+### Market-attention proxy — REJECTED
+
+Fixed historical test, no grid search:
+- high-impact USD POST_SAFE context from PR124 unchanged;
+- 60 minutes immediately before the event;
+- causal market-attention proxy = geometric mean of pre-event M5 tick-volume ratio and M5 range ratio versus up to 20 comparable prior-day windows;
+- HIGH threshold = median score from TRAIN events only; validation/holdout do not choose the threshold.
+
+Result: the proxy does not improve Trading-New outcomes. BTC HIGH-attention POST_SAFE cells remain negative for failed-auction, directional-transition and other sufficiently sampled mechanisms. XAU HIGH-attention cells are generally worse than LOW-attention cells; e.g. failed-auction HIGH has only 2 holdout trades at +0.25R while LOW has the stronger aggregate cell. No filter or admission change is justified.
+
+### Structural-extreme-stretch exhaustion reversal — REJECTED
+
+Motivated by recent unseen episodes where the later move opposed the causal stretch direction. Exact fixed contract:
+- existing `structural_extreme_stretch` classifier only;
+- trade opposite the classifier side;
+- next-M5 entry;
+- 1.5 ATR stop;
+- 1R target;
+- 12 M5 horizon;
+- existing costs, macro blackout, broker-equity sizing and 5-lot cap.
+
+Execution-aware results are negative in all independent windows on BTC, EUR, GBP and XAU. XAU is least negative but still fails: train -0.0381R (2700), validation -0.0718R (862), holdout -0.0466R (340). No family created.
+
+### Unseen Opportunity Radar
+
+Added a prospective research summary to `/intelligence/overview`. It groups only episodes born after precursor collection started and still classified `unseen` by causal birth pattern. For each pattern it reports:
+- episode count and BUY/SELL split;
+- symbol distribution;
+- average future move size in ATR (evaluation only);
+- rate where the causal pattern direction is opposed to the later move;
+- neutral-context rate;
+- average absolute 6-M5 return at birth;
+- average 6/24-M5 compression.
+
+Live branch validation on production data: 81 precursor-eligible opportunities, 36 currently unseen. Radar: `unclassified` 12, `directional_displacement` 11, `compression_state` 6, `structural_extreme_stretch` 5, `structural_extreme` 1, `compression_breakout` 1. `directional_displacement` is opposed on 100% of its 11 current unseen episodes and `structural_extreme_stretch` on 100% of 5, but both mechanical reversal hypotheses have failed historical validation. The largest genuinely unexplained pool is therefore `unclassified`, followed by `compression_state`.
+
+The Research dashboard now exposes this radar. It has no signal/admission/order authority.
+
+Validation Unseen Opportunity Radar: 17 targeted tests, 297 full backend tests, Ruff clean, Vite production build clean. No runtime authority change before deployment.

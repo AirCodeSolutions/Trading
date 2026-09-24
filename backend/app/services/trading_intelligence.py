@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from statistics import fmean
@@ -21,6 +21,7 @@ from app.domain.trading_intelligence import (
     OpportunityDetectionStage,
     TradeIntelligence,
     TradingIntelligenceOverview,
+    UnseenOpportunityPatternSummary,
 )
 from app.services.blocked_probe import load_blocked_probe_state, load_closed_probes
 from app.services.causal_precursor import (
@@ -197,6 +198,7 @@ def build_trading_intelligence(
         opportunities=opportunities,
     )
     causal_patterns = _causal_pattern_summaries(opportunities)
+    unseen_patterns = _unseen_pattern_summaries(precursor_eligible)
     return TradingIntelligenceOverview(
         generated_at=now,
         window_hours=window_hours,
@@ -229,6 +231,7 @@ def build_trading_intelligence(
         opportunities=opportunities[:200],
         assets=assets,
         causal_patterns=causal_patterns,
+        unseen_patterns=unseen_patterns,
         limitations=[
             (
                 "Market opportunities are a retrospective research denominator: "
@@ -939,6 +942,50 @@ def _causal_pattern_summaries(
     return sorted(
         summaries,
         key=lambda row: (-row.episodes, row.pattern.value),
+    )
+
+
+def _unseen_pattern_summaries(
+    opportunities: list[MarketOpportunityEpisode],
+) -> list[UnseenOpportunityPatternSummary]:
+    grouped: dict[OpportunityCausalPattern, list[MarketOpportunityEpisode]] = (
+        defaultdict(list)
+    )
+    for row in opportunities:
+        if row.detection_stage == OpportunityDetectionStage.UNSEEN:
+            grouped[row.causal_context.pattern].append(row)
+
+    summaries: list[UnseenOpportunityPatternSummary] = []
+    for pattern, rows in grouped.items():
+        symbols = Counter(row.symbol.upper() for row in rows)
+        opposed = sum(
+            row.causal_context.aligned_with_move is False for row in rows
+        )
+        neutral = sum(
+            row.causal_context.aligned_with_move is None for row in rows
+        )
+        summaries.append(
+            UnseenOpportunityPatternSummary(
+                pattern=pattern,
+                episodes=len(rows),
+                buy_episodes=sum(row.side == Side.BUY for row in rows),
+                sell_episodes=sum(row.side == Side.SELL for row in rows),
+                symbols=dict(sorted(symbols.items())),
+                average_move_atr=fmean(row.move_atr for row in rows),
+                opposed_context_rate=opposed / len(rows),
+                neutral_context_rate=neutral / len(rows),
+                average_abs_return_6_atr=fmean(
+                    abs(row.causal_context.return_6_atr) for row in rows
+                ),
+                average_compression_6_24=fmean(
+                    row.causal_context.compression_6_24 for row in rows
+                ),
+            )
+        )
+
+    return sorted(
+        summaries,
+        key=lambda row: (-row.episodes, -row.average_move_atr, row.pattern.value),
     )
 
 

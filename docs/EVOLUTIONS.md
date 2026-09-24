@@ -1557,3 +1557,9 @@ PRs #112, #113 and #114 are active in runtime.
 Active DEMO sizing capital now follows MT4 equity instead of the old 400 EUR research reference. Concurrent filled positions are allowed across different retained symbols, with same-symbol stacking still refused and command transport serialized.
 
 Deployment proof: account flat, drain ON during activation, MT4 bridge reloaded on all five charts, fresh quote/spec files confirmed, then drain OFF. LIVE remains disabled.
+
+## 2026-09-24 — explicit research capital replay
+
+Opportunity backtests and portfolio research now accept optional `capital_eur`. This lets research compare the historical 400 EUR baseline with broker-equity execution feasibility while preserving deterministic historical experiments.
+
+Runtime strategy logic and admissions are unchanged. The first broker-equity matrix produced no new ACTIVE family; it primarily increased XAU/XAG executable sample size and strengthened the already-positive BTC structural displacement sequence evidence.

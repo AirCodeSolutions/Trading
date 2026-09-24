@@ -131,7 +131,7 @@ def test_post_shock_backtest_enters_next_bar_and_reaches_target() -> None:
     assert result.admission.state == "shadow"
 
 
-def test_candidate_is_rejected_when_minimum_lot_breaks_200_eur_risk_budget() -> None:
+def test_candidate_is_rejected_when_minimum_lot_breaks_400_eur_risk_budget() -> None:
     result = run_opportunity_backtest(
         _m5_with_post_shock_confirmation(),
         _m15_with_information_shock(),
@@ -144,6 +144,24 @@ def test_candidate_is_rejected_when_minimum_lot_breaks_200_eur_risk_budget() -> 
     assert result.rejection_reasons == {
         "minimum broker lot exceeds the risk budget": 1
     }
+
+
+def test_explicit_research_capital_can_make_same_candidate_executable() -> None:
+    config = _config(tick_value=100.0).model_copy(
+        update={"capital_eur": 873864.61}
+    )
+
+    result = run_opportunity_backtest(
+        _m5_with_post_shock_confirmation(),
+        _m15_with_information_shock(),
+        config,
+    )
+
+    assert result.candidates == 1
+    assert result.executed == 1
+    assert result.rejection_reasons == {}
+    assert result.holdout.trades == 1
+    assert result.holdout.total_r == 1.8
 
 
 

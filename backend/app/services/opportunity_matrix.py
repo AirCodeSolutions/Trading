@@ -89,6 +89,7 @@ def run_mt4_portfolio_research(
                 mechanism=mechanism,
                 split=request.split,
                 requested_risk_fraction=request.requested_risk_fraction,
+                capital_eur=request.capital_eur,
                 slippage_spread_fraction=request.slippage_spread_fraction,
                 macro_events=macro_events,
             )

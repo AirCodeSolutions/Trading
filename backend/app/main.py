@@ -559,6 +559,7 @@ def mt4_opportunity_backtest(
         mechanism=request.mechanism,
         split=request.split,
         requested_risk_fraction=request.requested_risk_fraction,
+        capital_eur=request.capital_eur,
         slippage_spread_fraction=request.slippage_spread_fraction,
         macro_events=load_macro_events(settings.macro_events_path),
     )

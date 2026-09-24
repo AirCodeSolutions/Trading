@@ -42,6 +42,7 @@ class OpportunityBacktestConfig(BaseModel):
     mechanism: OpportunityMechanism
     split: ResearchSplit
     requested_risk_fraction: float | None = Field(default=None, gt=0, le=1)
+    capital_eur: float | None = Field(default=None, gt=0)
     slippage_spread_fraction: float = Field(default=0.25, ge=0, le=3)
     macro_events: list[MacroEvent] = Field(default_factory=list)
 
@@ -51,6 +52,7 @@ class Mt4OpportunityBacktestRequest(BaseModel):
     mechanism: OpportunityMechanism
     split: ResearchSplit
     requested_risk_fraction: float | None = Field(default=None, gt=0, le=1)
+    capital_eur: float | None = Field(default=None, gt=0)
     slippage_spread_fraction: float = Field(default=0.25, ge=0, le=3)
 
 
@@ -59,6 +61,7 @@ class PortfolioResearchRequest(BaseModel):
     symbols: list[str] | None = None
     mechanisms: list[OpportunityMechanism] = Field(default_factory=all_mechanisms)
     requested_risk_fraction: float | None = Field(default=None, gt=0, le=1)
+    capital_eur: float | None = Field(default=None, gt=0)
     slippage_spread_fraction: float = Field(default=0.25, ge=0, le=3)
 
 

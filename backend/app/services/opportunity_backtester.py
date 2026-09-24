@@ -146,6 +146,7 @@ def _simulate_candidate(
             entry=entry,
             stop=stop,
             requested_risk_fraction=config.requested_risk_fraction,
+            capital_eur=config.capital_eur,
         )
     )
     if not sizing.approved:

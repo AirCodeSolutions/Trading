@@ -2129,3 +2129,51 @@ Controlled activation:
 - session READY 5/5, 24 scanners, 6 qualified collectors, auto-DEMO armed, LIVE OFF.
 
 Operational meaning: the system can now hold BTC/XAU/EUR/GBP/XAG Trading-New DEMO positions concurrently when independent qualified signals exist. No trade is forced merely to increase frequency.
+
+## 2026-09-24 — broker-equity historical replay
+
+After DEMO runtime sizing moved from the fixed 400 EUR reference to MT4 broker equity, historical opportunity research was extended with an explicit `capital_eur` input so execution-feasibility comparisons can use either the reproducible 400 EUR baseline or the current DEMO capital without changing strategy logic.
+
+Controlled comparison: identical signals, frozen execution model, stops, targets, macro windows and no-overlap policy; only research capital changed from 400 EUR to 873,864.61 EUR.
+
+Main result: higher capital removes many minimum-lot rejections but does not by itself create robust edge.
+
+- XAU Asia Sweep: 12 -> 69 executed; train -0.170R, validation +0.127R, holdout +0.047R. Not promoted because train remains negative.
+- XAU break/retest: 24 -> 100; train +0.121R, validation -0.044R, holdout -0.304R. Rejected.
+- XAU directional pullback: 9 -> 66; train -0.160R, validation -0.156R, holdout +0.148R. Rejected.
+- XAU directional transition: 0 -> 226; train +0.081R, validation +0.171R, holdout -0.356R. Rejected.
+- XAU failed auction: 231 -> 673; all three windows negative. Rejected.
+- XAU post-shock: 34 -> 324; train -0.107R, validation -0.004R, holdout +0.193R. Rejected.
+- XAG failed auction becomes executable (19 trades) with positive train/validation but holdout -0.554R on 3 trades. Not promoted.
+- BTC structural displacement sequence improves 63 -> 67 executed and remains positive across all windows: train +0.126R (40), validation +0.192R (16), holdout +0.068R (11). It remains PAPER-collection eligible but under independent-support thresholds, so no admission change.
+
+No additional strategy becomes ACTIVE. Therefore higher DEMO capital is correctly treated as an execution-enabler, not as evidence of strategy quality.
+
+## 2026-09-24 — post-capital causal hypotheses rejected
+
+Three fixed follow-up hypotheses were tested after broker-equity sizing removed the old capital bottleneck. None is promoted.
+
+1. Exact BTC structural-displacement sequence transferred unchanged to other assets:
+- EURUSD: train -0.240R, validation -0.169R, no holdout sample;
+- GBPUSD: train -0.213R, validation -0.115R, holdout +0.654R on only 3 trades;
+- XAUUSD: train +0.004R, validation -0.073R, holdout -0.111R;
+- XAGUSD: train -0.143R, validation -0.406R, no holdout sample.
+Decision: keep the BTC-only symbol lock.
+
+2. XAU Asia Sweep restricted to M15 BALANCED regime:
+- train n=9, -0.167R;
+- validation n=11, -0.021R;
+- holdout n=8, -0.003R.
+Decision: reject the regime filter.
+
+3. Existing causal `compression_breakout` promoted into a standalone trade contract:
+- exact existing detection pattern;
+- next-M5 entry;
+- stop behind the six-M5 compression range;
+- 2R target;
+- 12-M5 horizon;
+- broker-equity sizing, frozen costs and no-overlap.
+All five assets are negative in train/validation/holdout where support exists. XAU is closest to flat but still negative: train -0.028R, validation -0.023R, holdout -0.037R across 1,629 executed trades.
+Decision: reject the standalone compression-breakout family. Its small positive prospective precursor sample is not sufficient to override the long historical execution-aware result.
+
+Next hypothesis: rerun execution-aware causal sequence discovery with explicit broker-equity capital, because the prior sequence search was performed under the old low-capital execution feasibility assumptions.

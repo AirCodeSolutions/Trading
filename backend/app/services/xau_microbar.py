@@ -353,10 +353,18 @@ def load_xau_microbar_summary(
     *,
     now: datetime,
 ) -> XauMicrobarSummary:
+    from app.services.xau_unseen_transition_capture import (
+        UNSEEN_TRANSITION_FILE,
+        load_xau_unseen_transition_snapshots,
+    )
+
     state = load_xau_microbar_state(runtime_dir / STATE_FILE)
     rows = load_xau_microbars(runtime_dir / LEDGER_FILE)
     snapshots = load_xau_sequence_microstructure_snapshots(
         runtime_dir / SEQUENCE_SNAPSHOT_FILE
+    )
+    unseen_transitions = load_xau_unseen_transition_snapshots(
+        runtime_dir / UNSEEN_TRANSITION_FILE
     )
     last_quote_at = state.last_quote_at if state is not None else None
     quote_age = (
@@ -382,5 +390,7 @@ def load_xau_microbar_summary(
         geometry_15m=_geometry_window(rows, 15),
         sequence_signal_snapshots=len(snapshots),
         recent_sequence_signals=snapshots[-SEQUENCE_RECENT_LIMIT:][::-1],
+        unseen_transition_snapshots=len(unseen_transitions),
+        recent_unseen_transitions=unseen_transitions[-SEQUENCE_RECENT_LIMIT:][::-1],
         recent=rows[-RECENT_LIMIT:][::-1],
     )

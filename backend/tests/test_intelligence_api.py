@@ -293,3 +293,20 @@ def test_xau_feasible_pullback_endpoint_is_empty_without_state(
     assert response.json()["strategy_id"].startswith("XAUUSD:")
     assert response.json()["resolved"] == 0
     assert response.json()["filled"] == 0
+
+
+def test_xau_microbar_endpoint_is_empty_without_state(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "shadow_ledger_dir", tmp_path)
+
+    response = TestClient(app).get("/api/v1/research/xau-microbars")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["symbol"] == "XAUUSD"
+    assert payload["timeframe"] == "M1"
+    assert payload["closed_bars"] == 0
+    assert payload["total_quote_samples"] == 0
+    assert payload["healthy"] is False

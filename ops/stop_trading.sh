@@ -64,8 +64,10 @@ safe_stop_listener() {
   fi
 }
 
-safe_stop_worker() {
-  local expected_cwd="$1"
+safe_stop_python_worker() {
+  local label="$1"
+  local expected_cwd="$2"
+  local module="$3"
   local pid cwd cmd exe exe_name
   while read -r pid; do
     [ -n "$pid" ] || continue
@@ -74,25 +76,27 @@ safe_stop_worker() {
     exe="$(readlink -f "/proc/$pid/exe" 2>/dev/null || true)"
     exe_name="$(basename "$exe" 2>/dev/null || true)"
     if (
-      [ "$cwd" = "$expected_cwd" ]       && [[ "$exe_name" == python* ]]       && [[ "$cmd" == *"-m app.shadow_worker"* ]]
+      [ "$cwd" = "$expected_cwd" ]       && [[ "$exe_name" == python* ]]       && [[ "$cmd" == *"-m $module"* ]]
     ); then
-      echo "Stopping orphaned shadow worker PID $pid" >&2
+      echo "Stopping orphaned $label PID $pid" >&2
       kill "$pid" 2>/dev/null || true
       if ! wait_for_exit "$pid"; then
-        echo "Refusing to continue: orphaned shadow worker PID $pid did not stop" >&2
+        echo "Refusing to continue: orphaned $label PID $pid did not stop" >&2
         exit 1
       fi
     fi
-  done < <(pgrep -f "app.shadow_worker" || true)
+  done < <(pgrep -f "$module" || true)
 }
 
 stop_pid backend
 stop_pid shadow-worker
+stop_pid xau-microbar-worker
 stop_pid frontend
 
 # PID files are advisory. A crashed deployment step can remove or stale a PID
 # file while the process keeps serving. Clean up only processes that are both
 # owned by this repo (cwd check) and match the expected Trading command.
 safe_stop_listener backend "$BACKEND_PORT" "$BASE/backend" "uvicorn app.main:app"
-safe_stop_worker "$BASE/backend"
+safe_stop_python_worker "shadow worker" "$BASE/backend" "app.shadow_worker"
+safe_stop_python_worker "XAU microbar worker" "$BASE/backend" "app.xau_microbar_worker"
 safe_stop_listener frontend "$FRONTEND_PORT" "$BASE/frontend" "vite/bin/vite.js"

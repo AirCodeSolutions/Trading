@@ -4,19 +4,28 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
+from app.domain.opportunity import OpportunityMechanism
+from app.domain.shadow import ShadowOpportunityDiagnostic, ShadowSignalState
 from app.domain.xau_microbar import (
     XauMicrobarGeometry,
     XauMicrobarM1,
     XauMicrobarState,
     XauMicrobarSummary,
+    XauSequenceMicrostructureSnapshot,
 )
 from app.services.mt4_csv import mt4_epoch_to_server_datetime
 
 SYMBOL = "XAUUSD"
 STATE_FILE = "XAUUSD_micro_m1_state.json"
 LEDGER_FILE = "XAUUSD_micro_m1.jsonl"
+SEQUENCE_SNAPSHOT_FILE = "XAUUSD_sequence_microstructure.jsonl"
 MAX_SAMPLE_AGE_SECONDS = 15.0
 RECENT_LIMIT = 20
+SEQUENCE_RECENT_LIMIT = 10
+SEQUENCE_MECHANISMS = {
+    OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE,
+    OpportunityMechanism.STRUCTURAL_PERSISTENCE_SEQUENCE,
+}
 
 
 def sample_xau_microbar_once(
@@ -266,6 +275,78 @@ def _geometry_window(
     )
 
 
+def load_xau_sequence_microstructure_snapshots(
+    path: Path,
+) -> list[XauSequenceMicrostructureSnapshot]:
+    if not path.is_file():
+        return []
+    rows: list[XauSequenceMicrostructureSnapshot] = []
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            try:
+                rows.append(
+                    XauSequenceMicrostructureSnapshot.model_validate(
+                        json.loads(line)
+                    )
+                )
+            except (json.JSONDecodeError, ValueError):
+                continue
+    return rows
+
+
+def append_xau_sequence_microstructure_snapshot(
+    path: Path,
+    snapshot: XauSequenceMicrostructureSnapshot,
+) -> bool:
+    existing = load_xau_sequence_microstructure_snapshots(path)
+    key = (snapshot.strategy_id, snapshot.signal_at)
+    if any((row.strategy_id, row.signal_at) == key for row in existing):
+        return False
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(snapshot.model_dump_json())
+        handle.write("\n")
+    return True
+
+
+def capture_xau_sequence_microstructure(
+    runtime_dir: Path,
+    diagnostic: ShadowOpportunityDiagnostic,
+) -> bool:
+    if diagnostic.symbol.upper() != SYMBOL:
+        return False
+    if diagnostic.mechanism not in SEQUENCE_MECHANISMS:
+        return False
+    if diagnostic.state == ShadowSignalState.NO_SIGNAL:
+        return False
+
+    signal_at = diagnostic.latest_closed_m5_at + timedelta(minutes=5)
+    rows = [
+        row
+        for row in load_xau_microbars(runtime_dir / LEDGER_FILE)
+        if row.minute_at + timedelta(minutes=1) <= signal_at
+    ]
+    latest_microbar_at = rows[-1].minute_at if rows else None
+    strategy_id = f"{diagnostic.symbol}:{diagnostic.mechanism.value}"
+    snapshot = XauSequenceMicrostructureSnapshot(
+        strategy_id=strategy_id,
+        mechanism=diagnostic.mechanism,
+        signal_at=signal_at,
+        evaluated_at=diagnostic.evaluated_at,
+        state=diagnostic.state,
+        side=diagnostic.side,
+        latest_microbar_at=latest_microbar_at,
+        geometry_5m=_geometry_window(rows, 5),
+        geometry_15m=_geometry_window(rows, 15),
+    )
+    return append_xau_sequence_microstructure_snapshot(
+        runtime_dir / SEQUENCE_SNAPSHOT_FILE,
+        snapshot,
+    )
+
+
 def load_xau_microbar_summary(
     runtime_dir: Path,
     *,
@@ -273,6 +354,9 @@ def load_xau_microbar_summary(
 ) -> XauMicrobarSummary:
     state = load_xau_microbar_state(runtime_dir / STATE_FILE)
     rows = load_xau_microbars(runtime_dir / LEDGER_FILE)
+    snapshots = load_xau_sequence_microstructure_snapshots(
+        runtime_dir / SEQUENCE_SNAPSHOT_FILE
+    )
     last_quote_at = state.last_quote_at if state is not None else None
     quote_age = (
         max(0.0, (now - last_quote_at).total_seconds())
@@ -295,5 +379,7 @@ def load_xau_microbar_summary(
         current_bar=(state.current_bar if state is not None else None),
         geometry_5m=_geometry_window(rows, 5),
         geometry_15m=_geometry_window(rows, 15),
+        sequence_signal_snapshots=len(snapshots),
+        recent_sequence_signals=snapshots[-SEQUENCE_RECENT_LIMIT:][::-1],
         recent=rows[-RECENT_LIMIT:][::-1],
     )

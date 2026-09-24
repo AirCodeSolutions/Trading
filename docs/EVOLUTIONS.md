@@ -1611,3 +1611,11 @@ Added causal 5m/15m geometry aggregation on top of the existing broker-native XA
 Research-only: no entry filter, stop rule, target rule or execution authority is added.
 
 The broker-equity length-4 sequence expansion was also closed after its best supported incremental XAU candidate failed direction robustness (BUY validation negative). No post-hoc SELL-only filter is introduced.
+
+## 2026-09-24 — causal XAU M1 signal snapshots
+
+Added idempotent causal M1 geometry snapshots for the two deployed XAU sequence families. Signal snapshots use only M1 bars fully closed by the originating M5 signal close, preventing post-signal leakage.
+
+The M1 Research card also reports how many sequence-signal snapshots have been frozen. This is observability/research only.
+
+PR #122 deployment is recorded: geometry API/dashboard active, drain OFF, 26 scanners, 8 collectors, LIVE OFF.

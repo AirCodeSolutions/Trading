@@ -2,6 +2,10 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.domain.opportunity import OpportunityMechanism
+from app.domain.shadow import ShadowSignalState
+from app.domain.trading import Side
+
 
 class XauMicrobarM1(BaseModel):
     minute_at: datetime
@@ -58,6 +62,18 @@ class XauMicrobarGeometry(BaseModel):
     distance_to_high: float = Field(ge=0)
 
 
+class XauSequenceMicrostructureSnapshot(BaseModel):
+    strategy_id: str
+    mechanism: OpportunityMechanism
+    signal_at: datetime
+    evaluated_at: datetime
+    state: ShadowSignalState
+    side: Side | None = None
+    latest_microbar_at: datetime | None = None
+    geometry_5m: XauMicrobarGeometry | None = None
+    geometry_15m: XauMicrobarGeometry | None = None
+
+
 class XauMicrobarSummary(BaseModel):
     symbol: str = "XAUUSD"
     timeframe: str = "M1"
@@ -71,4 +87,8 @@ class XauMicrobarSummary(BaseModel):
     current_bar: XauMicrobarM1 | None = None
     geometry_5m: XauMicrobarGeometry | None = None
     geometry_15m: XauMicrobarGeometry | None = None
+    sequence_signal_snapshots: int = Field(default=0, ge=0)
+    recent_sequence_signals: list[XauSequenceMicrostructureSnapshot] = Field(
+        default_factory=list
+    )
     recent: list[XauMicrobarM1] = Field(default_factory=list)

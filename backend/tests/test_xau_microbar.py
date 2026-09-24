@@ -5,11 +5,17 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from app.domain.opportunity import OpportunityMechanism
+from app.domain.regime import MarketRegime
+from app.domain.shadow import ShadowOpportunityDiagnostic, ShadowSignalState
+from app.domain.trading import Side
 from app.domain.xau_microbar import XauMicrobarM1
 from app.services.xau_microbar import (
     LEDGER_FILE,
+    SEQUENCE_SNAPSHOT_FILE,
     STATE_FILE,
     append_xau_microbar,
+    capture_xau_sequence_microstructure,
     load_xau_microbar_summary,
     sample_xau_microbar_once,
 )
@@ -317,3 +323,115 @@ def test_microbar_summary_exposes_causal_geometry_windows(tmp_path: Path) -> Non
     assert summary.geometry_15m.bars == 6
     assert summary.geometry_15m.mid_open == pytest.approx(100.0)
     assert summary.geometry_15m.mid_close == pytest.approx(102.5)
+
+
+def _diagnostic(
+    *,
+    latest_closed_m5_at: datetime,
+    mechanism: OpportunityMechanism = OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE,
+    state: ShadowSignalState = ShadowSignalState.SIGNAL_EXECUTABLE,
+) -> ShadowOpportunityDiagnostic:
+    return ShadowOpportunityDiagnostic(
+        symbol="XAUUSD",
+        mechanism=mechanism,
+        evaluated_at=latest_closed_m5_at + timedelta(minutes=1),
+        latest_closed_m5_at=latest_closed_m5_at,
+        latest_closed_m15_at=latest_closed_m5_at - timedelta(minutes=10),
+        state=state,
+        side=Side.SELL,
+        regime=MarketRegime.BALANCED,
+        regime_direction=0,
+        atr_m15=8.0,
+        atr_ratio=1.0,
+        volatility_percentile=0.5,
+        momentum_12_atr=0.0,
+        efficiency=0.5,
+        structural_stop=4300.0,
+        target_r=1.0,
+        max_holding_bars=12,
+        reason="test signal",
+    )
+
+
+def test_sequence_snapshot_is_causal_and_idempotent(tmp_path: Path) -> None:
+    runtime_dir = tmp_path / "runtime"
+    runtime_dir.mkdir()
+    ledger = runtime_dir / LEDGER_FILE
+
+    closes = [100.0, 101.0, 102.0, 103.0, 104.0, 999.0]
+    for index, close in enumerate(closes):
+        minute = START + timedelta(minutes=index)
+        open_price = close - 0.5
+        append_xau_microbar(
+            ledger,
+            XauMicrobarM1(
+                minute_at=minute,
+                first_quote_at=minute,
+                last_quote_at=minute + timedelta(seconds=59),
+                bid_open=open_price - 0.14,
+                bid_high=close + 0.11,
+                bid_low=open_price - 0.39,
+                bid_close=close - 0.14,
+                ask_open=open_price + 0.14,
+                ask_high=close + 0.39,
+                ask_low=open_price - 0.11,
+                ask_close=close + 0.14,
+                mid_open=open_price,
+                mid_high=close + 0.25,
+                mid_low=open_price - 0.25,
+                mid_close=close,
+                spread_open=0.28,
+                spread_high=0.30,
+                spread_low=0.26,
+                spread_close=0.28,
+                spread_sum=16.8,
+                quote_count=60,
+            ),
+        )
+
+    diagnostic = _diagnostic(
+        latest_closed_m5_at=START,
+    )
+
+    assert capture_xau_sequence_microstructure(
+        runtime_dir,
+        diagnostic,
+    ) is True
+    assert capture_xau_sequence_microstructure(
+        runtime_dir,
+        diagnostic,
+    ) is False
+
+    summary = load_xau_microbar_summary(
+        runtime_dir,
+        now=START + timedelta(minutes=6),
+    )
+    assert summary.sequence_signal_snapshots == 1
+    assert len(summary.recent_sequence_signals) == 1
+    snapshot = summary.recent_sequence_signals[0]
+    assert snapshot.signal_at == START + timedelta(minutes=5)
+    assert snapshot.latest_microbar_at == START + timedelta(minutes=4)
+    assert snapshot.geometry_5m is not None
+    assert snapshot.geometry_5m.mid_close == pytest.approx(104.0)
+    assert snapshot.geometry_5m.mid_close != pytest.approx(999.0)
+
+
+def test_sequence_snapshot_ignores_non_signal_and_non_sequence(tmp_path: Path) -> None:
+    runtime_dir = tmp_path / "runtime"
+    runtime_dir.mkdir()
+
+    assert capture_xau_sequence_microstructure(
+        runtime_dir,
+        _diagnostic(
+            latest_closed_m5_at=START,
+            state=ShadowSignalState.NO_SIGNAL,
+        ),
+    ) is False
+    assert capture_xau_sequence_microstructure(
+        runtime_dir,
+        _diagnostic(
+            latest_closed_m5_at=START,
+            mechanism=OpportunityMechanism.BREAK_RETEST_REACCEL,
+        ),
+    ) is False
+    assert not (runtime_dir / SEQUENCE_SNAPSHOT_FILE).exists()

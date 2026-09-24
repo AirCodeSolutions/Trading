@@ -8,6 +8,8 @@ type RuntimeConfig = {
   demo_execution_bridge_enabled: boolean;
   allowed_timeframes: string[];
   reference_capital_eur: number;
+  reference_capital_source?: string;
+  research_fallback_capital_eur?: number;
   risk_per_trade_fraction: number;
   absolute_max_risk_fraction: number;
   prospective_min_trades: number;
@@ -1943,7 +1945,7 @@ export default function App() {
               <strong>5 · Guards finaux</strong>
               <p>
                 Broker DEMO confirmé, macro claire, budget journalier disponible,
-                aucun ticket Trading-New déjà ouvert.
+                aucun ticket Trading-New déjà ouvert sur le même symbole.
               </p>
             </div>
           </div>
@@ -1961,7 +1963,7 @@ export default function App() {
             <h2>Ouvrir un trade manuel avec les mêmes garde-fous</h2>
           </div>
           <p>
-            Marché uniquement. Tu définis SL, TP et risque ; le système calcule le lot et refuse toute violation du contrat 400 €.
+            Marché uniquement. Tu définis SL, TP et risque ; le système calcule le lot depuis l’equity MT4 DEMO observée et conserve les garde-fous de risque.
           </p>
         </div>
 
@@ -2428,10 +2430,10 @@ export default function App() {
         </div>
 
         <div className="intelligence-subsection">
-          <h3>Economic Feasibility Map · 400 €</h3>
+          <h3>Economic Feasibility Map · historique research 400 €</h3>
           <p className="intelligence-note">
-            Faisabilité d’exécution uniquement : même moteur de sizing, spread gelé, lot minimum,
-            risque 1 % et marge 25 %. Une ligne INFEASIBLE n’autorise pas à augmenter le risque.
+            Snapshot historique reproductible à 400 € — ce n’est plus le capital DEMO actif.
+            Le runtime utilise l’equity MT4 observée ; ce tableau reste une référence de recherche.
           </p>
           {economicFeasibility ? (
             <div className="intelligence-table economic-feasibility-table">

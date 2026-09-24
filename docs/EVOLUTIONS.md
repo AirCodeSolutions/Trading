@@ -1549,3 +1549,11 @@ Backend and MT4 now enforce one broker position per symbol instead of one positi
 Manual DEMO blocking is also per-symbol. Drain behavior and other-system isolation are preserved.
 
 Validation: 273 backend tests, Ruff clean, Vite build clean, MQL4 compile 0 errors / 0 warnings.
+
+## 2026-09-24 — broker-equity sizing and multi-symbol DEMO deployed
+
+PRs #112, #113 and #114 are active in runtime.
+
+Active DEMO sizing capital now follows MT4 equity instead of the old 400 EUR research reference. Concurrent filled positions are allowed across different retained symbols, with same-symbol stacking still refused and command transport serialized.
+
+Deployment proof: account flat, drain ON during activation, MT4 bridge reloaded on all five charts, fresh quote/spec files confirmed, then drain OFF. LIVE remains disabled.

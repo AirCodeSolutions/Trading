@@ -59,6 +59,18 @@ type XauFeasiblePullbackSummary = {
   } | null;
 };
 
+type PrecursorExecutionShadowSummary = {
+  strategy_id: string;
+  started_at: string | null;
+  resolved: number;
+  wins: number;
+  losses: number;
+  total_r: number;
+  expectancy_r: number;
+  profit_factor: number;
+  max_drawdown_r: number;
+};
+
 type XauMicrobarGeometry = {
   window_minutes: number;
   bars: number;
@@ -987,6 +999,8 @@ export default function App() {
   const [trailingShadow, setTrailingShadow] = useState<TrailingShadowSummary | null>(null);
   const [xauFeasiblePullback, setXauFeasiblePullback] =
     useState<XauFeasiblePullbackSummary | null>(null);
+  const [xauCompressionPrecursor, setXauCompressionPrecursor] =
+    useState<PrecursorExecutionShadowSummary | null>(null);
   const [xauMicrobars, setXauMicrobars] = useState<XauMicrobarSummary | null>(null);
   const [marketMicrobars, setMarketMicrobars] = useState<XauMicrobarSummary[]>([]);
   const [precursorForward, setPrecursorForward] = useState<PrecursorForwardResearch | null>(null);
@@ -1040,6 +1054,7 @@ export default function App() {
           intelligenceResponse,
           trailingShadowResponse,
           xauFeasiblePullbackResponse,
+          xauCompressionPrecursorResponse,
           xauMicrobarsResponse,
           marketMicrobarsResponse,
           precursorForwardResponse,
@@ -1065,6 +1080,7 @@ export default function App() {
           fetch("/api/v1/intelligence/overview?hours=24"),
           fetch("/api/v1/research/trailing-shadow"),
           fetch("/api/v1/research/xau-feasible-pullback"),
+          fetch("/api/v1/research/xau-compression-precursor"),
           fetch("/api/v1/research/xau-microbars"),
           fetch("/api/v1/research/microbars"),
           fetch("/api/v1/research/precursor-forward"),
@@ -1108,6 +1124,9 @@ export default function App() {
         const xauFeasiblePullbackPayload = xauFeasiblePullbackResponse.ok
           ? await xauFeasiblePullbackResponse.json()
           : null;
+        const xauCompressionPrecursorPayload = xauCompressionPrecursorResponse.ok
+          ? await xauCompressionPrecursorResponse.json()
+          : null;
         const xauMicrobarsPayload = xauMicrobarsResponse.ok
           ? await xauMicrobarsResponse.json()
           : null;
@@ -1146,6 +1165,7 @@ export default function App() {
         setIntelligence(intelligencePayload);
         setTrailingShadow(trailingShadowPayload);
         setXauFeasiblePullback(xauFeasiblePullbackPayload);
+        setXauCompressionPrecursor(xauCompressionPrecursorPayload);
         setXauMicrobars(xauMicrobarsPayload);
         setMarketMicrobars(marketMicrobarsPayload);
         setPrecursorForward(precursorForwardPayload);
@@ -2228,6 +2248,39 @@ export default function App() {
                   " gagnant(s) / " +
                   xauFeasiblePullback.losses +
                   " non-gagnant(s). Research-only, risque ≤ 4 €."
+                : "Collecte prospective non initialisée. Aucun ordre broker."}
+            </p>
+          </div>
+          <div className="intelligence-card">
+            <span className="label">XAU · precursor compression</span>
+            <strong
+              className={
+                (xauCompressionPrecursor?.resolved ?? 0) > 0
+                  ? (xauCompressionPrecursor?.expectancy_r ?? 0) > 0
+                    ? "positive-text"
+                    : "negative-text"
+                  : ""
+              }
+            >
+              {xauCompressionPrecursor?.started_at
+                ? xauCompressionPrecursor.resolved +
+                  " résolu(s) · " +
+                  (xauCompressionPrecursor.expectancy_r >= 0 ? "+" : "") +
+                  xauCompressionPrecursor.expectancy_r.toFixed(3) +
+                  "R"
+                : "—"}
+            </strong>
+            <p>
+              {xauCompressionPrecursor?.started_at
+                ? "PF " +
+                  xauCompressionPrecursor.profit_factor.toFixed(2) +
+                  " · " +
+                  xauCompressionPrecursor.wins +
+                  " gagnant(s) / " +
+                  xauCompressionPrecursor.losses +
+                  " non-gagnant(s) · DD " +
+                  xauCompressionPrecursor.max_drawdown_r.toFixed(2) +
+                  "R. Shadow prospectif, aucun ordre broker."
                 : "Collecte prospective non initialisée. Aucun ordre broker."}
             </p>
           </div>

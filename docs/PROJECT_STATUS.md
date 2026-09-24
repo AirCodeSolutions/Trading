@@ -2783,3 +2783,40 @@ The persistent `unseen × M1 × transition` research ledger is also generalized 
 This is observability/research only. No scanner, admission, PAPER/DEMO order, stop, target, risk, lot ceiling, macro gate or LIVE behavior changes.
 
 Validation before deployment: 25 targeted tests, 306 full backend tests, Ruff clean, frontend build clean.
+
+## 2026-09-24 — precursor execution screen and XAU compression forward shadow
+
+Two additional attempts to explain recently positive unqualified probes were rejected before any runtime change:
+
+- BTC `directional_transition` split by immediately preceding M15 regime: predecessor `post_shock` was +0.0885R on 67 train trades but -0.1322R on 23 validation trades. Rejected despite a positive holdout and the recent positive probe sample; no regime gate is added.
+- GBP `failed_auction_reversal` fixed London-session window (10:00-19:00 Europe/Athens): -0.2857R train, -0.2401R validation and -0.3611R holdout. Rejected; no session filter is added.
+
+The prospective causal-precursor collector was then converted from MFE/MAE diagnostics into a frozen execution-aware counterfactual for `compression_breakout`:
+- entry: first M5 after prospective `first_seen`;
+- stop: 1.5 ATR M5;
+- target: 1R;
+- horizon: 12 M5;
+- existing macro blackout;
+- frozen research execution costs;
+- broker-equity sizing with the hard 5-lot ceiling;
+- no overlapping trade per symbol.
+
+Selection sample since the precursor collector started:
+- BTCUSD: 8 independent resolved trades, -0.2405R expectancy, PF 0.569 -> rejected.
+- XAUUSD: 8 independent resolved trades, +0.3213R expectancy, PF 2.285, 75% wins, +2.570R total, 2R max drawdown -> promising but under-sampled.
+
+Decision: XAU compression-breakout is advanced only to a **new research-only forward shadow**. The 8 positive XAU trades are explicitly the selection/development sample and are never backfilled into validation.
+
+Forward-shadow contract:
+- strategy id `XAUUSD:precursor_compression_breakout_shadow`;
+- state initializes at deployment time and starts with zero resolved trades;
+- only future XAU `compression_breakout` precursor observations after `started_at` are eligible;
+- exact frozen 1.5 ATR / 1R / 12 M5 contract;
+- current DEMO broker equity is passed explicitly to shared sizing;
+- the shared 5-lot ceiling, spread, margin, macro and execution-cost policies remain intact;
+- outcomes are simulated through the same `_simulate_candidate` engine used by research backtests;
+- no broker order, PAPER admission or automatic promotion path exists.
+
+The Research dashboard exposes resolved count, expectancy, PF, wins/losses and drawdown. A minimum of 20 genuinely post-deployment resolved observations remains required before this candidate can even be reconsidered for admission.
+
+Validation: 12 focused tests, 308 full backend tests, Ruff clean, frontend build clean.

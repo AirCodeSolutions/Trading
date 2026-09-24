@@ -34,6 +34,9 @@ from app.services.trading_intelligence import (
     write_trading_intelligence,
 )
 from app.services.trailing_shadow import advance_trailing_shadow_once
+from app.services.xau_compression_precursor_shadow import (
+    advance_xau_compression_precursor_shadow_once,
+)
 from app.services.xau_feasible_pullback_shadow import (
     advance_xau_feasible_pullback_shadow_once,
 )
@@ -253,6 +256,14 @@ def _update_observability(
                 )
             except (OSError, TypeError, ValueError) as exc:
                 errors.append(f"market_unseen_m1_transition: {exc!r}")
+            try:
+                advance_xau_compression_precursor_shadow_once(
+                    settings.mt4_files_dir,
+                    settings.shadow_ledger_dir,
+                    now,
+                )
+            except (OSError, TypeError, ValueError) as exc:
+                errors.append(f"xau_compression_precursor_shadow: {exc!r}")
             report = build_daily_trading_report(
                 settings.mt4_files_dir,
                 settings.shadow_ledger_dir,

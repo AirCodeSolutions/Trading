@@ -37,6 +37,7 @@ from app.domain.opportunity import (
 )
 from app.domain.opportunity_funnel import OpportunityFunnel
 from app.domain.portfolio import MarketUniverseAsset, TradingOverview
+from app.domain.precursor_execution_shadow import PrecursorExecutionShadowSummary
 from app.domain.precursor_forward_research import PrecursorForwardResearchReport
 from app.domain.qualification_history import QualificationHistoryEvent
 from app.domain.regime import RegimeSnapshot
@@ -114,6 +115,9 @@ from app.services.trading_intelligence import (
     load_trading_intelligence,
 )
 from app.services.trailing_shadow import load_trailing_shadow_summary
+from app.services.xau_compression_precursor_shadow import (
+    load_xau_compression_precursor_shadow_summary,
+)
 from app.services.xau_feasible_pullback_shadow import (
     load_xau_feasible_pullback_summary,
 )
@@ -521,6 +525,16 @@ def research_trailing_shadow() -> TrailingShadowSummary:
 )
 def research_xau_feasible_pullback() -> XauFeasiblePullbackSummary:
     return load_xau_feasible_pullback_summary(settings.shadow_ledger_dir)
+
+
+@app.get(
+    f"{settings.api_prefix}/research/xau-compression-precursor",
+    response_model=PrecursorExecutionShadowSummary,
+)
+def research_xau_compression_precursor() -> PrecursorExecutionShadowSummary:
+    return load_xau_compression_precursor_shadow_summary(
+        settings.shadow_ledger_dir
+    )
 
 
 @app.get(

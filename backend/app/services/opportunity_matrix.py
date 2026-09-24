@@ -84,6 +84,11 @@ def run_mt4_portfolio_research(
                 and symbol not in {"BTCUSD", "XAUUSD"}
             ):
                 continue
+            if (
+                mechanism == OpportunityMechanism.STRUCTURAL_PERSISTENCE_SEQUENCE
+                and symbol != "XAUUSD"
+            ):
+                continue
             config = OpportunityBacktestConfig(
                 spec=spec,
                 mechanism=mechanism,

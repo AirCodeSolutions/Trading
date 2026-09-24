@@ -2275,3 +2275,56 @@ Controlled deployment proof:
 - LIVE remains OFF.
 
 Current XAU sequence diagnostic after deployment is `no_signal`; the collector is waiting prospectively for a fresh `directional_displacement -> structural_extreme -> directional_displacement` occurrence.
+
+## 2026-09-24 — XAU structural-persistence sequence candidate
+
+Post-PR118 incremental replay re-ranked the remaining positive-stable XAU three-state sequences using train + validation only before inspecting holdout.
+
+Selected next isolated hypothesis:
+
+`XAUUSD: directional_displacement -> structural_extreme -> structural_extreme`
+
+Incremental non-overlapping evidence after giving priority to the already-deployed `XAUUSD:structural_displacement_sequence`:
+
+- train: 79 incremental trades, +0.0449R expectancy, PF 1.105, DD 6.548R;
+- validation: 27, +0.0529R, PF 1.128, DD 6.046R;
+- holdout: 16, +0.0392R, PF 1.085, DD 2.372R.
+
+Standalone sequential replay of the exact frozen contract:
+
+- 130 candidates / 126 executed;
+- train: 80, +0.0672R, PF 1.160, DD 5.867R;
+- validation: 30, +0.1463R, PF 1.393, DD 4.167R;
+- holdout: 16, +0.0392R, PF 1.085, DD 2.372R;
+- admission: SHADOW;
+- `paper_collection_candidate=true`;
+- weakest independent expectancy +0.03923R.
+
+Contract is frozen:
+
+- XAUUSD only;
+- exact causal pattern above;
+- side = latest non-neutral directional causal state, matching execution-aware discovery;
+- next-M5 entry;
+- 1.50 ATR M5 stop;
+- 1.00R target;
+- 12 M5 horizon;
+- existing macro, spread, broker-equity sizing and execution-cost policies unchanged.
+
+The candidate is implemented as a distinct `structural_persistence_sequence` strategy family rather than widening PR118's strategy identity. This keeps prospective evidence isolated.
+
+Portfolio/PAPER fidelity hardening:
+
+- only one PAPER position may be open per symbol across strategy families;
+- PAPER trades on different symbols may still coexist;
+- an already-open same-symbol PAPER has priority;
+- if two XAU families signal while XAU is flat, enum order gives the already-deployed structural-displacement sequence first priority, matching the incremental replay assumption;
+- broker transport remains one filled Trading-New position per symbol and one command in flight.
+
+Admission dry-run against the production registry:
+
+- 32 -> 33 entries;
+- only new key `XAUUSD:structural_persistence_sequence`;
+- zero existing admission changes.
+
+Validation: 35 focused tests, 286 full backend tests, Ruff clean, Vite build clean. No runtime/deployment change yet; LIVE remains OFF.

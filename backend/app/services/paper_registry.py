@@ -14,6 +14,7 @@ _SLUG_TO_MECHANISM = {
     "directional_pullback": OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
     "asia_range_sweep": OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL,
     "structural_displacement_sequence": OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE,
+    "structural_persistence_sequence": OpportunityMechanism.STRUCTURAL_PERSISTENCE_SEQUENCE,
 }
 
 

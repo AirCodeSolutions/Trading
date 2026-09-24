@@ -1585,3 +1585,13 @@ PR #118 is live. Trading-New now has 25 scanners and 7 qualified PAPER/DEMO coll
 Deployment used a targeted merge-safe admission upsert, preserving all 31 prior strategy admissions byte-equivalently and adding only the new XAU structural sequence. No backfill or retrospective trade was created.
 
 Drain is OFF, auto-DEMO is armed, book is flat and LIVE remains disabled.
+
+## 2026-09-24 — XAU structural persistence sequence
+
+Added a separate XAU-only `structural_persistence_sequence` candidate for the causal chain `directional_displacement -> structural_extreme -> structural_extreme`.
+
+The implementation preserves the exact research geometry: next-M5 entry, 1.5 ATR stop, 1R target and 12-M5 horizon. It remains SHADOW/PAPER-only.
+
+Also hardened PAPER concurrency to one open PAPER per symbol across strategy families while preserving multi-symbol concurrency. This aligns prospective PAPER evidence with the broker's same-symbol non-stacking rule.
+
+Validation: 286 backend tests, Ruff clean, frontend build clean; admission merge dry-run adds exactly one key (32 -> 33) without changing existing admissions.

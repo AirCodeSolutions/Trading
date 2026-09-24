@@ -18,6 +18,7 @@ class OpportunityMechanism(StrEnum):
     DIRECTIONAL_PULLBACK_RESUMPTION = "directional_pullback_resumption"
     ASIA_RANGE_SWEEP_REVERSAL = "asia_range_sweep_reversal"
     STRUCTURAL_DISPLACEMENT_SEQUENCE = "structural_displacement_sequence"
+    STRUCTURAL_PERSISTENCE_SEQUENCE = "structural_persistence_sequence"
 
 
 def all_mechanisms() -> list[OpportunityMechanism]:

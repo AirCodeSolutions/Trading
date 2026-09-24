@@ -1655,3 +1655,9 @@ Current bottleneck is signal production: the seven PAPER-eligible collectors pro
 Extended Trading Intelligence with a prospective `unseen_patterns` summary and added a Research dashboard table showing invisible opportunity birth signatures by pattern, symbol, side, opposition rate, move ATR, 6-M5 stretch and compression.
 
 Also closed two fixed hypotheses without runtime changes: pre-event volume/range attention conditioning and structural-extreme-stretch exhaustion reversal. Both fail Trading-New historical evidence.
+
+## 2026-09-24 — PR128 live radar and post-deployment research
+
+Unseen Opportunity Radar is deployed in backend + Research dashboard. Runtime remains READY 5/5, 26 scanners, 7 collectors, drain OFF, LIVE OFF and hard 5-lot ceiling active.
+
+Two follow-up rules were rejected without runtime changes: unclassified 6-M5 momentum continuation across all five assets, and an externally motivated XAU Asia-BUY / US-SELL session rule. Neither is robust across train/validation/holdout.

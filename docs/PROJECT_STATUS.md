@@ -2666,3 +2666,47 @@ Live branch validation on production data: 81 precursor-eligible opportunities, 
 The Research dashboard now exposes this radar. It has no signal/admission/order authority.
 
 Validation Unseen Opportunity Radar: 17 targeted tests, 297 full backend tests, Ruff clean, Vite production build clean. No runtime authority change before deployment.
+
+## 2026-09-24 — PR #128 deployed + unseen-denominator follow-up
+
+PR #128 (`bc13534`) is merged and deployed.
+
+Controlled deployment:
+- drain ON;
+- second BOOK_FLAT proof: 0 PAPER, 0 Trading-New broker positions, 0 pending open/close commands, 0 broker-observed positions;
+- backend + canonical shadow worker restarted only;
+- MT4, XAU M1 worker and frontend PIDs preserved;
+- intelligence cache regenerated with the new schema after restart;
+- frontend Vite immediately served the Unseen Opportunity Radar;
+- drain returned OFF;
+- READY 5/5, 26 scanners, 7 qualified collectors, LIVE OFF;
+- hard `max_lots_per_trade=5.0` remains active.
+
+Live radar at deployment checkpoint:
+- 83 precursor-eligible market opportunities;
+- 41 totally unseen;
+- `unclassified`: 14;
+- `directional_displacement`: 11, 100% opposed to later move in the current prospective slice;
+- `structural_extreme_stretch`: 6, 100% opposed;
+- `compression_state`: 6;
+- `compression_breakout`: 2;
+- `structural_extreme`: 2.
+
+The opposed rates are descriptive only. Both corresponding mechanical reversal hypotheses have failed long historical validation, so no trading authority is inferred from the live slice.
+
+### Additional fixed market-first hypotheses
+
+`unclassified` six-M5 momentum continuation:
+- causal direction = sign of already-observed 6-M5 return;
+- next-M5 entry, 1.5 ATR stop, 1R target, 12-M5 horizon;
+- same macro/cost/broker-equity/5-lot policies.
+Rejected on every asset and every independent window. Examples: XAU train -0.0673R, validation -0.0561R, holdout -0.0544R; BTC -0.1039R / -0.1378R / -0.2162R.
+
+Externally motivated XAU session hypothesis:
+- based on World Gold Council 2026 observation of stronger Asia support and frequent US-hour pullbacks;
+- only causal `unclassified` contexts;
+- BUY in Asia session (22:00–07:00 UTC), SELL in US session (12:00–21:00 UTC), Europe ignored;
+- same next-M5 / 1.5 ATR / 1R / 12-M5 contract.
+Rejected: train -0.0394R, validation -0.0281R, holdout -0.0892R. Asia BUY is clearly negative; US SELL is near-flat overall (-0.0013R) but is not isolated post hoc.
+
+Decision: no new strategy/admission is added. The next discovery step must use genuinely new causal transition information for the `unclassified` pool rather than another static sign/session inversion.

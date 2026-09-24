@@ -2710,3 +2710,31 @@ Externally motivated XAU session hypothesis:
 Rejected: train -0.0394R, validation -0.0281R, holdout -0.0892R. Asia BUY is clearly negative; US SELL is near-flat overall (-0.0013R) but is not isolated post hoc.
 
 Decision: no new strategy/admission is added. The next discovery step must use genuinely new causal transition information for the `unclassified` pool rather than another static sign/session inversion.
+
+## 2026-09-24 — unclassified value-of-waiting research
+
+Added a reproducible research tool for the market-first question left open after PR #129: when a large opportunity is born `unclassified`, does waiting up to three closed M5 bars for the first new directional causal transition create a usable trade?
+
+Frozen hypothesis:
+- population: independent 1.5-ATR / 12-M5 market-first opportunities whose birth context is `unclassified`;
+- wait at most three closed M5 bars;
+- first directional transition may be auction-failure reclaim, compression breakout, directional displacement or structural-extreme stretch;
+- direction comes only from that observed transition;
+- entry on the next M5;
+- 1.5 ATR stop, 1R target, 12-M5 trade horizon;
+- existing macro blackouts, frozen execution costs, broker-equity sizing and hard 5-lot ceiling remain unchanged;
+- no grid search or post-hoc direction filter.
+
+Main result: waiting improves directional information but arrives too late economically.
+
+- BTC: transition coverage 74.4%, alignment 75.2%, average wait 1.73 M5, 0.69 ATR already consumed; expectancy -0.1277R train / -0.0289R validation / -0.1260R holdout.
+- EUR: coverage 68.9%, alignment 72.2%, 0.60 ATR consumed; -0.1579R / -0.2479R / +0.1558R on only 7 holdout executions.
+- GBP: coverage 70.0%, alignment 71.0%, 0.58 ATR consumed; -0.1634R / -0.3441R / +0.0154R.
+- XAU: coverage 71.8%, alignment 75.5%, 0.66 ATR consumed; -0.0369R / -0.0351R / +0.0259R.
+- XAG: coverage 72.7%, alignment 73.1%, 0.61 ATR consumed; -0.0292R train / -0.6714R validation; no executed holdout sample.
+
+Decision: REJECT waiting for an extra M5 causal transition as a standalone entry mechanism. The system often learns the eventual direction, but roughly 0.6-0.7 ATR has already been consumed and execution expectancy remains negative.
+
+Development implication: do not add more M5 confirmation layers to solve the frequency bottleneck. The next research layer should anticipate transition quality earlier using genuinely finer information already being collected, especially XAU M1 signal geometry, rather than relaxing current admissions.
+
+New CLI: `backend/scripts/analyze_unclassified_transition_waiting.py`.

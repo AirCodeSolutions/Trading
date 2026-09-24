@@ -825,6 +825,20 @@ function stateLabel(state: ShadowDiagnostic["state"] | undefined) {
   return "—";
 }
 
+function compactBlockReason(reason: string | null | undefined) {
+  if (!reason) return null;
+  if (reason.includes("minimum broker lot exceeds the risk budget")) {
+    return "LOT MINI > RISQUE";
+  }
+  if (reason.includes("spread consumes too much of the stop distance")) {
+    return "SPREAD / STOP";
+  }
+  if (reason.includes("macro")) return "BLACKOUT MACRO";
+  if (reason.includes("margin")) return "MARGE";
+  if (reason.includes("stale")) return "DONNÉE STALE";
+  return reason.replaceAll("_", " ").toUpperCase();
+}
+
 function Sparkline({ values }: { values: number[] }) {
   const points = useMemo(() => {
     if (values.length < 2) return "";
@@ -1200,6 +1214,73 @@ export default function App() {
   const qualifiedStrategyIds = new Set(
     demoCollectionCandidates.map((row) => row.strategy_id)
   );
+  const noTradeRows = retainedSymbols.map((symbol) => {
+    const eligibleStrategies = demoCollectionCandidates.filter(
+      (row) => row.symbol === symbol
+    );
+    const currentQualified = opportunities.filter(
+      (item) =>
+        item.symbol === symbol &&
+        qualifiedStrategyIds.has(`${item.symbol}:${item.mechanism}`)
+    );
+    const currentExecutable = currentQualified.find(
+      (item) => item.state === "signal_executable"
+    );
+    const currentBlocked = currentQualified.find(
+      (item) => item.state === "signal_blocked"
+    );
+    const funnelRows =
+      opportunityFunnel?.strategies.filter(
+        (row) =>
+          row.symbol === symbol && qualifiedStrategyIds.has(row.strategy_id)
+      ) ?? [];
+    const signalRows = funnelRows.reduce(
+      (total, row) => total + row.signal_rows,
+      0
+    );
+    const executableRows = funnelRows.reduce(
+      (total, row) => total + row.executable_signal_rows,
+      0
+    );
+    const blockedRows = funnelRows.reduce(
+      (total, row) => total + row.blocked_signal_rows,
+      0
+    );
+    const reasonCounts: Record<string, number> = {};
+    funnelRows.forEach((row) => {
+      Object.entries(row.block_reasons).forEach(([reason, count]) => {
+        reasonCounts[reason] = (reasonCounts[reason] ?? 0) + count;
+      });
+    });
+    const dominantHistoricalReason =
+      Object.entries(reasonCounts).sort((left, right) => right[1] - left[1])[0]?.[0] ??
+      null;
+    const assetReport = dailyReport?.assets.find(
+      (row) => row.symbol === symbol
+    );
+    const state = currentExecutable
+      ? "EXÉCUTABLE"
+      : currentBlocked
+        ? "BLOQUÉ"
+        : eligibleStrategies.length
+          ? "ATTENTE SIGNAL"
+          : "RESEARCH";
+    const blocker =
+      compactBlockReason(currentBlocked?.reason) ??
+      compactBlockReason(dominantHistoricalReason);
+
+    return {
+      symbol,
+      state,
+      eligibleCollectors: eligibleStrategies.length,
+      signalRows,
+      executableRows,
+      blockedRows,
+      blocker,
+      missed: assetReport?.missed_opportunities_24h ?? 0,
+      market: assetReport?.market_opportunities_24h ?? 0
+    };
+  });
   const executableOpportunities24h = opportunityFunnel?.executable_signal_rows ?? 0;
   const qualifiedExecutableOpportunities24h =
     opportunityFunnel?.strategies.reduce(
@@ -2920,6 +3001,61 @@ export default function App() {
             </span>
           </div>
         ) : null}
+      </section>
+
+      <section className="tradeability-panel" hidden={activeView !== "trading"}>
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">TRADE READINESS · 24 H</p>
+            <h2>Pourquoi aucun trade ?</h2>
+          </div>
+          <p>
+            Vue compacte des collecteurs réellement qualifiés. Elle distingue
+            absence de signal et blocage économique sans modifier les guards.
+          </p>
+        </div>
+        <div className="tradeability-grid">
+          {noTradeRows.map((row) => (
+            <article className="tradeability-card" key={row.symbol}>
+              <div className="tradeability-card-top">
+                <strong>{row.symbol}</strong>
+                <span
+                  className={
+                    row.state === "EXÉCUTABLE"
+                      ? "positive-text"
+                      : row.state === "BLOQUÉ"
+                        ? "negative-text"
+                        : ""
+                  }
+                >
+                  {row.state}
+                </span>
+              </div>
+              <div className="tradeability-metrics">
+                <span>
+                  <b>{row.eligibleCollectors}</b> qualifié(s)
+                </span>
+                <span>
+                  <b>{row.signalRows}</b> signal(aux)
+                </span>
+                <span>
+                  <b>{row.executableRows}</b> exécutable(s)
+                </span>
+              </div>
+              <p>
+                {row.blocker
+                  ? `Dernier blocage dominant : ${row.blocker} · ${row.blockedRows} bloqué(s) sur 24 h.`
+                  : row.eligibleCollectors
+                    ? "Aucun blocage observé : les collecteurs attendent simplement leurs conditions."
+                    : "Aucun collecteur qualifié pour une entrée automatique."}
+              </p>
+              <small>
+                Market-first : {row.missed} manquée(s) / {row.market} opportunité(s)
+                sur 24 h.
+              </small>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="opportunity-panel" hidden={activeView !== "trading"}>

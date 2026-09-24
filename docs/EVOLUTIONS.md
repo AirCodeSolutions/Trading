@@ -1507,3 +1507,15 @@ Added a Trading-New-only read-only microstructure collector for XAUUSD:
 The worker has zero execution or admission authority and does not alter existing M5/M15 scanners, risk, lot, spread, stop or target policy.
 
 Validated with 16 targeted tests, 264 full backend tests, Ruff, shell syntax, Vite build and a 70-second live-quote `/tmp` dry-run.
+## 2026-09-24 — Trade Readiness / « Pourquoi aucun trade ? »
+
+Trading view adds a compact per-asset explanation built from already-fetched runtime data:
+
+- number of qualified collectors;
+- qualified signal count over 24 h;
+- executable vs blocked signal count;
+- dominant economic blocker (minimum lot / risk, spread / stop, macro, margin, stale data);
+- market-first missed opportunities over 24 h;
+- current state: EXECUTABLE, BLOQUÉ, ATTENTE SIGNAL or RESEARCH.
+
+This is frontend-only observability. It does not change scanners, qualification, PAPER/DEMO authority or risk.

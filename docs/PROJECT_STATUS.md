@@ -1979,3 +1979,14 @@ Validation:
 - production runtime remained untouched during dry-run.
 
 Next research use after enough prospective M1 data: keep M5/M15 opportunity detection unchanged, and evaluate whether a causal M1 confirmation can provide naturally risk-feasible 1–4 USD XAU stops without increasing the 1% risk budget.
+## 2026-09-24 — no-trade explainability candidate
+
+Current 24 h evidence behind the UI:
+
+- among the 6 qualified collectors, only three produced a signal;
+- BTC break/retest: 1 signal, blocked by spread / stop geometry;
+- GBP Asia Sweep: 1 signal, blocked by spread / stop geometry;
+- XAU break/retest: 1 signal, blocked because minimum broker lot exceeds the risk budget;
+- the other three qualified collectors produced no signal.
+
+This confirms the low trade count is currently a combination of sparse qualified signals and broker economics, not a disabled execution path.

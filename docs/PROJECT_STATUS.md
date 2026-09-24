@@ -2903,3 +2903,31 @@ Rejected follow-up hypotheses remain rejected:
 Validation: 14 targeted tests, 311 full backend tests, Ruff clean, frontend production build clean.
 
 Runtime safety context: Trading-New remains flat. Two broker positions visible at account level belong to Freezebee (`magic=51051`, `FZ:` comments) and remain outside Trading-New ownership/control.
+
+## 2026-09-24 — losing XAU trade root cause + SHADOW admission hardening
+
+Trading-New DEMO ticket `185357042` (`XAUUSD:break_retest_reaccel`) was traced as the trade that erased the day's prior positive account state.
+
+Trade facts:
+- signal at 2026-09-24 13:30 Europe/Athens;
+- SELL, PAPER entry 4244.90, broker fill 4245.22;
+- stop 4252.69, target 4230.88;
+- pre-cap size 11.22 lots;
+- PAPER result -1R / -8738.22 EUR;
+- broker native SL realized -7374.50 EUR;
+- the 13:30 M5 bar traded low 4244.32 then high 4254.16, so favorable excursion before stop was <0.12R. A trailing manager would not have rescued this episode.
+
+Chronology matters: this trade occurred before both the XAU break/retest demotion and PR #126 hard 5-lot ceiling. Current runtime admission for `XAUUSD:break_retest_reaccel` is `paper_collection_candidate=false`, weakest historical expectancy -0.3036R, so the same family can no longer enter PAPER/DEMO.
+
+Admission audit found a second issue: `GBPUSD:directional_pullback_resumption` remained PAPER-entry eligible with weakest historical expectancy -0.2397R because the SHADOW collection rule required positive train+validation but allowed a sparse negative holdout.
+
+Central admission contract is tightened:
+- SHADOW paper collection still requires positive train and validation;
+- an empty holdout may still collect prospectively;
+- once holdout has at least one observed trade, holdout expectancy must be non-negative;
+- any observed negative holdout forces observation/probe-only status until new evidence changes the historical research result;
+- ACTIVE/rejected admission rules are unchanged.
+
+Dry-run recalculation on a temporary registry shows exactly one currently tradable family loses PAPER/DEMO permission: `GBPUSD:directional_pullback_resumption`. All other currently admitted collectors remain unchanged. Expected qualified collector count: 7 -> 6.
+
+Validation: 43 targeted tests, 312 full backend tests, Ruff clean. Runtime remains drained during audit/deployment; Trading-New book is flat.

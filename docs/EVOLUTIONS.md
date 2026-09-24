@@ -1703,3 +1703,11 @@ PR #134 is deployed with backend-only restart. Broker observed-position count no
 Added a second isolated research-only precursor execution shadow for future XAU `auction_failure_reclaim` observations. It uses the same frozen next-M5 / 1.5 ATR / 1R / 12-M5 contract, current DEMO broker equity, macro/cost policies and hard 5-lot ceiling as the compression precursor shadow.
 
 Selection screen: BTC rejected (-0.713R over 7 trades); XAU promising (+0.396R, PF 2.585, 75% wins over 8 trades) but explicitly under-sampled. Forward validation starts at zero with no backfill and has no order/admission authority.
+
+## 2026-09-24 — reject sparse negative holdout from SHADOW PAPER collection
+
+Changed the SHADOW paper-collection gate so a sparse but observed negative holdout can no longer be bypassed by positive train+validation. Empty holdout remains collectable; observed holdout must be >=0R.
+
+Immediate runtime impact after targeted admission refresh: `GBPUSD:directional_pullback_resumption` will become observation-only. The change does not alter signals, stops, targets, sizing, the 5-lot ceiling or LIVE state.
+
+Also documented the XAU break/retest loss: pre-cap 11.22-lot trade, -1R PAPER / -7374.50 EUR broker, stopped almost immediately with <0.12R favorable excursion; trailing would not have helped.

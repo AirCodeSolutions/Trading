@@ -1595,3 +1595,11 @@ The implementation preserves the exact research geometry: next-M5 entry, 1.5 ATR
 Also hardened PAPER concurrency to one open PAPER per symbol across strategy families while preserving multi-symbol concurrency. This aligns prospective PAPER evidence with the broker's same-symbol non-stacking rule.
 
 Validation: 286 backend tests, Ruff clean, frontend build clean; admission merge dry-run adds exactly one key (32 -> 33) without changing existing admissions.
+
+## 2026-09-24 — capital-aware trailing research + XAU rejection
+
+Trailing research now propagates explicit `capital_eur` through both baseline simulation and reconstructed trailing trade sizing; CLI `analyze_trailing_manager.py` accepts `--capital-eur`.
+
+The unchanged TP-only policy was tested on both deployed XAU sequence families at current broker-equity sizing. It fails the cross-window improvement gate on both, so no trailing execution change is made.
+
+PR #120 deployment is also recorded: 26 scanners, 8 qualified collectors, drain OFF, auto-DEMO armed, LIVE OFF.

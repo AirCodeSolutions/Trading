@@ -32,6 +32,12 @@ def parse_args() -> argparse.Namespace:
         default=OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE,
     )
     parser.add_argument(
+        "--capital-eur",
+        type=float,
+        default=None,
+        help="Explicit research sizing capital; defaults to configured fallback.",
+    )
+    parser.add_argument(
         "--mode",
         choices=(
             "stop-only",
@@ -69,6 +75,7 @@ def main() -> None:
             train_end=datetime(2026, 7, 1, tzinfo=athens),
             validation_end=datetime(2026, 9, 1, tzinfo=athens),
         ),
+        capital_eur=args.capital_eur,
         macro_events=load_macro_events(settings.macro_events_path),
     )
     policy = TrailingManagerConfig(

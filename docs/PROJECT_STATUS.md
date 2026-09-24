@@ -2328,3 +2328,46 @@ Admission dry-run against the production registry:
 - zero existing admission changes.
 
 Validation: 35 focused tests, 286 full backend tests, Ruff clean, Vite build clean. No runtime/deployment change yet; LIVE remains OFF.
+
+## 2026-09-24 — PR #120 deployed + XAU trailing-manager replay
+
+PR #120 (`2a43018`) is merged and deployed.
+
+Deployment proof:
+- drain ON;
+- second BOOK_FLAT proof: 0 PAPER, 0 Trading-New bridge positions, 0 pending commands, 0 broker-observed positions;
+- targeted admission refresh at observed broker equity 873,863.20 EUR;
+- admission registry 32 -> 33 entries;
+- only new key: `XAUUSD:structural_persistence_sequence`;
+- zero existing admission changes;
+- backend + canonical shadow worker restarted only;
+- frontend, MT4 and XAU M1 worker PIDs preserved;
+- worker heartbeat healthy with 26 scanners;
+- qualified collectors 7 -> 8;
+- new persistence PAPER state initialized empty, with no historical trade/backfill;
+- drain returned OFF;
+- auto-DEMO armed;
+- session READY 5/5;
+- LIVE remains OFF.
+
+Trailing research was then made broker-capital-aware end-to-end so paired exit replays no longer fall back silently to the old 400 EUR reference.
+
+TP-only dynamic extension (same frozen policy previously tested on BTC) was replayed without broker/PAPER authority:
+
+`XAUUSD:structural_displacement_sequence` (#118):
+- train 106: static +0.1321R -> dynamic +0.1069R (delta -0.0252R); DD 7.683R -> 8.115R;
+- validation 25: +0.3024R -> +0.3324R;
+- holdout 13: +0.4812R -> +0.5576R;
+- 26 total adjustments; 11 improved, 9 worsened across all windows;
+- no added-risk violations.
+Decision: REJECTED because train expectancy and drawdown worsen.
+
+`XAUUSD:structural_persistence_sequence` (#120):
+- train 80: static +0.0672R -> dynamic +0.0568R;
+- validation 30: +0.1463R -> +0.1444R;
+- holdout 16: +0.0392R -> +0.0705R;
+- 12 total adjustments; 6 improved, 5 worsened across all windows;
+- no added-risk violations.
+Decision: REJECTED because train and validation expectancy decline.
+
+No XAU TP/SL broker modification is authorized. Static 1R targets remain unchanged for both XAU sequence families.

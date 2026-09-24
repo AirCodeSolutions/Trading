@@ -23,6 +23,7 @@ def test_runtime_is_safe_by_default() -> None:
     assert payload["allowed_timeframes"] == ["M5", "M15"]
     assert payload["reference_capital_eur"] == 400.0
     assert payload["risk_per_trade_fraction"] == 0.01
+    assert payload["max_lots_per_trade"] == 5.0
     assert payload["absolute_max_risk_fraction"] == 0.02
     assert payload["prospective_min_trades"] == 20
     assert payload["historical_validation_min_trades"] == 40

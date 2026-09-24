@@ -12,6 +12,7 @@ type RuntimeConfig = {
   research_fallback_capital_eur?: number;
   risk_per_trade_fraction: number;
   absolute_max_risk_fraction: number;
+  max_lots_per_trade: number;
   prospective_min_trades: number;
   historical_validation_min_trades: number;
   historical_holdout_min_trades: number;
@@ -1998,7 +1999,7 @@ export default function App() {
             <h2>Ouvrir un trade manuel avec les mêmes garde-fous</h2>
           </div>
           <p>
-            Marché uniquement. Tu définis SL, TP et risque ; le système calcule le lot depuis l’equity MT4 DEMO observée et conserve les garde-fous de risque.
+            Marché uniquement. Tu définis SL, TP et risque ; le système calcule le lot depuis l’equity MT4 DEMO observée, avec un plafond dur de 5,00 lots par trade.
           </p>
         </div>
 
@@ -2055,6 +2056,7 @@ export default function App() {
             <div><span>Décision</span><strong>{manualPreview.approved ? "APPROUVÉ" : "REFUSÉ"}</strong></div>
             <div><span>Entrée marché</span><strong>{formatNumber(manualPreview.entry_price, selectedManualQuote?.digits ?? 5)}</strong></div>
             <div><span>Lot calculé</span><strong>{manualPreview.sizing ? manualPreview.sizing.lots.toFixed(2) : "—"}</strong></div>
+            <div><span>Lot max / trade</span><strong>{config ? config.max_lots_per_trade.toFixed(2) : "—"}</strong></div>
             <div><span>Risque €</span><strong>{manualPreview.sizing ? manualPreview.sizing.expected_loss_eur.toFixed(2) + " €" : "—"}</strong></div>
             <div><span>Spread / stop</span><strong>{manualPreview.sizing ? (manualPreview.sizing.spread_to_stop * 100).toFixed(1) + " %" : "—"}</strong></div>
             <div><span>RR</span><strong>{manualPreview.reward_risk_ratio.toFixed(2)} R</strong></div>

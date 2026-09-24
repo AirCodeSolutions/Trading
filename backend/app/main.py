@@ -215,6 +215,7 @@ def runtime_config() -> dict[str, object]:
         "max_daily_loss_fraction": settings.max_daily_loss_fraction,
         "paper_evidence_cutover_at": settings.paper_evidence_cutover_at,
         "max_spread_to_stop": settings.max_spread_to_stop,
+        "max_lots_per_trade": settings.max_lots_per_trade,
         "prospective_min_trades": MIN_PROSPECTIVE_TRADES,
         "historical_validation_min_trades": MIN_VALIDATION_TRADES,
         "historical_holdout_min_trades": MIN_HOLDOUT_TRADES,

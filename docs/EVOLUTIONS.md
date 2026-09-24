@@ -1637,3 +1637,7 @@ Revalidated XAU break/retest at current broker-equity sizing after its first pro
 Broker realized-PnL reconciliation now recognizes Trading-New tickets closed natively by MT4 SL/TP, using filled Trading-New open-command ownership plus broker closed history. Explicit close commands remain a completeness check.
 
 Production ticket 185357042 now reconciles to -7,374.50 EUR instead of being omitted from the daily broker PnL.
+
+## 2026-09-24 — hard 5-lot execution ceiling
+
+Added a global `max_lots_per_trade=5.0` guard to shared sizing plus a second DEMO-command guard. Runtime config and manual dashboard expose the ceiling. Broker-equity sizing remains active; the ceiling only lowers actual exposure when the 1% calculation would exceed 5 lots.

@@ -277,6 +277,30 @@ def test_demo_submit_writes_command_only_when_all_guards_pass(
     assert parsed.take_profit == 81360
 
 
+def test_demo_submit_refuses_trade_above_max_lots_per_trade(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "execution_mode", ExecutionMode.DEMO)
+    monkeypatch.setattr(settings, "demo_execution_bridge_enabled", True)
+    monkeypatch.setattr(settings, "live_trading_enabled", False)
+    monkeypatch.setattr(settings, "max_lots_per_trade", 5.0)
+    current = overview()
+    assert current.paper_strategies[0].summary.open_trade is not None
+    current.paper_strategies[0].summary.open_trade.lots = 5.01
+
+    with pytest.raises(ValueError, match="max lots per trade"):
+        submit_selected_demo_order(
+            files_dir=tmp_path,
+            overview=current,
+            macro=clear_macro(),
+            proposal=proposal(),
+            now=NOW,
+        )
+
+    assert not (tmp_path / "trading_demo_command.csv").exists()
+
+
 def test_demo_submit_ignores_positions_owned_by_other_mt4_systems(
     tmp_path: Path,
     monkeypatch,

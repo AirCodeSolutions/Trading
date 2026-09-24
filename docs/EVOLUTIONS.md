@@ -1697,3 +1697,9 @@ PR #133 deployment also recorded: XAU compression precursor forward shadow is li
 ## 2026-09-24 — post-PR134 checkpoint
 
 PR #134 is deployed with backend-only restart. Broker observed-position count now correctly reports the two external Freezebee tickets while Trading-New bridge positions remain zero. XAU precursor compression forward validation is active at 0/20 with no post-start compression precursor observed yet.
+
+## 2026-09-24 — XAU auction-failure precursor forward validation
+
+Added a second isolated research-only precursor execution shadow for future XAU `auction_failure_reclaim` observations. It uses the same frozen next-M5 / 1.5 ATR / 1R / 12-M5 contract, current DEMO broker equity, macro/cost policies and hard 5-lot ceiling as the compression precursor shadow.
+
+Selection screen: BTC rejected (-0.713R over 7 trades); XAU promising (+0.396R, PF 2.585, 75% wins over 8 trades) but explicitly under-sampled. Forward validation starts at zero with no backfill and has no order/admission authority.

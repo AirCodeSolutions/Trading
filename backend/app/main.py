@@ -115,6 +115,9 @@ from app.services.trading_intelligence import (
     load_trading_intelligence,
 )
 from app.services.trailing_shadow import load_trailing_shadow_summary
+from app.services.xau_auction_precursor_shadow import (
+    load_xau_auction_precursor_shadow_summary,
+)
 from app.services.xau_compression_precursor_shadow import (
     load_xau_compression_precursor_shadow_summary,
 )
@@ -533,6 +536,16 @@ def research_xau_feasible_pullback() -> XauFeasiblePullbackSummary:
 )
 def research_xau_compression_precursor() -> PrecursorExecutionShadowSummary:
     return load_xau_compression_precursor_shadow_summary(
+        settings.shadow_ledger_dir
+    )
+
+
+@app.get(
+    f"{settings.api_prefix}/research/xau-auction-precursor",
+    response_model=PrecursorExecutionShadowSummary,
+)
+def research_xau_auction_precursor() -> PrecursorExecutionShadowSummary:
+    return load_xau_auction_precursor_shadow_summary(
         settings.shadow_ledger_dir
     )
 

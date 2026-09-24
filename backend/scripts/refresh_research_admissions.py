@@ -3,7 +3,11 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from app.domain.opportunity import PortfolioResearchRequest, ResearchSplit
+from app.domain.opportunity import (
+    OpportunityMechanism,
+    PortfolioResearchRequest,
+    ResearchSplit,
+)
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.runtime_admission_registry import save_research_admissions
 
@@ -25,6 +29,30 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("config/research_execution_model.json"),
     )
+    parser.add_argument(
+        "--capital-eur",
+        type=float,
+        default=None,
+        help="Explicit research sizing capital; defaults to configured fallback.",
+    )
+    parser.add_argument(
+        "--symbol",
+        action="append",
+        dest="symbols",
+        help="Limit refresh to one symbol; repeat for multiple symbols.",
+    )
+    parser.add_argument(
+        "--mechanism",
+        action="append",
+        type=OpportunityMechanism,
+        dest="mechanisms",
+        help="Limit refresh to one mechanism; repeat for multiple mechanisms.",
+    )
+    parser.add_argument(
+        "--merge",
+        action="store_true",
+        help="Merge refreshed admissions into the existing registry.",
+    )
     return parser.parse_args()
 
 
@@ -37,14 +65,23 @@ def main() -> None:
             tzinfo=timezone
         ),
     )
+    request_kwargs: dict[str, object] = {
+        "split": split,
+        "capital_eur": args.capital_eur,
+    }
+    if args.symbols:
+        request_kwargs["symbols"] = args.symbols
+    if args.mechanisms:
+        request_kwargs["mechanisms"] = args.mechanisms
+
     result = run_mt4_portfolio_research(
         args.files_dir,
-        PortfolioResearchRequest(split=split),
+        PortfolioResearchRequest.model_validate(request_kwargs),
         macro_events_path=args.macro_events,
         research_execution_model_path=args.research_execution_model,
     )
     path = args.runtime_dir / "strategy_admissions.json"
-    save_research_admissions(path, result)
+    save_research_admissions(path, result, merge=args.merge)
     print(
         f"saved {len(result.results)} research admissions to {path}; "
         f"qualified={result.qualified_strategy_id}"

@@ -58,3 +58,79 @@ def test_round_trip_research_admissions(tmp_path: Path) -> None:
     loaded = load_research_admissions(path)
 
     assert loaded["BTCUSD:break_retest_reaccel"].state == AdmissionState.SHADOW
+
+
+def test_merge_research_admissions_preserves_existing_strategy(
+    tmp_path: Path,
+) -> None:
+    first_decision = AdmissionDecision(
+        strategy_id="BTCUSD:break_retest_reaccel",
+        state=AdmissionState.SHADOW,
+        reason="existing",
+        weakest_expectancy_r=0.1,
+        worst_drawdown_r=1,
+    )
+    first_item = OpportunityBacktestResult(
+        symbol="BTCUSD",
+        mechanism=OpportunityMechanism.BREAK_RETEST_REACCEL,
+        candidates=1,
+        executed=1,
+        rejected=0,
+        rejection_reasons={},
+        train=summary(),
+        validation=summary(),
+        holdout=summary(),
+        admission=first_decision,
+    )
+    second_decision = AdmissionDecision(
+        strategy_id="XAUUSD:structural_displacement_sequence",
+        state=AdmissionState.SHADOW,
+        reason="new",
+        weakest_expectancy_r=0.3,
+        worst_drawdown_r=2,
+        paper_collection_candidate=True,
+    )
+    second_item = OpportunityBacktestResult(
+        symbol="XAUUSD",
+        mechanism=OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE,
+        candidates=1,
+        executed=1,
+        rejected=0,
+        rejection_reasons={},
+        train=summary(),
+        validation=summary(),
+        holdout=summary(),
+        admission=second_decision,
+    )
+    path = tmp_path / "strategy_admissions.json"
+
+    save_research_admissions(
+        path,
+        PortfolioResearchResult(
+            results=[first_item],
+            skipped_symbols={},
+            qualified_strategy_id=None,
+            selection_reason="none",
+        ),
+    )
+    save_research_admissions(
+        path,
+        PortfolioResearchResult(
+            results=[second_item],
+            skipped_symbols={},
+            qualified_strategy_id=None,
+            selection_reason="none",
+        ),
+        merge=True,
+    )
+
+    loaded = load_research_admissions(path)
+    assert set(loaded) == {
+        "BTCUSD:break_retest_reaccel",
+        "XAUUSD:structural_displacement_sequence",
+    }
+    assert loaded["BTCUSD:break_retest_reaccel"].reason == "existing"
+    assert (
+        loaded["XAUUSD:structural_displacement_sequence"].paper_collection_candidate
+        is True
+    )

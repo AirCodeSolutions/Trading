@@ -2206,3 +2206,47 @@ Sequential no-overlap validation of the exact unchanged contract (1.5 ATR stop, 
 - 10 of 11 calendar months positive; May 2026 is the single negative month.
 
 Anti-selection check using train + validation only ranks this XAU sequence #1 among 11 supported positive sequences. September holdout remains strongly positive, so the candidate is advanced to a separate SHADOW/PAPER implementation PR without changing parameters.
+
+## 2026-09-24 — XAU structural-displacement sequence SHADOW/PAPER candidate
+
+Broker-equity execution-aware research identified and independently validated a second symbol-specific structural sequence:
+
+`XAUUSD: directional_displacement -> structural_extreme -> directional_displacement`
+
+Contract is frozen from discovery:
+
+- entry: next M5 open through the existing execution model;
+- stop: 1.50 ATR M5;
+- target: 1.00R;
+- horizon: 12 M5;
+- macro, spread, sizing and no-overlap policies unchanged;
+- DEMO runtime capital continues to come from observed MT4 equity;
+- LIVE remains disabled.
+
+Sequential no-overlap evidence:
+
+- 148 raw candidates / 144 executed;
+- train: 106 trades, +0.1321R expectancy, PF 1.343, DD 7.683R;
+- validation: 25, +0.3024R, PF 2.049, DD 1.742R;
+- holdout: 13, +0.4812R, PF 3.085, DD 1R;
+- BUY: 68 trades, +0.1862R expectancy;
+- SELL: 76 trades, +0.1993R expectancy;
+- 10/11 months positive.
+
+Anti-selection check ranked this exact sequence #1 using train + validation only; September holdout was not used for ranking and is independently positive.
+
+Runtime implementation deliberately reuses the existing `structural_displacement_sequence` mechanism with symbol-specific pattern contracts:
+
+- BTCUSD keeps `structural_extreme -> directional_displacement -> directional_displacement` unchanged;
+- XAUUSD gets `directional_displacement -> structural_extreme -> directional_displacement`;
+- EURUSD / GBPUSD / XAGUSD remain disabled for this mechanism;
+- runtime scanner count becomes 25.
+
+Official admission calculation at 873,864.61 EUR research capital:
+
+- state `SHADOW`;
+- `paper_collection_candidate=true`;
+- weakest independent expectancy +0.30237R;
+- worst independent drawdown 1.7419R.
+
+To preserve one-family-at-a-time discipline, admission deployment is targeted/merged rather than a full registry refresh. `/tmp` dry-run proved 31 existing admissions remain byte-equivalent while only `XAUUSD:structural_displacement_sequence` is added as the 32nd admission.

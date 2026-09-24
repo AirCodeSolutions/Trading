@@ -1569,3 +1569,11 @@ Runtime strategy logic and admissions are unchanged. The first broker-equity mat
 Added optional `capital_eur` to economic-feasibility and execution-aware sequence research, including CLI support. This removes the obsolete 400 EUR feasibility ceiling from DEMO-equity research while preserving the old default when no override is supplied.
 
 Discovery result: a new XAU three-state sequence (`directional_displacement -> structural_extreme -> directional_displacement`) is robust enough for a separate SHADOW/PAPER candidate PR. No runtime scanner or admission is changed in this research PR.
+
+## 2026-09-24 — XAU symbol-specific structural sequence candidate
+
+Extended the existing structural-displacement sequence mechanism with a symbol-specific XAU pattern while leaving the BTC contract unchanged.
+
+Added targeted admission-refresh support (`--symbol`, `--mechanism`, `--capital-eur`, `--merge`) and merge-safe admission persistence so a single candidate can be deployed without recalculating unrelated families.
+
+Dry-run admission merge: 31 -> 32 entries, one new XAU sequence key, zero existing-entry changes. Candidate remains SHADOW/PAPER collection only; LIVE stays locked.

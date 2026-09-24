@@ -8,12 +8,24 @@ from app.domain.opportunity import PortfolioResearchResult
 def save_research_admissions(
     path: Path,
     result: PortfolioResearchResult,
+    *,
+    merge: bool = False,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
-        item.admission.strategy_id: item.admission.model_dump(mode="json")
-        for item in result.results
-    }
+    payload = (
+        {
+            strategy_id: decision.model_dump(mode="json")
+            for strategy_id, decision in load_research_admissions(path).items()
+        }
+        if merge
+        else {}
+    )
+    payload.update(
+        {
+            item.admission.strategy_id: item.admission.model_dump(mode="json")
+            for item in result.results
+        }
+    )
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(
         json.dumps(payload, indent=2, sort_keys=True),

@@ -81,7 +81,7 @@ def run_mt4_portfolio_research(
         for mechanism in request.mechanisms:
             if (
                 mechanism == OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE
-                and symbol != "BTCUSD"
+                and symbol not in {"BTCUSD", "XAUUSD"}
             ):
                 continue
             config = OpportunityBacktestConfig(

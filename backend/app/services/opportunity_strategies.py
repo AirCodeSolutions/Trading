@@ -18,6 +18,19 @@ ASIA_RANGE_END_HOUR = 10
 LONDON_OBSERVATION_END_HOUR = 13
 ASIA_RANGE_MIN_M5_BARS = 60
 
+STRUCTURAL_DISPLACEMENT_SEQUENCE_PATTERNS = {
+    "BTCUSD": (
+        OpportunityCausalPattern.STRUCTURAL_EXTREME,
+        OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+        OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+    ),
+    "XAUUSD": (
+        OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+        OpportunityCausalPattern.STRUCTURAL_EXTREME,
+        OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+    ),
+}
+
 
 def _true_ranges(bars: Sequence[MarketBar]) -> list[float]:
     values: list[float] = []
@@ -325,7 +338,10 @@ def _structural_displacement_sequence_side(
 ) -> Side | None:
     if index < 26 or index >= len(bars) or index >= len(atr):
         return None
-    if bars[index].symbol.upper() != "BTCUSD":
+    expected_patterns = STRUCTURAL_DISPLACEMENT_SEQUENCE_PATTERNS.get(
+        bars[index].symbol.upper()
+    )
+    if expected_patterns is None:
         return None
 
     contexts = [
@@ -338,13 +354,16 @@ def _structural_displacement_sequence_side(
         for context_index in range(index - 2, index + 1)
     ]
     patterns = tuple(context.pattern for context in contexts)
-    if patterns != (
-        OpportunityCausalPattern.STRUCTURAL_EXTREME,
-        OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
-        OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
-    ):
+    if patterns != expected_patterns:
         return None
     return contexts[-1].side
+
+
+def _structural_displacement_sequence_reason(symbol: str) -> str:
+    patterns = STRUCTURAL_DISPLACEMENT_SEQUENCE_PATTERNS.get(symbol.upper(), ())
+    return "causal three-state sequence: " + " -> ".join(
+        pattern.value for pattern in patterns
+    )
 
 
 def _structural_displacement_sequence_candidate(
@@ -383,10 +402,7 @@ def _structural_displacement_sequence_candidate(
         structural_stop=stop,
         target_r=1.0,
         max_holding_bars=12,
-        reason=(
-            "24-M5 structural extreme followed by two causal M5 "
-            "directional-displacement states"
-        ),
+        reason=_structural_displacement_sequence_reason(signal.symbol),
     )
 
 
@@ -416,10 +432,7 @@ def _structural_displacement_sequence_signal(
         None,
         None,
         None,
-        (
-            "24-M5 structural extreme followed by two causal M5 "
-            "directional-displacement states"
-        ),
+        _structural_displacement_sequence_reason(bar.symbol),
     )
 
 

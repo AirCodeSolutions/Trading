@@ -155,7 +155,7 @@ def shadow_mechanism_enabled(
     mechanism: OpportunityMechanism,
 ) -> bool:
     if mechanism == OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE:
-        return symbol.upper() == "BTCUSD"
+        return symbol.upper() in {"BTCUSD", "XAUUSD"}
     if mechanism == OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION:
         return symbol.upper() == "GBPUSD"
     if mechanism == OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL:

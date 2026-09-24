@@ -2436,3 +2436,53 @@ For `XAUUSD:structural_displacement_sequence` and `XAUUSD:structural_persistence
 The existing `/research/xau-microbars` summary exposes snapshot count and recent snapshots so the dashboard can show whether causal evidence has actually been captured.
 
 Validation: 31 targeted tests, 290 full backend tests, Ruff clean, Vite build clean. No entry/SL/TP/risk/admission/LIVE change.
+
+## 2026-09-24 — PR #123 deployed + macro-conditioned research
+
+PR #123 (`cf3f58a`) is merged and deployed.
+
+Deployment proof:
+- drain ON;
+- second BOOK_FLAT proof: 0 PAPER, 0 broker positions, 0 pending open/close commands;
+- backend + canonical shadow worker restarted only;
+- XAU M1 worker and frontend PIDs preserved;
+- 26 scanners, 8 qualified collectors, READY 5/5;
+- drain returned OFF;
+- auto-DEMO armed; LIVE OFF.
+
+Internet/research review performed before the next hypothesis:
+- Federal Reserve 2026 FEDS work confirms large announcement-window volatility and distinct information channels around FOMC communications;
+- Federal Reserve 2025/2026 work on market attention finds macro reactions vary materially with investor attention and can overreact;
+- recent 2026 BTC order-flow-imbalance research reports small short-horizon effects whose out-of-sample sign/fit changed as the sample and pipeline changed;
+- a 2026 FX/metal/bond-CFD OFI study reports no defensible relationship after multiple-testing correction;
+- recent regime/trend and FX breakout work reinforces that regime dependence and cost-aware walk-forward validation matter more than adopting generic momentum labels.
+
+Decision from external scan: do not add an approximate OFI signal from MT4 top-of-book quotes. The next fixed hypothesis is macro-event conditioning of existing signals.
+
+Historical POST_SAFE hypothesis:
+- high-impact USD events only;
+- existing blackout remains unchanged;
+- POST_SAFE = after the configured safe-resume time and for the following 135 minutes;
+- same candidates, execution costs, stops, targets, macro blackout and broker-equity capital;
+- no parameter/grid search.
+
+Reproducible CLI added: `backend/scripts/analyze_post_macro_opportunities.py`.
+
+Key broker-equity replay results:
+- XAU `failed_auction_reversal`: POST_SAFE 6 trades, +0.5388R expectancy, PF 2.616, 66.7% wins; train 1/+1.50R, validation 3/+0.4109R, holdout 2/+0.25R;
+- XAU `directional_transition`: POST_SAFE 5, +0.7975R aggregate but holdout 2/-0.7062R, therefore rejected;
+- BTC `failed_auction_reversal`: POST_SAFE 15, -0.3467R, therefore clearly rejected;
+- other positive cells are too small and/or lack independent windows.
+
+Decision: no macro-conditioned PAPER/DEMO authority is added. The XAU failed-auction cell is hypothesis-generating only because support is 1/3/2 across train/validation/holdout.
+
+Prospective instrumentation added:
+- `MacroSignalContext` with phase `blackout`, `post_safe` or `normal`;
+- high-impact USD events only for this context;
+- fixed 135-minute post-safe window;
+- event id/name, event start, safe-resume timestamp and minutes from safe resume are frozen at signal time;
+- context is attached to SHADOW diagnostics, persisted into PAPER trades and blocked probes, and preserved in XAU M1 sequence snapshots;
+- Opportunity dashboard shows POST_SAFE/BLACKOUT context only when relevant;
+- historical files remain compatible because context fields are optional.
+
+Validation: 43 targeted tests, 294 full backend tests, Ruff clean, frontend build clean. Runtime is unchanged until this PR is deployed; no risk/lot/SL/TP/admission/LIVE change.

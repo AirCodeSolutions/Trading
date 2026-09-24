@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.domain.macro import MacroSignalContext
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.shadow import ShadowSignalState
 from app.domain.trading import Side
@@ -70,6 +71,7 @@ class XauSequenceMicrostructureSnapshot(BaseModel):
     state: ShadowSignalState
     side: Side | None = None
     latest_microbar_at: datetime | None = None
+    macro_context: MacroSignalContext | None = None
     geometry_5m: XauMicrobarGeometry | None = None
     geometry_15m: XauMicrobarGeometry | None = None
 

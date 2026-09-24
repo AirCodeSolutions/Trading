@@ -1619,3 +1619,13 @@ Added idempotent causal M1 geometry snapshots for the two deployed XAU sequence 
 The M1 Research card also reports how many sequence-signal snapshots have been frozen. This is observability/research only.
 
 PR #122 deployment is recorded: geometry API/dashboard active, drain OFF, 26 scanners, 8 collectors, LIVE OFF.
+
+## 2026-09-24 — prospective macro signal context
+
+Added causal macro-event context to every SHADOW diagnostic and persisted it into future PAPER trades, blocked probes and XAU M1 sequence snapshots.
+
+Classification is fixed and research-only: `blackout`, `post_safe` (safe resume through +135 minutes) or `normal`, using high-impact USD events. Existing macro blackout execution policy is unchanged.
+
+Added `analyze_post_macro_opportunities.py` for reproducible broker-equity historical stratification and lightweight POST_SAFE annotations in the Opportunity dashboard.
+
+Historical result does not authorize a strategy: XAU failed auction is promising but only 6 POST_SAFE trades; BTC failed auction is negative; XAU directional transition fails holdout.

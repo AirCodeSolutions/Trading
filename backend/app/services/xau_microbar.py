@@ -338,6 +338,7 @@ def capture_xau_sequence_microstructure(
         state=diagnostic.state,
         side=diagnostic.side,
         latest_microbar_at=latest_microbar_at,
+        macro_context=diagnostic.macro_context,
         geometry_5m=_geometry_window(rows, 5),
         geometry_15m=_geometry_window(rows, 15),
     )

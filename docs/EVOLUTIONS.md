@@ -1458,3 +1458,13 @@ spread/lot/cap guards, auto-DEMO armed, DRAIN OFF, LIVE OFF.
 The next development track is `Precursor Conversion Discriminator`: one new
 causal information source at a time, evaluated on all precursor occurrences
 before any strategy implementation.
+
+## 2026-09-24 — precursor microstructure hypotheses rejected
+
+Prospective spread/ATR and 2-minute broker-mid velocity were tested as fixed
+continuous discriminators on the no-overlap precursor sample.
+
+Neither justified a runtime filter, scanner change or admission change.
+
+Next research source is macro/event context, kept research-only until independent
+evidence exists.

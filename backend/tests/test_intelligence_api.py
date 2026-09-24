@@ -277,3 +277,19 @@ def test_precursor_forward_endpoint_is_read_only(
     assert response.status_code == 200
     assert response.json()["independent_resolved"] == 3
     assert response.json()["overall"]["average_signed_close_return_atr"] == 0.5
+
+
+def test_xau_feasible_pullback_endpoint_is_empty_without_state(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "shadow_ledger_dir", tmp_path)
+
+    response = TestClient(app).get(
+        "/api/v1/research/xau-feasible-pullback"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["strategy_id"].startswith("XAUUSD:")
+    assert response.json()["resolved"] == 0
+    assert response.json()["filled"] == 0

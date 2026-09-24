@@ -1468,3 +1468,20 @@ Neither justified a runtime filter, scanner change or admission change.
 
 Next research source is macro/event context, kept research-only until independent
 evidence exists.
+
+## 2026-09-24 — XAU risk-feasible Asia pullback prospective SHADOW
+
+Research-only components added:
+
+- `XauFeasiblePullbackState`, probe and summary models;
+- prospective state/ledger isolated from PAPER and blocked-probe ledgers;
+- exact 400 EUR / 1% min-lot risk-feasible limit computation;
+- fixed 3-M5 fill window and original signal horizon;
+- conservative stop-before-target replay;
+- worker observability integration isolated by try/except;
+- read-only `/api/v1/research/xau-feasible-pullback` endpoint;
+- Research dashboard card showing fills, no-fills, wins/losses and expectancy.
+
+No XAU admission, PAPER, DEMO, risk, lot, spread, stop or target policy changes.
+
+Validation: 16 targeted tests, 256 full backend tests, Ruff clean, Vite build clean, and a real-data no-backfill /tmp dry-run.

@@ -9,6 +9,7 @@ from typing import TextIO
 from app.core.config import settings
 from app.domain.portfolio import TradingOverview
 from app.domain.session import ShadowWorkerHeartbeat
+from app.domain.shadow import ShadowCollectionResult
 from app.services.causal_precursor import advance_causal_precursors_once
 from app.services.daily_report import (
     build_daily_trading_report,
@@ -33,6 +34,9 @@ from app.services.trading_intelligence import (
     write_trading_intelligence,
 )
 from app.services.trailing_shadow import advance_trailing_shadow_once
+from app.services.xau_feasible_pullback_shadow import (
+    advance_xau_feasible_pullback_shadow_once,
+)
 
 
 def main() -> None:
@@ -83,6 +87,7 @@ def main() -> None:
                 qualification_path=qualification_path,
                 intelligence_path=intelligence_path,
                 overview=overview,
+                results=results,
                 now=now,
             )
             if observability_errors:
@@ -163,6 +168,7 @@ def _update_observability(
     qualification_path: Path,
     intelligence_path: Path,
     overview: TradingOverview,
+    results: list[ShadowCollectionResult] | None = None,
     now: datetime,
 ) -> list[str]:
     errors: list[str] = []
@@ -185,6 +191,26 @@ def _update_observability(
         )
     except (OSError, TypeError, ValueError) as exc:
         errors.append(f"trailing_shadow: {exc!r}")
+
+    asia_diagnostic = next(
+        (
+            item.diagnostic
+            for item in (results or [])
+            if item.diagnostic.symbol.upper() == "XAUUSD"
+            and item.diagnostic.mechanism.value == "asia_range_sweep_reversal"
+        ),
+        None,
+    )
+    if asia_diagnostic is not None:
+        try:
+            advance_xau_feasible_pullback_shadow_once(
+                settings.mt4_files_dir,
+                settings.shadow_ledger_dir,
+                asia_diagnostic,
+                now,
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            errors.append(f"xau_feasible_pullback_shadow: {exc!r}")
 
     try:
         append_bridge_result_if_new(

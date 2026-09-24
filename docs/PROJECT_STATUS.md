@@ -2250,3 +2250,28 @@ Official admission calculation at 873,864.61 EUR research capital:
 - worst independent drawdown 1.7419R.
 
 To preserve one-family-at-a-time discipline, admission deployment is targeted/merged rather than a full registry refresh. `/tmp` dry-run proved 31 existing admissions remain byte-equivalent while only `XAUUSD:structural_displacement_sequence` is added as the 32nd admission.
+
+## 2026-09-24 — PR #118 deployed: XAU structural sequence prospective collection
+
+PR #118 (`981e7fc`) is merged and deployed under the one-family-at-a-time rule.
+
+Controlled deployment proof:
+
+- drain ON;
+- second direct BOOK_FLAT proof: 0 PAPER open, 0 Trading-New bridge positions, 0 pending open/close commands, 0 broker-observed positions;
+- targeted admission merge at current broker-equity sizing capital;
+- admission registry 31 -> 32 entries;
+- only new key: `XAUUSD:structural_displacement_sequence`;
+- zero existing admissions changed;
+- only the canonical shadow worker restarted;
+- backend, frontend and XAU M1 worker PIDs preserved;
+- scanner count 24 -> 25;
+- qualified collectors 6 -> 7;
+- XAU sequence PAPER state initialized with `open_trade=null` and no historical trades/backfill;
+- worker heartbeat healthy;
+- drain returned OFF;
+- auto-DEMO armed;
+- session READY 5/5;
+- LIVE remains OFF.
+
+Current XAU sequence diagnostic after deployment is `no_signal`; the collector is waiting prospectively for a fresh `directional_displacement -> structural_extreme -> directional_displacement` occurrence.

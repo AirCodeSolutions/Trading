@@ -1934,3 +1934,15 @@ Execution-aware result at the 400 EUR / 1% policy:
 This is directionally encouraging across all three windows but far below the independent sample gate. It is therefore NOT activated in PAPER/DEMO and is not added as a second live SHADOW experiment while the risk-feasible pullback experiment is collecting.
 
 Status: NEXT XAU CANDIDATE / REPLAY-POSITIVE / SAMPLE INSUFFICIENT.
+
+## 2026-09-24 — no-trade explainability candidate
+
+Current 24 h evidence behind the UI:
+
+- among the 6 qualified collectors, only three produced a signal;
+- BTC break/retest: 1 signal, blocked by spread / stop geometry;
+- GBP Asia Sweep: 1 signal, blocked by spread / stop geometry;
+- XAU break/retest: 1 signal, blocked because minimum broker lot exceeds the risk budget;
+- the other three qualified collectors produced no signal.
+
+This confirms the low trade count is currently a combination of sparse qualified signals and broker economics, not a disabled execution path.

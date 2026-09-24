@@ -1492,3 +1492,16 @@ The XAU Asia risk-feasible pullback counterfactual is now collecting prospective
 Initial state is zero-resolved by construction; historical counterfactual results were not imported into the runtime ledger.
 
 Operational state after deployment: READY 5/5, 24 scanners, 6 qualified collectors, DRAIN OFF, auto-DEMO armed, LIVE OFF, 0 open Trading-New position.
+
+## 2026-09-24 — Trade Readiness / « Pourquoi aucun trade ? »
+
+Trading view adds a compact per-asset explanation built from already-fetched runtime data:
+
+- number of qualified collectors;
+- qualified signal count over 24 h;
+- executable vs blocked signal count;
+- dominant economic blocker (minimum lot / risk, spread / stop, macro, margin, stale data);
+- market-first missed opportunities over 24 h;
+- current state: EXECUTABLE, BLOQUÉ, ATTENTE SIGNAL or RESEARCH.
+
+This is frontend-only observability. It does not change scanners, qualification, PAPER/DEMO authority or risk.

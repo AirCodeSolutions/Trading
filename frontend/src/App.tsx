@@ -1001,6 +1001,8 @@ export default function App() {
     useState<XauFeasiblePullbackSummary | null>(null);
   const [xauCompressionPrecursor, setXauCompressionPrecursor] =
     useState<PrecursorExecutionShadowSummary | null>(null);
+  const [xauAuctionPrecursor, setXauAuctionPrecursor] =
+    useState<PrecursorExecutionShadowSummary | null>(null);
   const [xauMicrobars, setXauMicrobars] = useState<XauMicrobarSummary | null>(null);
   const [marketMicrobars, setMarketMicrobars] = useState<XauMicrobarSummary[]>([]);
   const [precursorForward, setPrecursorForward] = useState<PrecursorForwardResearch | null>(null);
@@ -1055,6 +1057,7 @@ export default function App() {
           trailingShadowResponse,
           xauFeasiblePullbackResponse,
           xauCompressionPrecursorResponse,
+          xauAuctionPrecursorResponse,
           xauMicrobarsResponse,
           marketMicrobarsResponse,
           precursorForwardResponse,
@@ -1081,6 +1084,7 @@ export default function App() {
           fetch("/api/v1/research/trailing-shadow"),
           fetch("/api/v1/research/xau-feasible-pullback"),
           fetch("/api/v1/research/xau-compression-precursor"),
+          fetch("/api/v1/research/xau-auction-precursor"),
           fetch("/api/v1/research/xau-microbars"),
           fetch("/api/v1/research/microbars"),
           fetch("/api/v1/research/precursor-forward"),
@@ -1127,6 +1131,9 @@ export default function App() {
         const xauCompressionPrecursorPayload = xauCompressionPrecursorResponse.ok
           ? await xauCompressionPrecursorResponse.json()
           : null;
+        const xauAuctionPrecursorPayload = xauAuctionPrecursorResponse.ok
+          ? await xauAuctionPrecursorResponse.json()
+          : null;
         const xauMicrobarsPayload = xauMicrobarsResponse.ok
           ? await xauMicrobarsResponse.json()
           : null;
@@ -1166,6 +1173,7 @@ export default function App() {
         setTrailingShadow(trailingShadowPayload);
         setXauFeasiblePullback(xauFeasiblePullbackPayload);
         setXauCompressionPrecursor(xauCompressionPrecursorPayload);
+        setXauAuctionPrecursor(xauAuctionPrecursorPayload);
         setXauMicrobars(xauMicrobarsPayload);
         setMarketMicrobars(marketMicrobarsPayload);
         setPrecursorForward(precursorForwardPayload);
@@ -2280,6 +2288,39 @@ export default function App() {
                   xauCompressionPrecursor.losses +
                   " non-gagnant(s) · DD " +
                   xauCompressionPrecursor.max_drawdown_r.toFixed(2) +
+                  "R. Shadow prospectif, aucun ordre broker."
+                : "Collecte prospective non initialisée. Aucun ordre broker."}
+            </p>
+          </div>
+          <div className="intelligence-card">
+            <span className="label">XAU · precursor auction failure</span>
+            <strong
+              className={
+                (xauAuctionPrecursor?.resolved ?? 0) > 0
+                  ? (xauAuctionPrecursor?.expectancy_r ?? 0) > 0
+                    ? "positive-text"
+                    : "negative-text"
+                  : ""
+              }
+            >
+              {xauAuctionPrecursor?.started_at
+                ? xauAuctionPrecursor.resolved +
+                  " résolu(s) · " +
+                  (xauAuctionPrecursor.expectancy_r >= 0 ? "+" : "") +
+                  xauAuctionPrecursor.expectancy_r.toFixed(3) +
+                  "R"
+                : "—"}
+            </strong>
+            <p>
+              {xauAuctionPrecursor?.started_at
+                ? "PF " +
+                  xauAuctionPrecursor.profit_factor.toFixed(2) +
+                  " · " +
+                  xauAuctionPrecursor.wins +
+                  " gagnant(s) / " +
+                  xauAuctionPrecursor.losses +
+                  " non-gagnant(s) · DD " +
+                  xauAuctionPrecursor.max_drawdown_r.toFixed(2) +
                   "R. Shadow prospectif, aucun ordre broker."
                 : "Collecte prospective non initialisée. Aucun ordre broker."}
             </p>

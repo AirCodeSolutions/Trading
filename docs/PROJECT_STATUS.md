@@ -2864,3 +2864,42 @@ As of this checkpoint no new XAU `compression_breakout` precursor has occurred a
 Current M1 prospective coverage is healthy on all five assets; XAU has the longest history, while BTC/EUR/GBP/XAG started with PR #132.
 
 Next performance decision remains gated on genuinely new forward observations. No threshold, admission, risk, stop, target or lot rule is relaxed while waiting.
+
+## 2026-09-24 — XAU auction-failure precursor forward shadow
+
+After PR #133 established a prospective-only XAU `compression_breakout` execution shadow, the same frozen execution screen was applied to the second promising prospective precursor pattern, `auction_failure_reclaim`.
+
+Fixed counterfactual contract:
+- entry on the first M5 after precursor `first_seen`;
+- 1.5 ATR M5 stop;
+- 1R target;
+- 12-M5 horizon;
+- existing macro blackout and frozen research execution costs;
+- broker-equity sizing with the global 5-lot ceiling;
+- non-overlapping trades per symbol;
+- no post-hoc direction/session/regime filters.
+
+Selection/development sample since precursor collection start:
+- BTCUSD: 7 independent executions, -0.7127R expectancy, PF 0.018 -> rejected;
+- XAUUSD: 8 independent executions, +0.3964R expectancy, PF 2.585, 75% wins, +3.171R total, 2R max drawdown -> promising but under-sampled.
+
+Decision: XAU `auction_failure_reclaim` advances only to a new research-only forward shadow. The eight positive XAU trades are selection evidence and are never backfilled into forward validation.
+
+Forward shadow:
+- strategy id `XAUUSD:precursor_auction_failure_shadow`;
+- isolated state/ledger from the compression shadow;
+- starts at deployment time with zero resolved trades;
+- only future XAU `auction_failure_reclaim` precursor observations are eligible;
+- same next-M5 / 1.5 ATR / 1R / 12-M5 contract;
+- shared runtime broker-equity sizing and hard 5-lot cap;
+- shared macro/cost/execution simulation;
+- no PAPER, broker order, admission, or automatic promotion path;
+- minimum 20 genuinely post-deployment resolved observations required before reconsideration.
+
+Rejected follow-up hypotheses remain rejected:
+- BTC `directional_transition` predecessor `post_shock`: validation negative despite recent positive probes;
+- GBP `failed_auction_reversal` fixed London window: negative train/validation/holdout.
+
+Validation: 14 targeted tests, 311 full backend tests, Ruff clean, frontend production build clean.
+
+Runtime safety context: Trading-New remains flat. Two broker positions visible at account level belong to Freezebee (`magic=51051`, `FZ:` comments) and remain outside Trading-New ownership/control.

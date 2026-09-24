@@ -38,6 +38,26 @@ class XauMicrobarState(BaseModel):
     current_bar: XauMicrobarM1 | None = None
 
 
+class XauMicrobarGeometry(BaseModel):
+    window_minutes: int = Field(gt=0)
+    bars: int = Field(gt=0)
+    start_at: datetime
+    end_at: datetime
+    mid_open: float = Field(gt=0)
+    mid_high: float = Field(gt=0)
+    mid_low: float = Field(gt=0)
+    mid_close: float = Field(gt=0)
+    range_price: float = Field(ge=0)
+    signed_move: float
+    close_location: float = Field(ge=0, le=1)
+    path_efficiency: float = Field(ge=0, le=1)
+    average_spread: float = Field(ge=0)
+    max_spread: float = Field(ge=0)
+    average_quotes_per_bar: float = Field(ge=0)
+    distance_to_low: float = Field(ge=0)
+    distance_to_high: float = Field(ge=0)
+
+
 class XauMicrobarSummary(BaseModel):
     symbol: str = "XAUUSD"
     timeframe: str = "M1"
@@ -49,4 +69,6 @@ class XauMicrobarSummary(BaseModel):
     closed_bars: int = Field(default=0, ge=0)
     latest_closed_bar_at: datetime | None = None
     current_bar: XauMicrobarM1 | None = None
+    geometry_5m: XauMicrobarGeometry | None = None
+    geometry_15m: XauMicrobarGeometry | None = None
     recent: list[XauMicrobarM1] = Field(default_factory=list)

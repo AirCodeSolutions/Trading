@@ -1,10 +1,11 @@
 import csv
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
 from app.domain.xau_microbar import (
+    XauMicrobarGeometry,
     XauMicrobarM1,
     XauMicrobarState,
     XauMicrobarSummary,
@@ -213,6 +214,58 @@ def load_xau_microbars(path: Path) -> list[XauMicrobarM1]:
     return rows
 
 
+def _geometry_window(
+    rows: list[XauMicrobarM1],
+    window_minutes: int,
+) -> XauMicrobarGeometry | None:
+    if not rows:
+        return None
+
+    selected = rows[-window_minutes:]
+    first = selected[0]
+    last = selected[-1]
+    mid_high = max(row.mid_high for row in selected)
+    mid_low = min(row.mid_low for row in selected)
+    range_price = max(0.0, mid_high - mid_low)
+    signed_move = last.mid_close - first.mid_open
+    points = [first.mid_open, *(row.mid_close for row in selected)]
+    path = sum(
+        abs(points[index] - points[index - 1])
+        for index in range(1, len(points))
+    )
+    path_efficiency = min(
+        1.0,
+        abs(signed_move) / path if path > 0 else 0.0,
+    )
+    close_location = (
+        (last.mid_close - mid_low) / range_price
+        if range_price > 0
+        else 0.5
+    )
+    total_quotes = sum(row.quote_count for row in selected)
+    total_spread = sum(row.spread_sum for row in selected)
+
+    return XauMicrobarGeometry(
+        window_minutes=window_minutes,
+        bars=len(selected),
+        start_at=first.minute_at,
+        end_at=last.minute_at + timedelta(minutes=1),
+        mid_open=first.mid_open,
+        mid_high=mid_high,
+        mid_low=mid_low,
+        mid_close=last.mid_close,
+        range_price=range_price,
+        signed_move=signed_move,
+        close_location=min(1.0, max(0.0, close_location)),
+        path_efficiency=path_efficiency,
+        average_spread=(total_spread / total_quotes if total_quotes else 0.0),
+        max_spread=max(row.spread_high for row in selected),
+        average_quotes_per_bar=total_quotes / len(selected),
+        distance_to_low=max(0.0, last.mid_close - mid_low),
+        distance_to_high=max(0.0, mid_high - last.mid_close),
+    )
+
+
 def load_xau_microbar_summary(
     runtime_dir: Path,
     *,
@@ -240,5 +293,7 @@ def load_xau_microbar_summary(
         closed_bars=len(rows),
         latest_closed_bar_at=(rows[-1].minute_at if rows else None),
         current_bar=(state.current_bar if state is not None else None),
+        geometry_5m=_geometry_window(rows, 5),
+        geometry_15m=_geometry_window(rows, 15),
         recent=rows[-RECENT_LIMIT:][::-1],
     )

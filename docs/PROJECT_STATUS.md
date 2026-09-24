@@ -2275,3 +2275,18 @@ Controlled deployment proof:
 - LIVE remains OFF.
 
 Current XAU sequence diagnostic after deployment is `no_signal`; the collector is waiting prospectively for a fresh `directional_displacement -> structural_extreme -> directional_displacement` occurrence.
+
+## 2026-09-24 — incremental XAU sequence screen after PR #118
+
+After deploying `XAUUSD:structural_displacement_sequence`, the four other XAU length-3 sequences that were positive-stable in the broker-equity screen were re-evaluated only for **incremental non-overlapping trades** after giving priority to the deployed sequence.
+
+Incremental results:
+
+- `structural_extreme_stretch -> auction_failure_reclaim -> unclassified`: train 112 at +0.0272R, validation 36 at +0.0254R, holdout 6 at +0.1629R;
+- `directional_displacement -> structural_extreme -> structural_extreme`: train 79 at +0.0449R, validation 27 at +0.0529R, holdout 16 at +0.0392R;
+- `directional_displacement -> unclassified -> compression_state`: train 90 at +0.0106R, validation 33 at +0.1012R, holdout 6 at +0.0108R;
+- `structural_extreme_stretch -> directional_displacement -> compression_breakout`: train 29 at +0.0263R, validation 17 at +0.0519R, holdout 7 at +0.4286R.
+
+Anti-selection rule: rank candidates using train + validation only before inspecting holdout. Under that rule, the strongest supported incremental candidate is `directional_displacement -> structural_extreme -> structural_extreme` because its weakest train/validation expectancy is +0.0449R with 79/27 observations. Its independent holdout remains positive (+0.0392R on 16 trades).
+
+Decision: do not broaden the existing PR #118 strategy identity. Advance this pattern, if implemented, as a **separate XAU strategy family** so prospective evidence and broker/PAPER results remain isolated. Contract remains 1.5 ATR stop, 1R target, 12 M5 horizon, next-M5 entry, unchanged costs and macro rules.

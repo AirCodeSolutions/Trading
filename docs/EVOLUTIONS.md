@@ -1585,3 +1585,7 @@ PR #118 is live. Trading-New now has 25 scanners and 7 qualified PAPER/DEMO coll
 Deployment used a targeted merge-safe admission upsert, preserving all 31 prior strategy admissions byte-equivalently and adding only the new XAU structural sequence. No backfill or retrospective trade was created.
 
 Drain is OFF, auto-DEMO is armed, book is flat and LIVE remains disabled.
+
+## 2026-09-24 — incremental XAU sequence candidate
+
+Post-PR118 incremental replay selected `directional_displacement -> structural_extreme -> structural_extreme` as the next isolated XAU sequence hypothesis. It remains positive on incremental non-overlapping train (+0.0449R, 79), validation (+0.0529R, 27) and holdout (+0.0392R, 16). It will not be merged into the existing structural-displacement strategy identity; any runtime candidate must use a separate strategy family.

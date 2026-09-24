@@ -1831,3 +1831,69 @@ stress but does not provide enough independent evidence to alter signal logic.
 Next single-hypothesis research track: macro/event context at precursor first_seen
 (scheduled high-impact event proximity / before-vs-after state), attribution only
 before any strategy or execution change.
+
+## 2026-09-24 — XAU frequency diagnosis + risk-feasible Asia pullback SHADOW candidate
+
+User-facing problem: Trading-New has produced only one automatic BTC trade so far and no XAU PAPER/DEMO trade.
+
+Current XAU 24 h market-first denominator:
+
+- 22 XAUUSD market opportunities;
+- 2 executable captures + 1 blocked capture;
+- 19 missed opportunities;
+- capture rate 13.6%;
+- 0 XAU PAPER trades.
+
+The lack of XAU execution is not a hidden runtime disable. Two existing XAU collectors are PAPER-eligible (`break_retest_reaccel`, `asia_range_sweep_reversal`) but have not produced an executable PAPER signal in the current window.
+
+Broker capital granularity is a major constraint at the 400 EUR / 1% policy:
+
+- XAUUSD contract size 100, tick size 0.01, tick value 1.00, minimum lot 0.01;
+- at 0.01 lot, roughly 1 EUR is lost per 1.00 XAU price unit of stop distance;
+- base risk budget is 4 EUR, so a minimum-lot XAU stop must be roughly <= 4.00 price units;
+- spread policy also requires stop distance >= about 1.87 units at the current ~0.28 spread;
+- many existing XAU signals structurally require 5–9+ price units and are correctly rejected by the minimum-lot risk guard.
+
+Read-only refresh of current XAU historical evidence confirmed no existing disabled mechanism should simply be promoted:
+
+- break/retest: train +0.05R, validation +0.167R, holdout -0.30R;
+- Asia sweep: only 12 executable trades; train -0.375R, validation +1.50R, holdout +0.25R;
+- failed auction: holdout -0.183R and rejected;
+- post shock: train -0.461R, validation -0.067R, holdout +0.05R;
+- directional transition: 0 executable trades, overwhelmingly minimum-lot blocked.
+
+Additional fixed XAU hypotheses were tested and rejected:
+
+- BTC structural-displacement sequence transferred to XAU: 0 candidates;
+- reversal after directional displacement: no robust historical directional edge;
+- London opening drive with 3-bar stop: 1 executable historical trade, loss;
+- London opening drive with single-M5 stop: validation and holdout both -1R expectancy;
+- post-shock risk-feasible pullback: train +0.156R, validation -0.048R, holdout +0.437R, therefore rejected.
+
+One narrowly defined candidate remains worth prospective observation only:
+
+`XAUUSD:asia_range_sweep_reversal:risk_feasible_pullback`
+
+Historical counterfactual on only Asia signals blocked by minimum-lot risk:
+
+- 69 original candidates;
+- 12 already executable;
+- 39 blocked signals could have filled a risk-feasible pullback limit within 3 M5;
+- 18 would not have filled;
+- treatment train: n=25, expectancy -0.10R, PF 0.844, DD 7R;
+- validation: n=9, expectancy +0.050R, PF 1.09, DD 3.5R;
+- holdout: n=5, expectancy +0.50R, PF 2.25, DD 2R.
+
+Because train is negative and the independent sample is small, this is NOT authorized for PAPER/DEMO. A prospective research-only SHADOW collector is the next safe step.
+
+Candidate behavior:
+
+- listens only to future XAU Asia Sweep diagnostics blocked specifically because minimum lot exceeds the 4 EUR base-risk budget;
+- keeps the exact structural stop and target-R;
+- derives a pullback limit where 0.01 lot risks no more than 4 EUR;
+- gives the limit exactly 3 M5 to fill;
+- keeps the original maximum holding horizon after signal;
+- records fill/no-fill/stop/target/timeout counterfactual results only;
+- never writes an admission, PAPER trade or broker command.
+
+Validation: 16 targeted integrated tests pass, 256 full backend tests pass, Ruff clean, frontend Vite build clean. Real-data /tmp dry-run initialized prospectively with 0 resolved observations and no production-runtime write.

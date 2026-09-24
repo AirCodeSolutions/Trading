@@ -34,6 +34,28 @@ type TrailingShadowSummary = {
   total_adjustments: number;
 };
 
+type XauFeasiblePullbackSummary = {
+  strategy_id: string;
+  started_at: string | null;
+  resolved: number;
+  filled: number;
+  no_fill: number;
+  wins: number;
+  losses: number;
+  total_r: number;
+  expectancy_r: number;
+  open_probe: {
+    probe_id: string;
+    status: "pending" | "filled" | "no_fill" | "stop" | "target" | "timeout";
+    side: "buy" | "sell";
+    signal_at: string;
+    limit_entry: number;
+    stop_price: number;
+    target_price: number;
+    risk_eur: number;
+  } | null;
+};
+
 type ShadowSizing = {
   approved: boolean;
   reason: string;
@@ -870,6 +892,8 @@ export default function App() {
   const [opportunityFunnel, setOpportunityFunnel] = useState<OpportunityFunnel | null>(null);
   const [intelligence, setIntelligence] = useState<TradingIntelligence | null>(null);
   const [trailingShadow, setTrailingShadow] = useState<TrailingShadowSummary | null>(null);
+  const [xauFeasiblePullback, setXauFeasiblePullback] =
+    useState<XauFeasiblePullbackSummary | null>(null);
   const [precursorForward, setPrecursorForward] = useState<PrecursorForwardResearch | null>(null);
   const [economicFeasibility, setEconomicFeasibility] = useState<EconomicFeasibilityReport | null>(null);
   const [dailyReport, setDailyReport] = useState<DailyTradingReport | null>(null);
@@ -920,6 +944,7 @@ export default function App() {
           opportunityFunnelResponse,
           intelligenceResponse,
           trailingShadowResponse,
+          xauFeasiblePullbackResponse,
           precursorForwardResponse,
           economicFeasibilityResponse,
           dailyReportResponse,
@@ -942,6 +967,7 @@ export default function App() {
           fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           fetch("/api/v1/intelligence/overview?hours=24"),
           fetch("/api/v1/research/trailing-shadow"),
+          fetch("/api/v1/research/xau-feasible-pullback"),
           fetch("/api/v1/research/precursor-forward"),
           fetch("/api/v1/research/economic-feasibility"),
           fetch("/api/v1/reports/daily"),
@@ -980,6 +1006,9 @@ export default function App() {
         const trailingShadowPayload = trailingShadowResponse.ok
           ? await trailingShadowResponse.json()
           : null;
+        const xauFeasiblePullbackPayload = xauFeasiblePullbackResponse.ok
+          ? await xauFeasiblePullbackResponse.json()
+          : null;
         const precursorForwardPayload = precursorForwardResponse.ok
           ? await precursorForwardResponse.json()
           : null;
@@ -1011,6 +1040,7 @@ export default function App() {
         setOpportunityFunnel(opportunityFunnelPayload);
         setIntelligence(intelligencePayload);
         setTrailingShadow(trailingShadowPayload);
+        setXauFeasiblePullback(xauFeasiblePullbackPayload);
         setPrecursorForward(precursorForwardPayload);
         setEconomicFeasibility(economicFeasibilityPayload);
         setDailyReport(dailyReportPayload);
@@ -1954,7 +1984,7 @@ export default function App() {
       <section className="intelligence-panel" hidden={activeView !== "research"}>
         <div className="section-heading">
           <div>
-            <p className="eyebrow">TRADING INTELLIGENCE · 10 CHANTIERS</p>
+            <p className="eyebrow">TRADING INTELLIGENCE · 11 CHANTIERS</p>
             <h2>Comprendre avant de modifier</h2>
           </div>
           <p>
@@ -1992,6 +2022,38 @@ export default function App() {
                   trailingShadow.total_adjustments +
                   " ajustement(s). Research-only, aucun TP/SL broker modifié."
                 : "Collecte prospective non initialisée. Research-only."}
+            </p>
+          </div>
+          <div className="intelligence-card">
+            <span className="label">XAU Asia · pullback économique</span>
+            <strong
+              className={
+                (xauFeasiblePullback?.expectancy_r ?? 0) > 0
+                  ? "positive-text"
+                  : (xauFeasiblePullback?.expectancy_r ?? 0) < 0
+                    ? "negative-text"
+                    : ""
+              }
+            >
+              {xauFeasiblePullback?.started_at
+                ? xauFeasiblePullback.filled +
+                  " fill(s) · " +
+                  (xauFeasiblePullback.expectancy_r >= 0 ? "+" : "") +
+                  xauFeasiblePullback.expectancy_r.toFixed(3) +
+                  "R"
+                : "—"}
+            </strong>
+            <p>
+              {xauFeasiblePullback?.started_at
+                ? xauFeasiblePullback.resolved +
+                  " résolu(s) · " +
+                  xauFeasiblePullback.no_fill +
+                  " no-fill · " +
+                  xauFeasiblePullback.wins +
+                  " gagnant(s) / " +
+                  xauFeasiblePullback.losses +
+                  " non-gagnant(s). Research-only, risque ≤ 4 €."
+                : "Collecte prospective non initialisée. Aucun ordre broker."}
             </p>
           </div>
           <div className="intelligence-card">

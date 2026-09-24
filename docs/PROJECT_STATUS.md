@@ -2560,3 +2560,53 @@ Implementation:
 The cap only reduces realized monetary risk relative to the 1% target when the unconstrained size exceeds 5 lots. It never increases risk and does not change signal/admission evidence.
 
 External strategy scan remains aligned with the existing PR #124 direction: recent Federal Reserve work shows macro reactions are state/attention dependent, while recent generic order-flow/momentum evidence is less stable out of sample. The next research hypothesis therefore remains attention-aware macro conditioning using observed ATR/volume/context, not an approximate Level-2 signal.
+
+## 2026-09-24 — PR #126 deployed + post-cap performance screen
+
+PR #126 (c13ca7f) is merged and deployed.
+
+Deployment proof:
+- PR #125 deployment was completed first and its native-SL broker PnL reconciliation was verified on production ticket 185357042: broker realized PnL -7,374.50 EUR, complete=true;
+- drain returned OFF after PR #125 verification;
+- PR #126 CI green;
+- drain ON for PR #126;
+- second BOOK_FLAT proof: 0 PAPER, 0 Trading-New bridge positions, 0 pending commands, 0 broker-observed positions;
+- backend + canonical shadow worker restarted only;
+- frontend and XAU M1 worker PIDs preserved;
+- /config now exposes max_lots_per_trade=5.0;
+- live XAU sizing proof: raw_lots 7.48085 -> executed sizing 5.00 lots; expected loss 5,791.43 EUR vs 8,664.96 EUR 1% risk budget;
+- manual dashboard shows the hard 5.00-lot ceiling;
+- final drain OFF, READY 5/5, 7 qualified collectors, LIVE OFF.
+
+Current opportunity/frequency diagnosis:
+- daily market denominator: 111-112 market opportunities / 24 h depending refresh;
+- 13 captured, about 98 missed;
+- 7 PAPER-eligible collectors currently active: BTC break/retest + structural sequence; GBP Asia Sweep + directional pullback; XAU Asia Sweep + structural displacement + structural persistence;
+- across the last 24 h, all seven collectors produced zero current signals in their own SHADOW ledgers. The frequency bottleneck is therefore signal rarity, not broker transport or the 5-lot ceiling.
+
+Broker-equity + 5-lot causal research:
+- execution-aware length-2 sequences re-run on BTC/EUR/GBP/XAU/XAG;
+- 0 positive-stable sequences on every asset; rejected;
+- contrarian directional-displacement prototype (trade opposite every directional_displacement, next-M5, 1.5 ATR stop, 1R target, 12-M5 horizon) is negative in train/validation/holdout on all five assets; rejected;
+- no new scanner/admission was created.
+
+Market-first prospective denominator:
+- 112 opportunities in the refreshed 24 h report;
+- 61 completely unseen opportunities;
+- 36 precursor-only opportunities;
+- directional_displacement is frequent but mostly opposed to later market moves and has negative forward expectancy when traded mechanically;
+- compression_breakout remains prospectively interesting but long historical execution-aware tests were negative, so it is not promoted;
+- GBP blocked failed-auction probes are +0.875R across only 4 resolved samples, but the frozen historical family remains negative (weakest expectancy about -0.361R), so no promotion.
+
+External 2025-2026 research review:
+- Federal Reserve research supports state/attention-dependent macro announcement responses and multiple information channels around FOMC;
+- gold high-frequency research finds adjustment can continue beyond the first 5 minutes after monetary-policy shocks;
+- recent FX opening-range / volatility-breakout research reports holdout failures under strict cost-aware validation;
+- separate 2026 FX intraday-momentum work reports a London-open sign effect but emphasizes transaction-cost barriers;
+- recent FX news/order-flow research finds retail flow often trades against macro surprises, but this system does not possess the proprietary order-flow data required to reproduce that edge.
+
+Decision:
+- do not add generic ORB, breakout, momentum, contrarian-displacement or approximate OFI strategies;
+- keep PR #124 macro context prospective collection active;
+- next research priority is attention-aware macro conditioning using data actually available to Trading-New (pre-event ATR/volume/context), plus continued XAU M1 signal snapshots;
+- second priority is a market-first discriminator for the completely unseen opportunity class, not another threshold on existing families.

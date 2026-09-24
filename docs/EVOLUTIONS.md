@@ -1641,3 +1641,11 @@ Production ticket 185357042 now reconciles to -7,374.50 EUR instead of being omi
 ## 2026-09-24 — hard 5-lot execution ceiling
 
 Added a global `max_lots_per_trade=5.0` guard to shared sizing plus a second DEMO-command guard. Runtime config and manual dashboard expose the ceiling. Broker-equity sizing remains active; the ceiling only lowers actual exposure when the 1% calculation would exceed 5 lots.
+
+## 2026-09-24 — PR126 deployment and frequency screen
+
+Deployed the hard 5-lot Trading-New ceiling end-to-end. Broker-equity sizing remains active, but shared sizing and DEMO command submission cannot exceed 5.00 lots.
+
+Post-deployment research re-ran broker-equity length-2 sequences and a fixed contrarian directional-displacement family. Both were rejected across independent windows, so no new runtime family was added.
+
+Current bottleneck is signal production: the seven PAPER-eligible collectors produced zero SHADOW signals in the measured 24 h window. Research focus moves to macro-attention context and market-first unseen-opportunity discovery.

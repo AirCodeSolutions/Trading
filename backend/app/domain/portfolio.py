@@ -78,6 +78,7 @@ class PortfolioDecision(BaseModel):
 
 class PortfolioRiskSnapshot(BaseModel):
     reference_capital_eur: float = Field(gt=0)
+    reference_capital_source: str = "research_fallback"
     research_paper_closed_pnl_eur: float
     research_paper_total_r: float
     research_paper_legacy_closed_pnl_eur: float = 0.0

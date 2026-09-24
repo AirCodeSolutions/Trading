@@ -32,6 +32,8 @@ def scan_shadow_opportunity(
     spec: BrokerSymbolSpec,
     mechanism: OpportunityMechanism,
     evaluated_at: datetime,
+    *,
+    capital_eur: float | None = None,
 ) -> ShadowOpportunityDiagnostic:
     symbol = spec.symbol.upper()
     if len(bars_m5) < 30 or len(bars_m15) < 50:
@@ -149,12 +151,14 @@ def scan_shadow_opportunity(
         entry,
         structural_stop,
         settings.risk_per_trade_fraction,
+        capital_eur=capital_eur,
     )
     max_sizing = _sizing_snapshot(
         spec,
         entry,
         structural_stop,
         settings.absolute_max_risk_fraction,
+        capital_eur=capital_eur,
     )
     state = (
         ShadowSignalState.SIGNAL_EXECUTABLE
@@ -539,13 +543,34 @@ def _sizing_snapshot(
     entry: float,
     stop: float,
     risk_fraction: float,
+    *,
+    capital_eur: float | None = None,
 ) -> ShadowSizingSnapshot:
+    effective_capital = (
+        settings.reference_capital_eur
+        if capital_eur is None
+        else capital_eur
+    )
+    stop_distance = abs(entry - stop)
+    spread_to_stop = spec.spread / stop_distance if stop_distance > 0 else 0.0
+    if effective_capital <= 0:
+        return ShadowSizingSnapshot(
+            risk_fraction=risk_fraction,
+            approved=False,
+            reason="broker demo sizing capital is unavailable",
+            lots=0.0,
+            expected_loss_eur=0.0,
+            spread_to_stop=spread_to_stop,
+            capital_eur=0.0,
+        )
+
     sizing = size_position(
         PositionSizeRequest(
             spec=spec,
             entry=entry,
             stop=stop,
             requested_risk_fraction=risk_fraction,
+            capital_eur=effective_capital,
         )
     )
     return ShadowSizingSnapshot(
@@ -555,4 +580,5 @@ def _sizing_snapshot(
         lots=sizing.lots,
         expected_loss_eur=sizing.expected_loss_eur,
         spread_to_stop=sizing.spread_to_stop,
+        capital_eur=effective_capital,
     )

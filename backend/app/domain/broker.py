@@ -30,6 +30,7 @@ class PositionSizeRequest(BaseModel):
     entry: float = Field(gt=0)
     stop: float = Field(gt=0)
     requested_risk_fraction: float | None = Field(default=None, gt=0, le=1)
+    capital_eur: float | None = Field(default=None, gt=0)
 
 
 class PositionSizeResult(BaseModel):
@@ -51,6 +52,7 @@ class MarketQualityRequest(BaseModel):
     spec: BrokerSymbolSpec
     atr_m5: float = Field(gt=0)
     atr_m15: float = Field(gt=0)
+    capital_eur: float | None = Field(default=None, gt=0)
 
 
 class MarketQualityResult(BaseModel):

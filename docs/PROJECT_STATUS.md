@@ -2024,3 +2024,39 @@ Production verification:
 The M1 collector remains research-only. It has no authority to create signals, PAPER trades, broker commands or admissions.
 
 Next development gate: use prospective M1 only inside already-existing XAU M5/M15 opportunity windows to test whether a local causal confirmation can provide naturally risk-feasible 1–4 USD stops. No M1-based trade authorization before independent prospective evidence.
+
+## 2026-09-24 — runtime DEMO sizing now follows MT4 account equity
+
+User decision: the 400 EUR portfolio reference must no longer constrain DEMO trading. Runtime position sizing must use the actual MT4 DEMO account value so broker-minimum-lot economics do not artificially suppress XAU/FX testing.
+
+Implementation contract:
+
+- DEMO runtime sizing capital = broker `equity` when positive;
+- fallback = broker `balance` when equity is unavailable/zero;
+- non-DEMO or missing broker account => runtime sizing capital unavailable and new DEMO sizing fails closed;
+- the legacy 400 EUR setting is retained only as a reproducible research/backtest fallback, not as active DEMO capital;
+- risk fraction remains 1% base and 2% absolute max;
+- spread/stop, margin and other risk rules remain unchanged;
+- daily loss budget scales from the same broker capital source.
+
+Runtime dry-run against the current MT4 DEMO account:
+
+- balance: 873,859.85 EUR;
+- equity: 873,859.85 EUR;
+- active capital source: `broker_equity`;
+- base 1% risk budget: 8,738.60 EUR;
+- absolute 2% budget: 17,477.20 EUR;
+- 3% daily loss budget: 26,215.80 EUR.
+
+Representative XAU sizing at the current broker spec:
+
+- 4 USD stop -> 21.84 lots, ~8,736 EUR initial risk;
+- 6 USD stop -> 14.56 lots, ~8,736 EUR;
+- 9 USD stop -> 9.70 lots, ~8,730 EUR;
+- 12 USD stop -> 7.28 lots, ~8,736 EUR.
+
+All examples remain within the existing 1% policy and margin policy. They are DEMO-only because LIVE remains disabled.
+
+Current read-only scanner replay after the sizing change: 24/24 scanners were `no_signal` at that instant; therefore the absence of a trade at that moment was signal scarcity, not capital granularity.
+
+The next separate chantier is multi-symbol broker concurrency: retain one MT4 command in flight at a time but allow filled Trading-New positions on different symbols to coexist. Same-symbol stacking will remain blocked.

@@ -98,6 +98,7 @@ from app.services.research_execution_model import (
     load_research_execution_model,
 )
 from app.services.runtime_admission_registry import save_research_admissions
+from app.services.runtime_capital import resolve_demo_sizing_capital
 from app.services.runtime_control import (
     DRAIN_FILE,
     load_runtime_drain,
@@ -184,6 +185,21 @@ def macro_status() -> MacroGateStatus:
 
 @app.get(f"{settings.api_prefix}/config")
 def runtime_config() -> dict[str, object]:
+    runtime_capital = (
+        resolve_demo_sizing_capital(_mt4_files_dir())
+        if settings.mt4_files_dir is not None
+        else None
+    )
+    active_capital = (
+        runtime_capital.capital_eur
+        if runtime_capital is not None and runtime_capital.capital_eur is not None
+        else settings.reference_capital_eur
+    )
+    capital_source = (
+        runtime_capital.source.value
+        if runtime_capital is not None
+        else "research_fallback"
+    )
     return {
         "execution_mode": settings.execution_mode,
         "decision_mode": settings.decision_mode,
@@ -191,7 +207,9 @@ def runtime_config() -> dict[str, object]:
         "demo_collection_enabled": settings.demo_collection_enabled,
         "demo_execution_bridge_enabled": settings.demo_execution_bridge_enabled,
         "allowed_timeframes": settings.allowed_timeframes,
-        "reference_capital_eur": settings.reference_capital_eur,
+        "reference_capital_eur": active_capital,
+        "reference_capital_source": capital_source,
+        "research_fallback_capital_eur": settings.reference_capital_eur,
         "risk_per_trade_fraction": settings.risk_per_trade_fraction,
         "absolute_max_risk_fraction": settings.absolute_max_risk_fraction,
         "max_daily_loss_fraction": settings.max_daily_loss_fraction,
@@ -425,11 +443,13 @@ def btc_break_retest_shadow() -> ShadowOpportunityDiagnostic:
     try:
         bars_m5 = read_closed_bar_snapshot(m5_path, "BTCUSD", Timeframe.M5)
         bars_m15 = read_closed_bar_snapshot(m15_path, "BTCUSD", Timeframe.M15)
+        runtime_capital = resolve_demo_sizing_capital(files_dir)
         return scan_btc_break_retest_shadow(
             bars_m5,
             bars_m15,
             spec,
             datetime.now(tz=_server_timezone()),
+            capital_eur=runtime_capital.capital_eur or 0.0,
         )
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

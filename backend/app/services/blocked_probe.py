@@ -116,6 +116,7 @@ def create_blocked_probe(
         target_r=target_r,
         max_holding_bars=max_holding_bars,
         block_reason=diagnostic.base_risk.reason,
+        capital_eur=diagnostic.base_risk.capital_eur,
         max_risk_approved=bool(
             diagnostic.max_risk is not None
             and diagnostic.max_risk.approved
@@ -136,7 +137,11 @@ def _with_capital_feasibility(
     min_lot_loss = (
         monetary_loss_per_lot(spec, probe.risk_distance) * spec.min_lot
     )
-    reference_capital = settings.reference_capital_eur
+    reference_capital = (
+        probe.capital_eur
+        if probe.capital_eur > 0
+        else settings.reference_capital_eur
+    )
     base_risk = settings.risk_per_trade_fraction
     max_risk = settings.absolute_max_risk_fraction
     minimum_fraction = (

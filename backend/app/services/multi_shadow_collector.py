@@ -1,7 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
-from app.core.config import settings
+from app.core.config import ExecutionMode, settings
 from app.domain.market import Timeframe
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.shadow import ShadowCollectionResult
@@ -15,6 +15,7 @@ from app.services.prospective_qualification import (
     prospective_entry_allowed,
 )
 from app.services.runtime_admission_registry import load_research_admissions
+from app.services.runtime_capital import resolve_demo_sizing_capital
 from app.services.shadow_ledger import append_shadow_observation
 from app.services.shadow_paper import advance_shadow_paper_book
 from app.services.shadow_scanner import scan_shadow_opportunity
@@ -39,6 +40,10 @@ def collect_all_shadow_once(
 ) -> list[ShadowCollectionResult]:
     results: list[ShadowCollectionResult] = []
     admissions = load_research_admissions(runtime_dir / "strategy_admissions.json")
+    runtime_capital = resolve_demo_sizing_capital(files_dir)
+    sizing_capital_eur: float | None = None
+    if settings.execution_mode == ExecutionMode.DEMO:
+        sizing_capital_eur = runtime_capital.capital_eur or 0.0
     assets = [
         asset
         for asset in build_market_universe(
@@ -77,6 +82,7 @@ def collect_all_shadow_once(
                 spec,
                 mechanism,
                 evaluated_at,
+                capital_eur=sizing_capital_eur,
             )
             slug = _MECHANISM_SLUG[mechanism]
             prefix = f"{asset.symbol}_{slug}"

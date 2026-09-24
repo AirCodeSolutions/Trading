@@ -16,6 +16,7 @@ from app.services.broker_account import read_broker_demo_snapshot
 from app.services.paper_registry import load_paper_registry
 from app.services.prospective_qualification import prospective_entry_allowed
 from app.services.runtime_admission_registry import load_research_admissions
+from app.services.runtime_capital import resolve_demo_sizing_capital
 
 
 def build_trading_overview(
@@ -23,6 +24,14 @@ def build_trading_overview(
     runtime_dir: Path,
     now: datetime,
 ) -> TradingOverview:
+    broker = read_broker_demo_snapshot(files_dir)
+    runtime_capital = resolve_demo_sizing_capital(files_dir)
+    effective_capital = (
+        runtime_capital.capital_eur
+        if runtime_capital.capital_eur is not None
+        else settings.reference_capital_eur
+    )
+
     paper_rows = load_paper_registry(
         runtime_dir,
         now,
@@ -174,15 +183,16 @@ def build_trading_overview(
     )
 
     max_daily_loss = (
-        settings.reference_capital_eur * settings.max_daily_loss_fraction
+        effective_capital * settings.max_daily_loss_fraction
     )
     remaining = max(0.0, max_daily_loss + min(0.0, selected_daily_pnl))
 
     return TradingOverview(
         at=now,
-        broker=read_broker_demo_snapshot(files_dir),
+        broker=broker,
         risk=PortfolioRiskSnapshot(
-            reference_capital_eur=settings.reference_capital_eur,
+            reference_capital_eur=effective_capital,
+            reference_capital_source=runtime_capital.source.value,
             research_paper_closed_pnl_eur=research_pnl,
             research_paper_total_r=research_r,
             research_paper_legacy_closed_pnl_eur=legacy_pnl,

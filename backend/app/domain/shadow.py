@@ -22,6 +22,7 @@ class ShadowSizingSnapshot(BaseModel):
     lots: float = Field(ge=0)
     expected_loss_eur: float = Field(ge=0)
     spread_to_stop: float = Field(ge=0)
+    capital_eur: float = Field(default=0.0, ge=0)
 
 
 class ShadowOpportunityDiagnostic(BaseModel):

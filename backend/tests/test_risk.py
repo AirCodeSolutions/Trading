@@ -29,6 +29,33 @@ def test_xau_m15_atr_stop_is_too_coarse_for_400_eur_account() -> None:
     assert result.min_lot_loss_eur == pytest.approx(11.582857, rel=1e-6)
 
 
+def test_xau_m15_atr_stop_is_approved_with_demo_broker_equity() -> None:
+    spec = BrokerSymbolSpec(
+        symbol="XAUUSD",
+        bid=4344.70,
+        ask=4344.98,
+        tick_size=0.01,
+        tick_value=1.0,
+        min_lot=0.01,
+        max_lot=10000,
+        lot_step=0.01,
+        margin_required=379.10,
+    )
+    result = size_position(
+        PositionSizeRequest(
+            spec=spec,
+            entry=4344.98,
+            stop=4344.98 - 11.582857,
+            capital_eur=873859.85,
+        )
+    )
+
+    assert result.approved is True
+    assert result.risk_budget_eur == pytest.approx(8738.5985)
+    assert result.lots == pytest.approx(7.54)
+    assert result.expected_loss_eur <= result.risk_budget_eur
+
+
 def test_btc_m15_atr_stop_can_fit_absolute_two_percent_cap() -> None:
     spec = BrokerSymbolSpec(
         symbol="BTCUSD",

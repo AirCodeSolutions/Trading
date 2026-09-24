@@ -268,3 +268,4 @@ def test_mt4_bridge_blocks_only_same_symbol() -> None:
     assert "HasBridgePositionForSymbol(symbol)" in source
     assert "OrderSymbol() == symbol" in source
     assert "if(HasBridgePosition())" not in source
+    assert "version=multi_symbol_v1" in source

@@ -6,6 +6,7 @@ from app.domain.macro import MacroSignalContext
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.shadow import ShadowSignalState
 from app.domain.trading import Side
+from app.domain.trading_intelligence import OpportunityCausalPattern
 
 
 class XauMicrobarM1(BaseModel):
@@ -76,6 +77,22 @@ class XauSequenceMicrostructureSnapshot(BaseModel):
     geometry_15m: XauMicrobarGeometry | None = None
 
 
+class XauUnseenTransitionSnapshot(BaseModel):
+    episode_id: str
+    birth_at: datetime
+    episode_side: Side
+    move_atr: float = Field(ge=0)
+    latest_microbar_at: datetime
+    geometry_5m: XauMicrobarGeometry
+    geometry_15m: XauMicrobarGeometry | None = None
+    transition_pattern: OpportunityCausalPattern | None = None
+    transition_side: Side | None = None
+    transition_at: datetime | None = None
+    transition_bars_waited: int | None = Field(default=None, ge=1)
+    transition_aligned: bool | None = None
+    move_consumed_atr: float | None = None
+
+
 class XauMicrobarSummary(BaseModel):
     symbol: str = "XAUUSD"
     timeframe: str = "M1"
@@ -91,6 +108,10 @@ class XauMicrobarSummary(BaseModel):
     geometry_15m: XauMicrobarGeometry | None = None
     sequence_signal_snapshots: int = Field(default=0, ge=0)
     recent_sequence_signals: list[XauSequenceMicrostructureSnapshot] = Field(
+        default_factory=list
+    )
+    unseen_transition_snapshots: int = Field(default=0, ge=0)
+    recent_unseen_transitions: list[XauUnseenTransitionSnapshot] = Field(
         default_factory=list
     )
     recent: list[XauMicrobarM1] = Field(default_factory=list)

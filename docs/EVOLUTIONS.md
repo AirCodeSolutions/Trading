@@ -1667,3 +1667,9 @@ Two follow-up rules were rejected without runtime changes: unclassified 6-M5 mom
 Added `unclassified_transition_research` plus CLI coverage for the first-directional-transition-after-unclassified hypothesis. It measures transition coverage, direction alignment, wait bars, ATR consumed, expectancy, PF and drawdown by train/validation/holdout.
 
 Result: high directional alignment does not translate into positive execution expectancy because the M5 confirmation arrives after too much of the move has been consumed. No scanner/admission/order behavior is added.
+
+## 2026-09-24 — persistent XAU unseen/M1 research ledger
+
+Added a persistent, idempotent research ledger joining XAU market-first unseen/unclassified opportunities to causal M1 geometry at birth and to the first directional M5 transition within three bars. The M1 dashboard card exposes the accumulated sample count.
+
+This collector has no order/admission authority and is intentionally prospective-only because no long historical XAU M1 dataset is available.

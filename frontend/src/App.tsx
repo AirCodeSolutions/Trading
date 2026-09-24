@@ -101,6 +101,7 @@ type XauMicrobarSummary = {
   geometry_5m: XauMicrobarGeometry | null;
   geometry_15m: XauMicrobarGeometry | null;
   sequence_signal_snapshots: number;
+  unseen_transition_snapshots: number;
 };
 
 type ShadowSizing = {
@@ -2239,7 +2240,9 @@ export default function App() {
                   xauMicrobars.total_quote_samples +
                   " quote(s) · " +
                   xauMicrobars.sequence_signal_snapshots +
-                  " snapshot(s) signal · âge " +
+                  " snapshot(s) signal · " +
+                  xauMicrobars.unseen_transition_snapshots +
+                  " épisode(s) unseen M1 · âge " +
                   (xauMicrobars.quote_age_seconds ?? 0).toFixed(1) +
                   " s. Research-only."
                 : "Collecte M1 prospective non initialisée. Aucun ordre broker."}

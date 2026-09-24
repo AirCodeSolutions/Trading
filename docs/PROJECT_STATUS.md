@@ -2738,3 +2738,29 @@ Decision: REJECT waiting for an extra M5 causal transition as a standalone entry
 Development implication: do not add more M5 confirmation layers to solve the frequency bottleneck. The next research layer should anticipate transition quality earlier using genuinely finer information already being collected, especially XAU M1 signal geometry, rather than relaxing current admissions.
 
 New CLI: `backend/scripts/analyze_unclassified_transition_waiting.py`.
+
+## 2026-09-24 — XAU unseen × M1 transition ledger
+
+Following PR #130, the next research layer is prospective-only and does not add another M5 confirmation. A persistent XAU ledger now links completed market-first `unclassified` unseen opportunities to the M1 geometry that was actually available at opportunity birth, then labels the first directional M5 transition observed within the next three bars.
+
+Recorded fields:
+- episode id, birth time, eventual opportunity side and move ATR;
+- causal 5m and 15m M1 geometry using only M1 bars fully closed by birth time;
+- latest causal M1 minute;
+- first directional M5 transition pattern/side/time when one exists;
+- bars waited, whether that later transition aligned with the eventual move, and ATR consumed before a next-M5 entry.
+
+Persistence/idempotence:
+- file: `XAUUSD_unseen_m1_transitions.jsonl`;
+- one row per market-first episode id;
+- repeated intelligence rebuilds cannot duplicate an episode;
+- episodes without a directional transition are retained as negative research examples;
+- collector errors are observability-only and do not stop scanning/trading.
+
+Production dry-run was performed on a copy of the runtime ledger only. Two current XAU unseen episodes were recoverable from the prospective M1 window. Both later transitions were directionally aligned, but only after 3 M5 bars and roughly 0.99 ATR / 1.07 ATR of the move had already been consumed. Sample size is explicitly insufficient for any trading rule.
+
+The existing XAU M1 dashboard card now exposes the number of persisted unseen-transition research episodes. No admission, signal, stop, target, lot, macro gate or LIVE behavior changes.
+
+Validation: 12 targeted tests, 303 full backend tests, Ruff clean, frontend build clean.
+
+Runtime note at research checkpoint: BTC `post_shock_continuation` currently produced a technically executable signal, but its admission remains `paper_collection_candidate=false` with weakest historical expectancy around -0.270R. It is correctly not traded; no guardrail is relaxed.

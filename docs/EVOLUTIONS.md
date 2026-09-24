@@ -1673,3 +1673,9 @@ Result: high directional alignment does not translate into positive execution ex
 Added a persistent, idempotent research ledger joining XAU market-first unseen/unclassified opportunities to causal M1 geometry at birth and to the first directional M5 transition within three bars. The M1 dashboard card exposes the accumulated sample count.
 
 This collector has no order/admission authority and is intentionally prospective-only because no long historical XAU M1 dataset is available.
+
+## 2026-09-24 — M1 research expanded to BTC/EUR/GBP/XAU/XAG
+
+Generalized the existing broker-native M1 collector and unseen-transition ledger to all five Trading-New assets while preserving the XAU compatibility surface. Added multi-asset API/dashboard observability. One singleton worker still samples all symbols.
+
+No trading authority changes.

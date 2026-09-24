@@ -2764,3 +2764,22 @@ The existing XAU M1 dashboard card now exposes the number of persisted unseen-tr
 Validation: 12 targeted tests, 303 full backend tests, Ruff clean, frontend build clean.
 
 Runtime note at research checkpoint: BTC `post_shock_continuation` currently produced a technically executable signal, but its admission remains `paper_collection_candidate=false` with weakest historical expectancy around -0.270R. It is correctly not traded; no guardrail is relaxed.
+
+## 2026-09-24 — multi-asset prospective M1 collection
+
+The broker-native prospective M1 layer is generalized from XAUUSD to the full Trading-New universe:
+`BTCUSD`, `EURUSD`, `GBPUSD`, `XAUUSD`, `XAGUSD`.
+
+Architecture:
+- one existing singleton M1 worker remains in place; no process fan-out;
+- each symbol reads only its own `trading_demo_spec_<SYMBOL>.csv` quote stream;
+- each symbol has isolated state and M1 ledger files;
+- legacy XAU files/endpoints remain compatible;
+- a new `/research/microbars` endpoint exposes all five summaries;
+- the Research dashboard shows live/stale status, M1 count and unseen-transition sample count for all five assets.
+
+The persistent `unseen × M1 × transition` research ledger is also generalized to all five symbols. Each asset stores one idempotent row per completed unseen/unclassified market-first episode, with M1 geometry frozen at birth and the first directional M5 transition within three bars as a later research label.
+
+This is observability/research only. No scanner, admission, PAPER/DEMO order, stop, target, risk, lot ceiling, macro gate or LIVE behavior changes.
+
+Validation before deployment: 25 targeted tests, 306 full backend tests, Ruff clean, frontend build clean.

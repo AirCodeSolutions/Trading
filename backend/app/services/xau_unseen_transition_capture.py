@@ -19,17 +19,24 @@ from app.services.mt4_market_data import load_recent_closed_market_bars
 from app.services.trading_intelligence import _atr_series
 from app.services.unclassified_transition_research import first_directional_transition
 from app.services.xau_microbar import (
-    LEDGER_FILE,
+    SUPPORTED_SYMBOLS,
     _geometry_window,
     load_xau_microbars,
+    microbar_ledger_file,
 )
 
 SYMBOL = "XAUUSD"
-UNSEEN_TRANSITION_FILE = "XAUUSD_unseen_m1_transitions.jsonl"
 RECENT_M5_LIMIT = 512
 
 
-def load_xau_unseen_transition_snapshots(
+def unseen_transition_file(symbol: str) -> str:
+    return f"{symbol.upper()}_unseen_m1_transitions.jsonl"
+
+
+UNSEEN_TRANSITION_FILE = unseen_transition_file(SYMBOL)
+
+
+def load_unseen_transition_snapshots(
     path: Path,
 ) -> list[XauUnseenTransitionSnapshot]:
     if not path.is_file():
@@ -48,11 +55,17 @@ def load_xau_unseen_transition_snapshots(
     return rows
 
 
-def append_xau_unseen_transition_snapshot(
+def load_xau_unseen_transition_snapshots(
+    path: Path,
+) -> list[XauUnseenTransitionSnapshot]:
+    return load_unseen_transition_snapshots(path)
+
+
+def append_unseen_transition_snapshot(
     path: Path,
     snapshot: XauUnseenTransitionSnapshot,
 ) -> bool:
-    existing = load_xau_unseen_transition_snapshots(path)
+    existing = load_unseen_transition_snapshots(path)
     if any(row.episode_id == snapshot.episode_id for row in existing):
         return False
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -62,13 +75,23 @@ def append_xau_unseen_transition_snapshot(
     return True
 
 
-def build_xau_unseen_transition_snapshot(
+def append_xau_unseen_transition_snapshot(
+    path: Path,
+    snapshot: XauUnseenTransitionSnapshot,
+) -> bool:
+    return append_unseen_transition_snapshot(path, snapshot)
+
+
+def build_unseen_transition_snapshot(
     episode: MarketOpportunityEpisode,
     bars: list[MarketBar],
     atr: list[float],
     microbars: list[XauMicrobarM1],
+    *,
+    symbol: str,
 ) -> XauUnseenTransitionSnapshot | None:
-    if episode.symbol.upper() != SYMBOL:
+    normalized = symbol.upper()
+    if episode.symbol.upper() != normalized:
         return None
     if episode.detection_stage != OpportunityDetectionStage.UNSEEN:
         return None
@@ -145,6 +168,72 @@ def build_xau_unseen_transition_snapshot(
     )
 
 
+def build_xau_unseen_transition_snapshot(
+    episode: MarketOpportunityEpisode,
+    bars: list[MarketBar],
+    atr: list[float],
+    microbars: list[XauMicrobarM1],
+) -> XauUnseenTransitionSnapshot | None:
+    return build_unseen_transition_snapshot(
+        episode,
+        bars,
+        atr,
+        microbars,
+        symbol=SYMBOL,
+    )
+
+
+def capture_unseen_transition_snapshots(
+    files_dir: Path,
+    runtime_dir: Path,
+    intelligence: TradingIntelligenceOverview,
+    *,
+    now: datetime,
+    symbols: tuple[str, ...] = SUPPORTED_SYMBOLS,
+) -> dict[str, int]:
+    appended_by_symbol: dict[str, int] = {}
+    for raw_symbol in symbols:
+        symbol = raw_symbol.upper()
+        if symbol not in SUPPORTED_SYMBOLS:
+            continue
+
+        microbars = load_xau_microbars(
+            runtime_dir / microbar_ledger_file(symbol)
+        )
+        if len(microbars) < 5:
+            appended_by_symbol[symbol] = 0
+            continue
+
+        bars = load_recent_closed_market_bars(
+            files_dir,
+            symbol,
+            Timeframe.M5,
+            now,
+            limit=RECENT_M5_LIMIT,
+        )
+        if not bars:
+            appended_by_symbol[symbol] = 0
+            continue
+        atr = _atr_series(bars)
+        path = runtime_dir / unseen_transition_file(symbol)
+        appended = 0
+        for episode in intelligence.opportunities:
+            snapshot = build_unseen_transition_snapshot(
+                episode,
+                bars,
+                atr,
+                microbars,
+                symbol=symbol,
+            )
+            if snapshot is None:
+                continue
+            if append_unseen_transition_snapshot(path, snapshot):
+                appended += 1
+        appended_by_symbol[symbol] = appended
+
+    return appended_by_symbol
+
+
 def capture_xau_unseen_transition_snapshots(
     files_dir: Path,
     runtime_dir: Path,
@@ -152,31 +241,10 @@ def capture_xau_unseen_transition_snapshots(
     *,
     now: datetime,
 ) -> int:
-    microbars = load_xau_microbars(runtime_dir / LEDGER_FILE)
-    if len(microbars) < 5:
-        return 0
-
-    bars = load_recent_closed_market_bars(
+    return capture_unseen_transition_snapshots(
         files_dir,
-        SYMBOL,
-        Timeframe.M5,
-        now,
-        limit=RECENT_M5_LIMIT,
-    )
-    if not bars:
-        return 0
-    atr = _atr_series(bars)
-    path = runtime_dir / UNSEEN_TRANSITION_FILE
-    appended = 0
-    for episode in intelligence.opportunities:
-        snapshot = build_xau_unseen_transition_snapshot(
-            episode,
-            bars,
-            atr,
-            microbars,
-        )
-        if snapshot is None:
-            continue
-        if append_xau_unseen_transition_snapshot(path, snapshot):
-            appended += 1
-    return appended
+        runtime_dir,
+        intelligence,
+        now=now,
+        symbols=(SYMBOL,),
+    )[SYMBOL]

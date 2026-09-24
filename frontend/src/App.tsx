@@ -988,6 +988,7 @@ export default function App() {
   const [xauFeasiblePullback, setXauFeasiblePullback] =
     useState<XauFeasiblePullbackSummary | null>(null);
   const [xauMicrobars, setXauMicrobars] = useState<XauMicrobarSummary | null>(null);
+  const [marketMicrobars, setMarketMicrobars] = useState<XauMicrobarSummary[]>([]);
   const [precursorForward, setPrecursorForward] = useState<PrecursorForwardResearch | null>(null);
   const [economicFeasibility, setEconomicFeasibility] = useState<EconomicFeasibilityReport | null>(null);
   const [dailyReport, setDailyReport] = useState<DailyTradingReport | null>(null);
@@ -1040,6 +1041,7 @@ export default function App() {
           trailingShadowResponse,
           xauFeasiblePullbackResponse,
           xauMicrobarsResponse,
+          marketMicrobarsResponse,
           precursorForwardResponse,
           economicFeasibilityResponse,
           dailyReportResponse,
@@ -1064,6 +1066,7 @@ export default function App() {
           fetch("/api/v1/research/trailing-shadow"),
           fetch("/api/v1/research/xau-feasible-pullback"),
           fetch("/api/v1/research/xau-microbars"),
+          fetch("/api/v1/research/microbars"),
           fetch("/api/v1/research/precursor-forward"),
           fetch("/api/v1/research/economic-feasibility"),
           fetch("/api/v1/reports/daily"),
@@ -1108,6 +1111,9 @@ export default function App() {
         const xauMicrobarsPayload = xauMicrobarsResponse.ok
           ? await xauMicrobarsResponse.json()
           : null;
+        const marketMicrobarsPayload = marketMicrobarsResponse.ok
+          ? await marketMicrobarsResponse.json()
+          : [];
         const precursorForwardPayload = precursorForwardResponse.ok
           ? await precursorForwardResponse.json()
           : null;
@@ -1141,6 +1147,7 @@ export default function App() {
         setTrailingShadow(trailingShadowPayload);
         setXauFeasiblePullback(xauFeasiblePullbackPayload);
         setXauMicrobars(xauMicrobarsPayload);
+        setMarketMicrobars(marketMicrobarsPayload);
         setPrecursorForward(precursorForwardPayload);
         setEconomicFeasibility(economicFeasibilityPayload);
         setDailyReport(dailyReportPayload);
@@ -2222,6 +2229,34 @@ export default function App() {
                   xauFeasiblePullback.losses +
                   " non-gagnant(s). Research-only, risque ≤ 4 €."
                 : "Collecte prospective non initialisée. Aucun ordre broker."}
+            </p>
+          </div>
+          <div className="intelligence-card">
+            <span className="label">Microstructure M1 · 5 actifs</span>
+            <strong>
+              {marketMicrobars.length
+                ? marketMicrobars.filter((item) => item.healthy).length +
+                  "/" +
+                  marketMicrobars.length +
+                  " FLUX VIVANTS"
+                : "—"}
+            </strong>
+            <p>
+              {marketMicrobars.length
+                ? marketMicrobars
+                    .map(
+                      (item) =>
+                        item.symbol +
+                        " " +
+                        (item.healthy ? "OK" : "STALE") +
+                        " · " +
+                        item.closed_bars +
+                        " M1 · " +
+                        item.unseen_transition_snapshots +
+                        " unseen"
+                    )
+                    .join(" | ")
+                : "Collecte prospective multi-actifs non initialisée."}
             </p>
           </div>
           <div className="intelligence-card">

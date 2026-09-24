@@ -1687,3 +1687,9 @@ Added a research-only forward execution shadow for prospective XAU `compression_
 The shadow deliberately starts from zero at deployment: the 8 XAU selection trades (+0.321R expectancy, PF 2.285) are not backfilled into validation. Dashboard observability shows resolved count, expectancy, PF, wins/losses and DD. No order/admission authority is added.
 
 Rejected in the same cycle: BTC directional-transition predecessor-regime gating and GBP failed-auction London-session gating.
+
+## 2026-09-24 — broker position count aggregation
+
+Fixed broker account observability to aggregate unique broker tickets across all `mt4_data_*` symbol exports instead of counting positions from only the first file. This correctly reports external Freezebee positions while preserving strict ownership separation from Trading-New bridge tickets.
+
+PR #133 deployment also recorded: XAU compression precursor forward shadow is live research-only and starts at 0 resolved observations.

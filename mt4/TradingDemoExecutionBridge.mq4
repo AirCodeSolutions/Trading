@@ -13,6 +13,10 @@ string EXECUTION_LOCK_FILE = "trading_demo_execution.lock";
 int OnInit()
 {
    EventSetTimer(MathMax(1, PollEverySeconds));
+   Print(
+      "TradingDemoExecutionBridge version=multi_symbol_v1 symbol=",
+      Symbol()
+   );
    ExportSymbolSnapshot();
    ExportPositions();
    return(INIT_SUCCEEDED);

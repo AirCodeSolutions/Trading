@@ -17,6 +17,10 @@ def assess_strategy(evidence: StrategyEvidence) -> AdmissionDecision:
     shadow_collection_candidate = (
         evidence.train.expectancy_r > 0
         and evidence.validation.expectancy_r > 0
+        and (
+            evidence.holdout.trades == 0
+            or evidence.holdout.expectancy_r >= 0
+        )
     )
 
     if (

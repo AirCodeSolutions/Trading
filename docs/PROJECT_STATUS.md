@@ -2409,3 +2409,30 @@ These fields are derived only from already-closed broker-native M1 bars. They ha
 Live branch validation on production data: 148 closed M1 bars / 8,599 quotes, healthy feed. 5m geometry: +2.59 signed move, 5.92 range, 52.5% path efficiency, 0.28 average spread. 15m geometry: +3.74 signed move, 29.1% efficiency.
 
 Dashboard research card now exposes the 5m and 15m geometry. No signal, stop, target, lot, risk or LIVE behavior changes.
+
+## 2026-09-24 — PR #122 deployed + causal M1 signal snapshots
+
+PR #122 (`01a96f5`) is deployed.
+
+Deployment proof:
+- drain ON and second BOOK_FLAT proof passed;
+- backend only restarted; shadow worker, MT4, XAU M1 worker and frontend PIDs preserved;
+- canonical backend PID corrected to the already-running process that owned port 8020;
+- `/research/xau-microbars` returns live 5m/15m geometry;
+- frontend Vite serves the new geometry card without restart;
+- drain returned OFF;
+- auto-DEMO armed, 26 scanners, 8 qualified collectors, READY 5/5, LIVE OFF.
+
+Next research instrumentation: causal signal-linked M1 snapshots.
+
+For `XAUUSD:structural_displacement_sequence` and `XAUUSD:structural_persistence_sequence`, any future `signal_blocked` or `signal_executable` diagnostic now has a dedicated research capture path:
+- signal timestamp is the M5 close (`latest_closed_m5_at + 5m`);
+- only M1 bars fully closed at or before that signal timestamp are eligible;
+- 5m and 15m M1 geometry are frozen into the snapshot;
+- snapshot records strategy id, mechanism, side, signal state and latest causal M1 bar;
+- duplicate worker cycles for the same strategy/signal timestamp are ignored;
+- `no_signal` and non-sequence mechanisms are ignored.
+
+The existing `/research/xau-microbars` summary exposes snapshot count and recent snapshots so the dashboard can show whether causal evidence has actually been captured.
+
+Validation: 31 targeted tests, 290 full backend tests, Ruff clean, Vite build clean. No entry/SL/TP/risk/admission/LIVE change.

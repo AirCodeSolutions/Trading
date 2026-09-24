@@ -22,6 +22,7 @@ from app.services.shadow_paper import (
     load_shadow_paper_state,
 )
 from app.services.shadow_scanner import scan_shadow_opportunity
+from app.services.xau_microbar import capture_xau_sequence_microstructure
 
 _MECHANISM_SLUG = {
     OpportunityMechanism.BREAK_RETEST_REACCEL: "break_retest",
@@ -92,6 +93,7 @@ def collect_all_shadow_once(
             prefix = f"{asset.symbol}_{slug}"
             ledger_path = runtime_dir / f"{prefix}.jsonl"
             appended = append_shadow_observation(ledger_path, diagnostic)
+            capture_xau_sequence_microstructure(runtime_dir, diagnostic)
             strategy_id = f"{asset.symbol}:{mechanism.value}"
             admission = admissions.get(strategy_id)
             state_path = runtime_dir / f"{prefix}_paper_state.json"

@@ -1577,3 +1577,11 @@ Extended the existing structural-displacement sequence mechanism with a symbol-s
 Added targeted admission-refresh support (`--symbol`, `--mechanism`, `--capital-eur`, `--merge`) and merge-safe admission persistence so a single candidate can be deployed without recalculating unrelated families.
 
 Dry-run admission merge: 31 -> 32 entries, one new XAU sequence key, zero existing-entry changes. Candidate remains SHADOW/PAPER collection only; LIVE stays locked.
+
+## 2026-09-24 — deployed XAU DD -> structural extreme -> DD collector
+
+PR #118 is live. Trading-New now has 25 scanners and 7 qualified PAPER/DEMO collectors.
+
+Deployment used a targeted merge-safe admission upsert, preserving all 31 prior strategy admissions byte-equivalently and adding only the new XAU structural sequence. No backfill or retrospective trade was created.
+
+Drain is OFF, auto-DEMO is armed, book is flat and LIVE remains disabled.

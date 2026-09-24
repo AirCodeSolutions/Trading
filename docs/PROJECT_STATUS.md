@@ -2177,3 +2177,32 @@ All five assets are negative in train/validation/holdout where support exists. X
 Decision: reject the standalone compression-breakout family. Its small positive prospective precursor sample is not sufficient to override the long historical execution-aware result.
 
 Next hypothesis: rerun execution-aware causal sequence discovery with explicit broker-equity capital, because the prior sequence search was performed under the old low-capital execution feasibility assumptions.
+
+## 2026-09-24 — execution-aware sequence discovery with broker-equity capital
+
+Execution-aware causal sequence research now supports explicit research capital end-to-end, including economic-feasibility stop selection and occurrence sizing. The historical 400 EUR fallback remains the default for reproducibility.
+
+At 873,864.61 EUR, length-3 discovery across retained assets produces:
+- BTCUSD: 1 positive-stable sequence, the already deployed `structural_extreme -> directional_displacement -> directional_displacement`;
+- EURUSD: 0 positive-stable;
+- GBPUSD: 0 positive-stable;
+- XAGUSD: 0 positive-stable;
+- XAUUSD: 5 positive-stable sequences.
+
+The strongest XAU candidate is `directional_displacement -> structural_extreme -> directional_displacement`.
+
+Independent execution-aware screen:
+- train: 109 executed, +0.1293R expectancy, PF 1.338;
+- validation: 25, +0.3024R, PF 2.049;
+- holdout: 13, +0.4812R, PF 3.085.
+
+Sequential no-overlap validation of the exact unchanged contract (1.5 ATR stop, 1R target, 12 M5 horizon):
+- 148 raw candidates / 144 executed;
+- train: 106, +0.1321R, PF 1.343, DD 7.683R;
+- validation: 25, +0.3024R, PF 2.049, DD 1.742R;
+- holdout: 13, +0.4812R, PF 3.085, DD 1R;
+- BUY: 68 trades, +0.1862R expectancy;
+- SELL: 76 trades, +0.1993R expectancy;
+- 10 of 11 calendar months positive; May 2026 is the single negative month.
+
+Anti-selection check using train + validation only ranks this XAU sequence #1 among 11 supported positive sequences. September holdout remains strongly positive, so the candidate is advanced to a separate SHADOW/PAPER implementation PR without changing parameters.

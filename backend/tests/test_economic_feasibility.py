@@ -34,6 +34,34 @@ def test_xag_like_envelope_is_impossible_at_400_eur(monkeypatch) -> None:
     assert required_capital > 2300
 
 
+def test_xag_like_envelope_is_feasible_with_explicit_demo_capital(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "reference_capital_eur", 400.0)
+    monkeypatch.setattr(settings, "max_spread_to_stop", 0.15)
+    monkeypatch.setattr(settings, "max_margin_fraction", 0.25)
+
+    spec = BrokerSymbolSpec(
+        symbol="XAGUSD",
+        bid=40.0,
+        ask=40.07,
+        tick_size=0.001,
+        tick_value=5.0,
+        min_lot=0.01,
+        max_lot=100.0,
+        lot_step=0.01,
+        margin_required=2858.07,
+    )
+
+    floor, ceiling, _ = _feasible_stop_envelope(
+        spec,
+        risk_fraction=0.01,
+        capital_eur=873864.61,
+    )
+
+    assert floor < ceiling
+
+
 def test_stop_profile_separates_spread_and_min_lot_rejections(
     monkeypatch,
 ) -> None:
@@ -74,6 +102,17 @@ def test_stop_profile_separates_spread_and_min_lot_rejections(
     assert summary.rejected_margin == 0
     assert summary.approval_rate == 1 / 3
     assert summary.average_expected_loss_eur > 0
+
+    demo_summary = _summarize_stop_profile(
+        episodes,
+        spec=spec,
+        risk_fraction=0.01,
+        capital_eur=1000.0,
+        stop_atr_multiple=0.5,
+    )
+    assert demo_summary.approved == 2
+    assert demo_summary.rejected_spread == 1
+    assert demo_summary.rejected_min_lot == 0
 
 
 def test_economic_feasibility_snapshot_round_trip(tmp_path) -> None:

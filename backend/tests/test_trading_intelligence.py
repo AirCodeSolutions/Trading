@@ -13,10 +13,17 @@ from app.domain.shadow import (
 )
 from app.domain.shadow_paper import PaperTradeStatus, ShadowPaperTrade
 from app.domain.trading import Side
-from app.domain.trading_intelligence import OpportunityCaptureState
+from app.domain.trading_intelligence import (
+    MarketOpportunityEpisode,
+    OpportunityCaptureState,
+    OpportunityCausalContext,
+    OpportunityCausalPattern,
+    OpportunityDetectionStage,
+)
 from app.services.trading_intelligence import (
     _market_opportunity_episodes,
     _trade_metrics,
+    _unseen_pattern_summaries,
     build_trading_intelligence,
 )
 
@@ -421,3 +428,102 @@ def test_causal_pattern_summary_counts_alignment_and_misses() -> None:
     assert summary[0].opposed == 1
     assert summary[0].no_direction == 0
     assert summary[0].average_move_atr == 2.5
+
+
+def test_unseen_pattern_summaries_are_prospective_pattern_radar() -> None:
+    def episode(
+        *,
+        episode_id: str,
+        symbol: str,
+        side: Side,
+        pattern: OpportunityCausalPattern,
+        aligned: bool | None,
+        move_atr: float,
+        return_6_atr: float,
+        compression: float,
+        stage: OpportunityDetectionStage = OpportunityDetectionStage.UNSEEN,
+    ) -> MarketOpportunityEpisode:
+        return MarketOpportunityEpisode(
+            episode_id=episode_id,
+            symbol=symbol,
+            side=side,
+            birth_at=NOW - timedelta(minutes=30),
+            horizon_end_at=NOW + timedelta(minutes=30),
+            reference_price=100.0,
+            atr_m5=1.0,
+            move_atr=move_atr,
+            capture_state=OpportunityCaptureState.MISSED,
+            detection_stage=stage,
+            causal_context=OpportunityCausalContext(
+                pattern=pattern,
+                side=(Side.SELL if aligned is False else side) if aligned is not None else None,
+                aligned_with_move=aligned,
+                return_6_atr=return_6_atr,
+                compression_6_24=compression,
+            ),
+        )
+
+    rows = [
+        episode(
+            episode_id="a",
+            symbol="XAUUSD",
+            side=Side.BUY,
+            pattern=OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+            aligned=False,
+            move_atr=2.0,
+            return_6_atr=-2.0,
+            compression=0.4,
+        ),
+        episode(
+            episode_id="b",
+            symbol="BTCUSD",
+            side=Side.SELL,
+            pattern=OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+            aligned=True,
+            move_atr=3.0,
+            return_6_atr=1.0,
+            compression=0.6,
+        ),
+        episode(
+            episode_id="c",
+            symbol="XAUUSD",
+            side=Side.SELL,
+            pattern=OpportunityCausalPattern.UNCLASSIFIED,
+            aligned=None,
+            move_atr=4.0,
+            return_6_atr=0.5,
+            compression=0.5,
+        ),
+        episode(
+            episode_id="ignored",
+            symbol="XAUUSD",
+            side=Side.BUY,
+            pattern=OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+            aligned=False,
+            move_atr=9.0,
+            return_6_atr=9.0,
+            compression=0.9,
+            stage=OpportunityDetectionStage.PRECURSOR_ONLY,
+        ),
+    ]
+
+    result = _unseen_pattern_summaries(rows)
+
+    assert [row.pattern for row in result] == [
+        OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+        OpportunityCausalPattern.UNCLASSIFIED,
+    ]
+    displacement = result[0]
+    assert displacement.episodes == 2
+    assert displacement.buy_episodes == 1
+    assert displacement.sell_episodes == 1
+    assert displacement.symbols == {"BTCUSD": 1, "XAUUSD": 1}
+    assert displacement.average_move_atr == 2.5
+    assert displacement.opposed_context_rate == 0.5
+    assert displacement.neutral_context_rate == 0.0
+    assert displacement.average_abs_return_6_atr == 1.5
+    assert displacement.average_compression_6_24 == 0.5
+
+    neutral = result[1]
+    assert neutral.episodes == 1
+    assert neutral.neutral_context_rate == 1.0

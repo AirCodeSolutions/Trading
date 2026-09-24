@@ -686,6 +686,25 @@ type TradingIntelligence = {
     no_direction: number;
     average_move_atr: number;
   }[];
+  unseen_patterns: {
+    pattern:
+      | "auction_failure_reclaim"
+      | "compression_breakout"
+      | "directional_displacement"
+      | "structural_extreme_stretch"
+      | "compression_state"
+      | "structural_extreme"
+      | "unclassified";
+    episodes: number;
+    buy_episodes: number;
+    sell_episodes: number;
+    symbols: Record<string, number>;
+    average_move_atr: number;
+    opposed_context_rate: number;
+    neutral_context_rate: number;
+    average_abs_return_6_atr: number;
+    average_compression_6_24: number;
+  }[];
   limitations: string[];
 };
 
@@ -2525,6 +2544,52 @@ export default function App() {
             </div>
           ) : (
             <p className="strategy-empty">Snapshot économique non généré.</p>
+          )}
+        </div>
+
+        <div className="intelligence-subsection">
+          <h3>Unseen Opportunity Radar · prospectif</h3>
+          <p className="intelligence-note">
+            Uniquement les opportunités nées depuis l’activation du collecteur precursor et jamais vues
+            par un precursor ou un signal. Les features sont figées au birth ; le mouvement futur sert
+            seulement à mesurer l’importance rétrospective de l’épisode.
+          </p>
+          {(intelligence?.unseen_patterns ?? []).length ? (
+            <div className="intelligence-table">
+              <div className="intelligence-row unseen-pattern-row intelligence-head">
+                <span>Pattern birth</span>
+                <span>Épisodes</span>
+                <span>Actifs</span>
+                <span>BUY / SELL</span>
+                <span>Opposé</span>
+                <span>Neutre</span>
+                <span>Move moyen</span>
+                <span>|ret 6 M5|</span>
+                <span>Compression</span>
+              </div>
+              {(intelligence?.unseen_patterns ?? []).map((row) => (
+                <div className="intelligence-row unseen-pattern-row" key={row.pattern}>
+                  <strong>{row.pattern.replaceAll("_", " ")}</strong>
+                  <span>{row.episodes}</span>
+                  <span>
+                    {Object.entries(row.symbols)
+                      .sort((left, right) => right[1] - left[1])
+                      .map(([symbol, count]) => `${symbol} ${count}`)
+                      .join(" · ")}
+                  </span>
+                  <span>{row.buy_episodes} / {row.sell_episodes}</span>
+                  <span className={row.opposed_context_rate >= 0.5 ? "negative-text" : ""}>
+                    {(row.opposed_context_rate * 100).toFixed(0)} %
+                  </span>
+                  <span>{(row.neutral_context_rate * 100).toFixed(0)} %</span>
+                  <span>{row.average_move_atr.toFixed(2)} ATR</span>
+                  <span>{row.average_abs_return_6_atr.toFixed(2)} ATR</span>
+                  <span>{row.average_compression_6_24.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="strategy-empty">Aucune opportunité totalement invisible dans la fenêtre.</p>
           )}
         </div>
 

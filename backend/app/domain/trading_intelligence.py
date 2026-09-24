@@ -54,6 +54,19 @@ class OpportunityCausalPatternSummary(BaseModel):
     average_move_atr: float = Field(ge=0)
 
 
+class UnseenOpportunityPatternSummary(BaseModel):
+    pattern: OpportunityCausalPattern
+    episodes: int = Field(ge=0)
+    buy_episodes: int = Field(ge=0)
+    sell_episodes: int = Field(ge=0)
+    symbols: dict[str, int] = Field(default_factory=dict)
+    average_move_atr: float = Field(ge=0)
+    opposed_context_rate: float = Field(ge=0, le=1)
+    neutral_context_rate: float = Field(ge=0, le=1)
+    average_abs_return_6_atr: float = Field(ge=0)
+    average_compression_6_24: float = Field(ge=0)
+
+
 class TradeIntelligence(BaseModel):
     trade_id: str
     source: str
@@ -141,6 +154,9 @@ class TradingIntelligenceOverview(BaseModel):
     opportunities: list[MarketOpportunityEpisode] = Field(default_factory=list)
     assets: list[AssetIntelligence] = Field(default_factory=list)
     causal_patterns: list[OpportunityCausalPatternSummary] = Field(
+        default_factory=list
+    )
+    unseen_patterns: list[UnseenOpportunityPatternSummary] = Field(
         default_factory=list
     )
     limitations: list[str] = Field(default_factory=list)

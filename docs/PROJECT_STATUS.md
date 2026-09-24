@@ -1935,6 +1935,50 @@ This is directionally encouraging across all three windows but far below the ind
 
 Status: NEXT XAU CANDIDATE / REPLAY-POSITIVE / SAMPLE INSUFFICIENT.
 
+## 2026-09-24 — XAU M1 microstructure collection
+
+### Why
+
+XAUUSD still produces too few executable PAPER opportunities at the 400 EUR / 1% policy. The broker minimum lot is 0.01 and many M5/M15 structural stops exceed the 4 EUR base-risk budget. Fixed attempts to shorten existing strategy stops were rejected because they degraded independent expectancy.
+
+Additional fixed rejections after PR #108:
+
+- `failed_auction_reversal` with stop directly behind the sweep/reclaim candle: 324 executable trades, but train -0.110R, validation -0.053R, holdout -0.167R; REJECTED;
+- `directional_pullback_resumption` with stop behind the confirmation candle: 23 executable trades, train +0.547R, validation -0.700R, holdout 0.000R; REJECTED;
+- no existing disabled BTC/EUR/GBP/XAU strategy currently has independent evidence strong enough for a new PAPER admission. The six qualified collectors already represent the admissible set.
+
+### New data-only capability
+
+A separate `XAUUSD M1 microbar worker` is added for prospective microstructure collection. It reads only the Trading-New broker quote file `trading_demo_spec_XAUUSD.csv`, which is refreshed by MT4 about every 3 seconds.
+
+The worker:
+
+- samples once per second and deduplicates by broker timestamp;
+- accepts only quotes <=15 seconds old;
+- aggregates bid / ask / mid OHLC plus spread statistics into closed M1 bars;
+- never synthesizes missing minutes;
+- starts prospectively with no historical backfill;
+- writes only isolated research state/ledger/heartbeat files;
+- has no admission, portfolio, PAPER, DEMO or broker-command authority;
+- runs as a separate singleton process with independent PID, lock and heartbeat;
+- is intentionally not part of session preflight, so research collection cannot block trading.
+
+API and dashboard:
+
+- read-only `GET /api/v1/research/xau-microbars`;
+- Research card shows FLUX VIVANT/STALE, quote age, quote samples and closed M1 bars.
+
+Validation:
+
+- 16 targeted tests pass;
+- 264 full backend tests pass;
+- Ruff clean;
+- `start_trading.sh` / `stop_trading.sh` syntax clean;
+- frontend build clean;
+- real broker dry-run in `/tmp`: 70 quote samples in 70 seconds, 2 closed M1 bars, one complete minute with 60 quote samples, quote age ~2.3 seconds;
+- production runtime remained untouched during dry-run.
+
+Next research use after enough prospective M1 data: keep M5/M15 opportunity detection unchanged, and evaluate whether a causal M1 confirmation can provide naturally risk-feasible 1–4 USD XAU stops without increasing the 1% risk budget.
 ## 2026-09-24 — no-trade explainability candidate
 
 Current 24 h evidence behind the UI:

@@ -47,6 +47,7 @@ from app.domain.shadow_paper import ShadowPaperSummary
 from app.domain.trading_intelligence import TradingIntelligenceOverview
 from app.domain.trailing_shadow import TrailingShadowSummary
 from app.domain.xau_feasible_pullback_shadow import XauFeasiblePullbackSummary
+from app.domain.xau_microbar import XauMicrobarSummary
 from app.services.admission import (
     MIN_HOLDOUT_TRADES,
     MIN_VALIDATION_TRADES,
@@ -115,6 +116,7 @@ from app.services.trailing_shadow import load_trailing_shadow_summary
 from app.services.xau_feasible_pullback_shadow import (
     load_xau_feasible_pullback_summary,
 )
+from app.services.xau_microbar import load_xau_microbar_summary
 
 app = FastAPI(title=settings.app_name, version="0.4.0")
 market_store = MarketStore()
@@ -495,6 +497,17 @@ def research_trailing_shadow() -> TrailingShadowSummary:
 )
 def research_xau_feasible_pullback() -> XauFeasiblePullbackSummary:
     return load_xau_feasible_pullback_summary(settings.shadow_ledger_dir)
+
+
+@app.get(
+    f"{settings.api_prefix}/research/xau-microbars",
+    response_model=XauMicrobarSummary,
+)
+def research_xau_microbars() -> XauMicrobarSummary:
+    return load_xau_microbar_summary(
+        settings.shadow_ledger_dir,
+        now=datetime.now(tz=_server_timezone()),
+    )
 
 
 @app.post(

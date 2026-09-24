@@ -49,6 +49,21 @@ worker_healthy() {
   [ "$age" -le 180 ]
 }
 
+microbar_worker_healthy() {
+  local pid_file="$RUNTIME/pids/xau-microbar-worker.pid"
+  local heartbeat="$RUNTIME/shadow/XAUUSD_micro_m1_heartbeat.json"
+
+  pid_alive "$pid_file" || return 1
+  [ -f "$heartbeat" ] || return 1
+  grep -q '"ok": true' "$heartbeat" || return 1
+
+  local now mtime age
+  now="$(date +%s)"
+  mtime="$(stat -c %Y "$heartbeat" 2>/dev/null || echo 0)"
+  age=$((now - mtime))
+  [ "$age" -le 15 ]
+}
+
 if ! port_listening "$BACKEND_PORT"; then
   (
     exec 9>&-
@@ -80,6 +95,28 @@ if ! worker_healthy; then
     nohup .venv/bin/python -m app.shadow_worker \
       >>"$RUNTIME/logs/shadow-worker.log" 2>&1 &
     echo $! >"$RUNTIME/pids/shadow-worker.pid"
+  )
+fi
+
+if ! microbar_worker_healthy; then
+  if pid_alive "$RUNTIME/pids/xau-microbar-worker.pid"; then
+    old_microbar_pid="$(cat "$RUNTIME/pids/xau-microbar-worker.pid")"
+    kill "$old_microbar_pid" 2>/dev/null || true
+    for _ in $(seq 1 50); do
+      kill -0 "$old_microbar_pid" 2>/dev/null || break
+      sleep 0.1
+    done
+    if kill -0 "$old_microbar_pid" 2>/dev/null; then
+      echo "Refusing to start a second XAU microbar worker: PID $old_microbar_pid did not stop" >&2
+      exit 1
+    fi
+  fi
+  (
+    exec 9>&-
+    cd "$BASE/backend"
+    nohup .venv/bin/python -m app.xau_microbar_worker \
+      >>"$RUNTIME/logs/xau-microbar-worker.log" 2>&1 &
+    echo $! >"$RUNTIME/pids/xau-microbar-worker.pid"
   )
 fi
 

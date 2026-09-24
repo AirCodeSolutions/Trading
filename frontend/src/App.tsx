@@ -56,6 +56,27 @@ type XauFeasiblePullbackSummary = {
   } | null;
 };
 
+type XauMicrobarSummary = {
+  symbol: string;
+  timeframe: string;
+  started_at: string | null;
+  healthy: boolean;
+  quote_age_seconds: number | null;
+  last_quote_at: string | null;
+  total_quote_samples: number;
+  closed_bars: number;
+  latest_closed_bar_at: string | null;
+  current_bar: {
+    minute_at: string;
+    mid_open: number;
+    mid_high: number;
+    mid_low: number;
+    mid_close: number;
+    average_spread?: number;
+    quote_count: number;
+  } | null;
+};
+
 type ShadowSizing = {
   approved: boolean;
   reason: string;
@@ -908,6 +929,7 @@ export default function App() {
   const [trailingShadow, setTrailingShadow] = useState<TrailingShadowSummary | null>(null);
   const [xauFeasiblePullback, setXauFeasiblePullback] =
     useState<XauFeasiblePullbackSummary | null>(null);
+  const [xauMicrobars, setXauMicrobars] = useState<XauMicrobarSummary | null>(null);
   const [precursorForward, setPrecursorForward] = useState<PrecursorForwardResearch | null>(null);
   const [economicFeasibility, setEconomicFeasibility] = useState<EconomicFeasibilityReport | null>(null);
   const [dailyReport, setDailyReport] = useState<DailyTradingReport | null>(null);
@@ -959,6 +981,7 @@ export default function App() {
           intelligenceResponse,
           trailingShadowResponse,
           xauFeasiblePullbackResponse,
+          xauMicrobarsResponse,
           precursorForwardResponse,
           economicFeasibilityResponse,
           dailyReportResponse,
@@ -982,6 +1005,7 @@ export default function App() {
           fetch("/api/v1/intelligence/overview?hours=24"),
           fetch("/api/v1/research/trailing-shadow"),
           fetch("/api/v1/research/xau-feasible-pullback"),
+          fetch("/api/v1/research/xau-microbars"),
           fetch("/api/v1/research/precursor-forward"),
           fetch("/api/v1/research/economic-feasibility"),
           fetch("/api/v1/reports/daily"),
@@ -1023,6 +1047,9 @@ export default function App() {
         const xauFeasiblePullbackPayload = xauFeasiblePullbackResponse.ok
           ? await xauFeasiblePullbackResponse.json()
           : null;
+        const xauMicrobarsPayload = xauMicrobarsResponse.ok
+          ? await xauMicrobarsResponse.json()
+          : null;
         const precursorForwardPayload = precursorForwardResponse.ok
           ? await precursorForwardResponse.json()
           : null;
@@ -1055,6 +1082,7 @@ export default function App() {
         setIntelligence(intelligencePayload);
         setTrailingShadow(trailingShadowPayload);
         setXauFeasiblePullback(xauFeasiblePullbackPayload);
+        setXauMicrobars(xauMicrobarsPayload);
         setPrecursorForward(precursorForwardPayload);
         setEconomicFeasibility(economicFeasibilityPayload);
         setDailyReport(dailyReportPayload);
@@ -2065,7 +2093,7 @@ export default function App() {
       <section className="intelligence-panel" hidden={activeView !== "research"}>
         <div className="section-heading">
           <div>
-            <p className="eyebrow">TRADING INTELLIGENCE · 11 CHANTIERS</p>
+            <p className="eyebrow">TRADING INTELLIGENCE · 12 CHANTIERS</p>
             <h2>Comprendre avant de modifier</h2>
           </div>
           <p>
@@ -2135,6 +2163,26 @@ export default function App() {
                   xauFeasiblePullback.losses +
                   " non-gagnant(s). Research-only, risque ≤ 4 €."
                 : "Collecte prospective non initialisée. Aucun ordre broker."}
+            </p>
+          </div>
+          <div className="intelligence-card">
+            <span className="label">XAU · microstructure M1</span>
+            <strong className={xauMicrobars?.healthy ? "positive-text" : "negative-text"}>
+              {xauMicrobars?.started_at
+                ? xauMicrobars.healthy
+                  ? "FLUX VIVANT"
+                  : "FLUX STALE"
+                : "—"}
+            </strong>
+            <p>
+              {xauMicrobars?.started_at
+                ? xauMicrobars.closed_bars +
+                  " M1 close(s) · " +
+                  xauMicrobars.total_quote_samples +
+                  " quote(s) · âge " +
+                  (xauMicrobars.quote_age_seconds ?? 0).toFixed(1) +
+                  " s. Research-only."
+                : "Collecte M1 prospective non initialisée. Aucun ordre broker."}
             </p>
           </div>
           <div className="intelligence-card">

@@ -1761,3 +1761,43 @@ prospective strength is treated as small-sample/regime-specific evidence.
 
 The new API/dashboard surface is descriptive only. No signal, admission, PAPER,
 DEMO, risk, sizing, stop/target, spread or LIVE authority changes.
+
+## 2026-09-24 — PR #104 deployed + research checkpoint
+
+PR #104 `Add precursor forward excursion research` is MERGED + DEPLOYED at `abbdeca`.
+
+Deployment proof:
+
+- Trading-New book flat before deployment;
+- native DRAIN ON and second BOOK_FLAT proof passed;
+- backend and frontend restarted once; SHADOW worker was intentionally not restarted;
+- postflight backend healthy, READY 5/5, 24 scanners, 6 qualified collectors;
+- Research frontend exposes `Précurseurs · forward 12 M5` and the per-pattern excursion table;
+- 0 PAPER open, 0 Trading-New bridge position and 0 pending open/close command;
+- DRAIN released OFF after verification; auto-DEMO armed; LIVE remains OFF.
+
+Current causal-conversion evidence:
+
+- 51 precursor-eligible market opportunities;
+- 24 seen before birth, 22 of them PRECURSOR_ONLY;
+- only 2 precursor-covered opportunities converted to any strategy signal;
+- precursor-to-signal conversion = 8.3%;
+- 27 opportunities remained UNSEEN;
+- average precursor lead = 10 minutes.
+
+Current Forward-Excursion evidence:
+
+- 265 raw resolved precursor observations;
+- 48 independent no-overlap observations;
+- broad precursor set is not directionally positive overall;
+- `directional_displacement` remains weak prospectively;
+- `compression_breakout` prospective sample looked strong but failed fixed historical all-occurrence validation and is REJECTED as a standalone entry.
+
+Trailing Manager status is unchanged:
+
+- TP-only dynamic extension remains prospective SHADOW only;
+- standalone SL trailing is rejected;
+- post-extension protective SL is rejected for no incremental validation/holdout benefit;
+- no broker TP/SL modification is authorized.
+
+Next chantier: identify one genuinely additional causal discriminator that explains why a precursor converts into a tradable opportunity. Do not relax signal, risk, spread, lot or admission thresholds to manufacture frequency.

@@ -1447,3 +1447,14 @@ Frontend Research adds:
 
 No runtime execution behavior changes. Targeted backend tests and frontend Vite
 build pass.
+
+## 2026-09-24 — deployed precursor forward research
+
+PR #104 is active in production as a read-only research surface.
+
+Runtime authority is unchanged: 6 qualified collectors, base risk 1%, existing
+spread/lot/cap guards, auto-DEMO armed, DRAIN OFF, LIVE OFF.
+
+The next development track is `Precursor Conversion Discriminator`: one new
+causal information source at a time, evaluated on all precursor occurrences
+before any strategy implementation.

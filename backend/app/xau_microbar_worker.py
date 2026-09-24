@@ -9,7 +9,10 @@ from uuid import uuid4
 
 from app.core.config import settings
 from app.services.mt4_csv import _server_timezone
-from app.services.xau_microbar import sample_xau_microbar_once
+from app.services.xau_microbar import (
+    SUPPORTED_SYMBOLS,
+    sample_market_microbar_once,
+)
 
 SAMPLE_INTERVAL_SECONDS = 1.0
 HEARTBEAT_FILE = "XAUUSD_micro_m1_heartbeat.json"
@@ -28,25 +31,52 @@ def main() -> None:
     while True:
         now = datetime.now(tz=_server_timezone())
         try:
-            summary = sample_xau_microbar_once(
-                settings.mt4_files_dir,
-                settings.shadow_ledger_dir,
-                now,
-            )
+            summaries = {
+                symbol: sample_market_microbar_once(
+                    settings.mt4_files_dir,
+                    settings.shadow_ledger_dir,
+                    now,
+                    symbol=symbol,
+                )
+                for symbol in SUPPORTED_SYMBOLS
+            }
+            xau = summaries["XAUUSD"]
             _write_heartbeat(
                 heartbeat_path,
                 {
                     "at": now.isoformat(),
                     "ok": True,
-                    "healthy": summary.healthy,
+                    "healthy": all(
+                        summary.healthy for summary in summaries.values()
+                    ),
                     "last_quote_at": (
-                        summary.last_quote_at.isoformat()
-                        if summary.last_quote_at is not None
+                        xau.last_quote_at.isoformat()
+                        if xau.last_quote_at is not None
                         else None
                     ),
-                    "quote_age_seconds": summary.quote_age_seconds,
-                    "total_quote_samples": summary.total_quote_samples,
-                    "closed_bars": summary.closed_bars,
+                    "quote_age_seconds": xau.quote_age_seconds,
+                    "total_quote_samples": sum(
+                        summary.total_quote_samples
+                        for summary in summaries.values()
+                    ),
+                    "closed_bars": sum(
+                        summary.closed_bars
+                        for summary in summaries.values()
+                    ),
+                    "symbols": {
+                        symbol: {
+                            "healthy": summary.healthy,
+                            "last_quote_at": (
+                                summary.last_quote_at.isoformat()
+                                if summary.last_quote_at is not None
+                                else None
+                            ),
+                            "quote_age_seconds": summary.quote_age_seconds,
+                            "total_quote_samples": summary.total_quote_samples,
+                            "closed_bars": summary.closed_bars,
+                        }
+                        for symbol, summary in summaries.items()
+                    },
                     "error": None,
                 },
             )

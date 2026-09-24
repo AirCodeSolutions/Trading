@@ -38,7 +38,7 @@ from app.services.xau_feasible_pullback_shadow import (
     advance_xau_feasible_pullback_shadow_once,
 )
 from app.services.xau_unseen_transition_capture import (
-    capture_xau_unseen_transition_snapshots,
+    capture_unseen_transition_snapshots,
 )
 
 
@@ -244,14 +244,15 @@ def _update_observability(
             )
             write_trading_intelligence(intelligence_path, intelligence)
             try:
-                capture_xau_unseen_transition_snapshots(
+                capture_unseen_transition_snapshots(
                     settings.mt4_files_dir,
                     settings.shadow_ledger_dir,
                     intelligence,
                     now=now,
+                    symbols=settings.session_watch_symbols,
                 )
             except (OSError, TypeError, ValueError) as exc:
-                errors.append(f"xau_unseen_m1_transition: {exc!r}")
+                errors.append(f"market_unseen_m1_transition: {exc!r}")
             report = build_daily_trading_report(
                 settings.mt4_files_dir,
                 settings.shadow_ledger_dir,

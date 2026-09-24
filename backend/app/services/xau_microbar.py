@@ -16,9 +16,18 @@ from app.domain.xau_microbar import (
 from app.services.mt4_csv import mt4_epoch_to_server_datetime
 
 SYMBOL = "XAUUSD"
+SUPPORTED_SYMBOLS = ("BTCUSD", "EURUSD", "GBPUSD", "XAUUSD", "XAGUSD")
 STATE_FILE = "XAUUSD_micro_m1_state.json"
 LEDGER_FILE = "XAUUSD_micro_m1.jsonl"
 SEQUENCE_SNAPSHOT_FILE = "XAUUSD_sequence_microstructure.jsonl"
+
+
+def microbar_state_file(symbol: str) -> str:
+    return f"{symbol.upper()}_micro_m1_state.json"
+
+
+def microbar_ledger_file(symbol: str) -> str:
+    return f"{symbol.upper()}_micro_m1.jsonl"
 MAX_SAMPLE_AGE_SECONDS = 15.0
 RECENT_LIMIT = 20
 SEQUENCE_RECENT_LIMIT = 10
@@ -28,18 +37,23 @@ SEQUENCE_MECHANISMS = {
 }
 
 
-def sample_xau_microbar_once(
+def sample_market_microbar_once(
     files_dir: Path,
     runtime_dir: Path,
     now: datetime,
+    *,
+    symbol: str,
 ) -> XauMicrobarSummary:
-    state_path = runtime_dir / STATE_FILE
-    ledger_path = runtime_dir / LEDGER_FILE
+    normalized = symbol.upper()
+    if normalized not in SUPPORTED_SYMBOLS:
+        raise ValueError(f"unsupported microbar symbol: {normalized}")
+    state_path = runtime_dir / microbar_state_file(normalized)
+    ledger_path = runtime_dir / microbar_ledger_file(normalized)
     state = load_xau_microbar_state(state_path)
     if state is None:
         state = XauMicrobarState(started_at=now)
 
-    quote = read_xau_quote(files_dir)
+    quote = read_market_quote(files_dir, normalized)
     if quote is not None:
         quote_at, bid, ask = quote
         age = max(0.0, (now - quote_at).total_seconds())
@@ -53,13 +67,32 @@ def sample_xau_microbar_once(
             state = _apply_quote(state, quote_at, bid, ask, ledger_path)
 
     save_xau_microbar_state(state_path, state)
-    return load_xau_microbar_summary(runtime_dir, now=now)
+    return load_market_microbar_summary(
+        runtime_dir,
+        symbol=normalized,
+        now=now,
+    )
 
 
-def read_xau_quote(
+def sample_xau_microbar_once(
     files_dir: Path,
+    runtime_dir: Path,
+    now: datetime,
+) -> XauMicrobarSummary:
+    return sample_market_microbar_once(
+        files_dir,
+        runtime_dir,
+        now,
+        symbol=SYMBOL,
+    )
+
+
+def read_market_quote(
+    files_dir: Path,
+    symbol: str,
 ) -> tuple[datetime, float, float] | None:
-    path = files_dir / "trading_demo_spec_XAUUSD.csv"
+    normalized = symbol.upper()
+    path = files_dir / f"trading_demo_spec_{normalized}.csv"
     if not path.is_file():
         return None
     try:
@@ -72,7 +105,7 @@ def read_xau_quote(
 
     row = rows[-1]
     try:
-        if str(row.get("symbol", "")).strip().upper() != SYMBOL:
+        if str(row.get("symbol", "")).strip().upper() != normalized:
             return None
         quote_at = mt4_epoch_to_server_datetime(int(str(row["timestamp"])))
         bid = float(str(row["bid"]))
@@ -82,6 +115,12 @@ def read_xau_quote(
     if bid <= 0 or ask <= 0 or ask < bid:
         return None
     return quote_at, bid, ask
+
+
+def read_xau_quote(
+    files_dir: Path,
+) -> tuple[datetime, float, float] | None:
+    return read_market_quote(files_dir, SYMBOL)
 
 
 def _apply_quote(
@@ -348,23 +387,36 @@ def capture_xau_sequence_microstructure(
     )
 
 
-def load_xau_microbar_summary(
+def load_market_microbar_summary(
     runtime_dir: Path,
     *,
+    symbol: str,
     now: datetime,
 ) -> XauMicrobarSummary:
     from app.services.xau_unseen_transition_capture import (
-        UNSEEN_TRANSITION_FILE,
-        load_xau_unseen_transition_snapshots,
+        load_unseen_transition_snapshots,
+        unseen_transition_file,
     )
 
-    state = load_xau_microbar_state(runtime_dir / STATE_FILE)
-    rows = load_xau_microbars(runtime_dir / LEDGER_FILE)
-    snapshots = load_xau_sequence_microstructure_snapshots(
-        runtime_dir / SEQUENCE_SNAPSHOT_FILE
+    normalized = symbol.upper()
+    if normalized not in SUPPORTED_SYMBOLS:
+        raise ValueError(f"unsupported microbar symbol: {normalized}")
+
+    state = load_xau_microbar_state(
+        runtime_dir / microbar_state_file(normalized)
     )
-    unseen_transitions = load_xau_unseen_transition_snapshots(
-        runtime_dir / UNSEEN_TRANSITION_FILE
+    rows = load_xau_microbars(
+        runtime_dir / microbar_ledger_file(normalized)
+    )
+    snapshots = (
+        load_xau_sequence_microstructure_snapshots(
+            runtime_dir / SEQUENCE_SNAPSHOT_FILE
+        )
+        if normalized == SYMBOL
+        else []
+    )
+    unseen_transitions = load_unseen_transition_snapshots(
+        runtime_dir / unseen_transition_file(normalized)
     )
     last_quote_at = state.last_quote_at if state is not None else None
     quote_age = (
@@ -373,6 +425,7 @@ def load_xau_microbar_summary(
         else None
     )
     return XauMicrobarSummary(
+        symbol=normalized,
         started_at=state.started_at if state is not None else None,
         healthy=bool(
             quote_age is not None
@@ -393,4 +446,27 @@ def load_xau_microbar_summary(
         unseen_transition_snapshots=len(unseen_transitions),
         recent_unseen_transitions=unseen_transitions[-SEQUENCE_RECENT_LIMIT:][::-1],
         recent=rows[-RECENT_LIMIT:][::-1],
+    )
+
+
+def load_all_market_microbar_summaries(
+    runtime_dir: Path,
+    *,
+    now: datetime,
+) -> list[XauMicrobarSummary]:
+    return [
+        load_market_microbar_summary(runtime_dir, symbol=symbol, now=now)
+        for symbol in SUPPORTED_SYMBOLS
+    ]
+
+
+def load_xau_microbar_summary(
+    runtime_dir: Path,
+    *,
+    now: datetime,
+) -> XauMicrobarSummary:
+    return load_market_microbar_summary(
+        runtime_dir,
+        symbol=SYMBOL,
+        now=now,
     )

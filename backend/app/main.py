@@ -117,7 +117,10 @@ from app.services.trailing_shadow import load_trailing_shadow_summary
 from app.services.xau_feasible_pullback_shadow import (
     load_xau_feasible_pullback_summary,
 )
-from app.services.xau_microbar import load_xau_microbar_summary
+from app.services.xau_microbar import (
+    load_all_market_microbar_summaries,
+    load_xau_microbar_summary,
+)
 
 app = FastAPI(title=settings.app_name, version="0.4.0")
 market_store = MarketStore()
@@ -518,6 +521,17 @@ def research_trailing_shadow() -> TrailingShadowSummary:
 )
 def research_xau_feasible_pullback() -> XauFeasiblePullbackSummary:
     return load_xau_feasible_pullback_summary(settings.shadow_ledger_dir)
+
+
+@app.get(
+    f"{settings.api_prefix}/research/microbars",
+    response_model=list[XauMicrobarSummary],
+)
+def research_market_microbars() -> list[XauMicrobarSummary]:
+    return load_all_market_microbar_summaries(
+        settings.shadow_ledger_dir,
+        now=datetime.now(tz=_server_timezone()),
+    )
 
 
 @app.get(

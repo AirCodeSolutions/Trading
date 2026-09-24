@@ -1693,3 +1693,7 @@ Rejected in the same cycle: BTC directional-transition predecessor-regime gating
 Fixed broker account observability to aggregate unique broker tickets across all `mt4_data_*` symbol exports instead of counting positions from only the first file. This correctly reports external Freezebee positions while preserving strict ownership separation from Trading-New bridge tickets.
 
 PR #133 deployment also recorded: XAU compression precursor forward shadow is live research-only and starts at 0 resolved observations.
+
+## 2026-09-24 — post-PR134 checkpoint
+
+PR #134 is deployed with backend-only restart. Broker observed-position count now correctly reports the two external Freezebee tickets while Trading-New bridge positions remain zero. XAU precursor compression forward validation is active at 0/20 with no post-start compression precursor observed yet.

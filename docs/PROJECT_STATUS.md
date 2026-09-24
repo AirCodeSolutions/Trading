@@ -2844,3 +2844,23 @@ Observability bug found: `read_broker_demo_snapshot()` returned after the first 
 This changes reporting only. Demo-order gating continues to use Trading-New bridge positions for ownership isolation; sizing capital and the 5-lot cap are unchanged.
 
 Validation: dedicated RED/GREEN aggregation test, runtime-capital tests, 309 full backend tests and Ruff clean.
+
+## 2026-09-24 — PR #134 deployment checkpoint
+
+PR #134 (`4e94a63`) is merged and deployed.
+
+Postflight:
+- backend-only restart; shadow worker, multi-asset M1 worker, frontend and MT4 remained running;
+- drain returned OFF;
+- Trading-New remains flat: no PAPER, no bridge position, no pending command;
+- broker observability now correctly reports 2 external positions;
+- both external positions are Freezebee-owned (`magic=51051`, `FZ:` comment) and remain outside Trading-New ownership/control;
+- READY 5/5, 26 scanners, 7 qualified collectors;
+- hard 5-lot ceiling unchanged;
+- XAU precursor compression forward shadow remains research-only with `started_at=2026-09-24T18:44:59.544222+03:00`, 0/20 resolved forward-validation trades.
+
+As of this checkpoint no new XAU `compression_breakout` precursor has occurred after the forward-shadow start. The zero count is therefore genuine absence of post-deployment cases, not a collection failure. The eight positive development trades remain excluded from forward evidence.
+
+Current M1 prospective coverage is healthy on all five assets; XAU has the longest history, while BTC/EUR/GBP/XAG started with PR #132.
+
+Next performance decision remains gated on genuinely new forward observations. No threshold, admission, risk, stop, target or lot rule is relaxed while waiting.

@@ -2129,3 +2129,22 @@ Controlled activation:
 - session READY 5/5, 24 scanners, 6 qualified collectors, auto-DEMO armed, LIVE OFF.
 
 Operational meaning: the system can now hold BTC/XAU/EUR/GBP/XAG Trading-New DEMO positions concurrently when independent qualified signals exist. No trade is forced merely to increase frequency.
+
+## 2026-09-24 — broker-equity historical replay
+
+After DEMO runtime sizing moved from the fixed 400 EUR reference to MT4 broker equity, historical opportunity research was extended with an explicit `capital_eur` input so execution-feasibility comparisons can use either the reproducible 400 EUR baseline or the current DEMO capital without changing strategy logic.
+
+Controlled comparison: identical signals, frozen execution model, stops, targets, macro windows and no-overlap policy; only research capital changed from 400 EUR to 873,864.61 EUR.
+
+Main result: higher capital removes many minimum-lot rejections but does not by itself create robust edge.
+
+- XAU Asia Sweep: 12 -> 69 executed; train -0.170R, validation +0.127R, holdout +0.047R. Not promoted because train remains negative.
+- XAU break/retest: 24 -> 100; train +0.121R, validation -0.044R, holdout -0.304R. Rejected.
+- XAU directional pullback: 9 -> 66; train -0.160R, validation -0.156R, holdout +0.148R. Rejected.
+- XAU directional transition: 0 -> 226; train +0.081R, validation +0.171R, holdout -0.356R. Rejected.
+- XAU failed auction: 231 -> 673; all three windows negative. Rejected.
+- XAU post-shock: 34 -> 324; train -0.107R, validation -0.004R, holdout +0.193R. Rejected.
+- XAG failed auction becomes executable (19 trades) with positive train/validation but holdout -0.554R on 3 trades. Not promoted.
+- BTC structural displacement sequence improves 63 -> 67 executed and remains positive across all windows: train +0.126R (40), validation +0.192R (16), holdout +0.068R (11). It remains PAPER-collection eligible but under independent-support thresholds, so no admission change.
+
+No additional strategy becomes ACTIVE. Therefore higher DEMO capital is correctly treated as an execution-enabler, not as evidence of strategy quality.

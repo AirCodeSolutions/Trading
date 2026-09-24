@@ -1915,3 +1915,22 @@ Deployment proof:
 - DRAIN released OFF after verification; auto-DEMO armed; LIVE remains OFF.
 
 The new experiment remains research-only. It cannot create PAPER trades, broker commands or runtime admissions.
+
+### Queued XAU hypothesis — Asia Sweep stop buffer removal
+
+One additional replay was completed after PR #107 deployment, without changing runtime behavior.
+
+The existing XAU Asia Sweep signal was kept exactly unchanged. The only treatment was to remove the existing 0.15 ATR stop buffer and place the structural stop at the rejection candle extreme itself.
+
+Execution-aware result at the 400 EUR / 1% policy:
+
+- 69 original Asia Sweep candidates;
+- 22 economically executable trades with the tighter local stop;
+- 47 still blocked by minimum-lot risk;
+- train: n=13, expectancy +0.154R, PF 1.286, max DD 5R;
+- validation: n=5, expectancy +0.50R, PF 2.25, max DD 1R;
+- holdout: n=4, expectancy +0.875R, PF 4.5, max DD 1R.
+
+This is directionally encouraging across all three windows but far below the independent sample gate. It is therefore NOT activated in PAPER/DEMO and is not added as a second live SHADOW experiment while the risk-feasible pullback experiment is collecting.
+
+Status: NEXT XAU CANDIDATE / REPLAY-POSITIVE / SAMPLE INSUFFICIENT.

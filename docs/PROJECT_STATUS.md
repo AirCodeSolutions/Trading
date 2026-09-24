@@ -1801,3 +1801,33 @@ Trailing Manager status is unchanged:
 - no broker TP/SL modification is authorized.
 
 Next chantier: identify one genuinely additional causal discriminator that explains why a precursor converts into a tradable opportunity. Do not relax signal, risk, spread, lot or admission thresholds to manufacture frequency.
+
+## 2026-09-24 — precursor microstructure discriminator checkpoint
+
+Two fixed prospective microstructure hypotheses were evaluated against the
+independent 12-M5 precursor forward outcomes. No trading rule was changed.
+
+### Hypothesis A — lower spread / ATR improves follow-through
+
+- matched independent observations: 49;
+- correlation spread/ATR vs signed 12-M5 close return: +0.036;
+- lowest spread/ATR quartile: +0.021 ATR average signed close;
+- highest spread/ATR quartile: -0.059 ATR;
+- separation is too weak and inconsistent for a causal filter.
+
+Decision: REJECTED.
+
+### Hypothesis B — aligned 2-minute broker-mid velocity improves follow-through
+
+- matched independent observations: 49;
+- correlation aligned micro-velocity vs signed close return: +0.103;
+- lowest quartile was poor (-1.237 ATR close return);
+- highest quartile was only mildly positive (+0.141 ATR);
+- close-alignment rate was 33.3% in both extreme quartiles.
+
+Decision: REJECTED for implementation. The feature may describe short-term
+stress but does not provide enough independent evidence to alter signal logic.
+
+Next single-hypothesis research track: macro/event context at precursor first_seen
+(scheduled high-impact event proximity / before-vs-after state), attribution only
+before any strategy or execution change.

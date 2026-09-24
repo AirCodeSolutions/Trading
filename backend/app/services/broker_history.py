@@ -13,26 +13,66 @@ def summarize_trading_new_closed_tickets(
     magic_number: int,
     report_date: date,
 ) -> BrokerClosedSummary:
-    ticket_ids = _closed_tickets_from_audit(audit_path, report_date)
-    if not ticket_ids:
+    explicitly_closed = _closed_tickets_from_audit(
+        audit_path,
+        report_date,
+    )
+    opened_by_trading_new = _opened_tickets_from_audit(audit_path)
+    owned_tickets = explicitly_closed | opened_by_trading_new
+    if not owned_tickets:
         return BrokerClosedSummary(trades=0, realized_pnl_eur=0.0)
 
     history = _load_all_history(files_dir)
     matched = [
         trade
-        for ticket in sorted(ticket_ids)
+        for ticket in sorted(owned_tickets)
         if (trade := history.get(ticket)) is not None
         and trade.magic_number == magic_number
+        and trade.close_at.date() == report_date
     ]
     found_tickets = {trade.ticket for trade in matched}
-    missing = sorted(ticket_ids - found_tickets)
+    missing = sorted(explicitly_closed - found_tickets)
+    observed_or_expected = found_tickets | explicitly_closed
     return BrokerClosedSummary(
-        trades=len(ticket_ids),
+        trades=len(observed_or_expected),
         realized_pnl_eur=sum(trade.profit_eur for trade in matched),
         complete=not missing,
         missing_tickets=missing,
         closed_trades=matched,
     )
+
+
+def _opened_tickets_from_audit(path: Path) -> set[int]:
+    if not path.is_file():
+        return set()
+    open_commands: set[str] = set()
+    opened_tickets: set[int] = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        command_id = str(payload.get("command_id", ""))
+        event_type = payload.get("event_type")
+        if event_type == "open_command":
+            if command_id:
+                open_commands.add(command_id)
+            continue
+        if event_type != "bridge_result" or command_id not in open_commands:
+            continue
+        if str(payload.get("status", "")).lower() != "filled":
+            continue
+        try:
+            ticket = int(payload.get("ticket", 0) or 0)
+        except (TypeError, ValueError):
+            ticket = 0
+        if ticket > 0:
+            opened_tickets.add(ticket)
+    return opened_tickets
 
 
 def _closed_tickets_from_audit(path: Path, report_date: date) -> set[int]:

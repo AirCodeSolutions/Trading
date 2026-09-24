@@ -2486,3 +2486,59 @@ Prospective instrumentation added:
 - historical files remain compatible because context fields are optional.
 
 Validation: 43 targeted tests, 294 full backend tests, Ruff clean, frontend build clean. Runtime is unchanged until this PR is deployed; no risk/lot/SL/TP/admission/LIVE change.
+
+## 2026-09-24 — PR #124 deployed + XAU break/retest demotion + broker PnL reconciliation fix
+
+PR #124 (`ca3fc88`) is merged and deployed.
+
+Deployment proof:
+- drain ON;
+- second BOOK_FLAT proof passed;
+- backend + canonical shadow worker restarted only;
+- MT4, XAU M1 worker and frontend preserved;
+- 26 scanners, 8 qualified collectors at deployment;
+- macro context visible in runtime diagnostics;
+- drain returned OFF, READY 5/5, LIVE OFF.
+
+### XAU break/retest prospective loss and revalidation
+
+A real Trading-New DEMO/PAPER XAU break/retest trade opened at the 2026-09-24 13:30 M5 signal:
+- side SELL;
+- PAPER reference entry 4244.90;
+- broker fill 4245.22;
+- SL 4252.69;
+- TP 4230.88;
+- 11.22 lots;
+- PAPER result: -1.0R / -8,738.22 EUR;
+- broker ticket 185357042 closed natively by SL at 4252.69;
+- broker realized PnL: -7,374.50 EUR.
+
+The loss triggered a one-family broker-equity revalidation of `XAUUSD:break_retest_reaccel`.
+
+Current-capital historical replay (866,496.26 EUR):
+- 135 candidates / 100 executed;
+- train 33: +0.1208R, PF 1.218;
+- validation 51: -0.04385R, PF 0.927;
+- holdout 16: -0.30364R, PF 0.559;
+- admission result remains SHADOW but `paper_collection_candidate=false`.
+
+Targeted registry dry-run proved only `XAUUSD:break_retest_reaccel` changes. Runtime admission was then updated under drain while flat:
+- paper collection flag true -> false;
+- all other admissions unchanged;
+- qualified collectors 8 -> 7;
+- drain returned OFF;
+- XAU break/retest remains observable in SHADOW but has no PAPER/DEMO entry authority.
+
+### Native broker SL/TP realized PnL bug
+
+The daily report incorrectly showed zero broker realized PnL because broker reconciliation only tracked tickets with an explicit Trading-New `close_command`. Native broker SL/TP closures have no close command.
+
+Fix: identify Trading-New ownership from filled bridge open commands, then intersect those owned tickets with MT4 closed-history records for the report date and magic number. Explicit close commands remain a completeness check.
+
+Real production validation with ticket 185357042 now returns:
+- trades=1;
+- realized_pnl_eur=-7,374.50;
+- complete=true;
+- closed ticket metadata from `mt4_history_XAUUSD.json`.
+
+Validation: 4 broker-history tests including native-SL RED/GREEN, 295 full backend tests, Ruff clean. No risk/lot/SL/TP/LIVE change.

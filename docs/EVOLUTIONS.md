@@ -1679,3 +1679,11 @@ This collector has no order/admission authority and is intentionally prospective
 Generalized the existing broker-native M1 collector and unseen-transition ledger to all five Trading-New assets while preserving the XAU compatibility surface. Added multi-asset API/dashboard observability. One singleton worker still samples all symbols.
 
 No trading authority changes.
+
+## 2026-09-24 — XAU precursor compression forward shadow
+
+Added a research-only forward execution shadow for prospective XAU `compression_breakout` precursor observations. The forward contract is frozen at next-M5 entry, 1.5 ATR stop, 1R target and 12-M5 horizon, with current macro/cost/broker-equity/5-lot policies.
+
+The shadow deliberately starts from zero at deployment: the 8 XAU selection trades (+0.321R expectancy, PF 2.285) are not backfilled into validation. Dashboard observability shows resolved count, expectancy, PF, wins/losses and DD. No order/admission authority is added.
+
+Rejected in the same cycle: BTC directional-transition predecessor-regime gating and GBP failed-auction London-session gating.

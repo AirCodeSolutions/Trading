@@ -3,6 +3,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from app.domain.broker import BrokerSymbolSpec
+from app.domain.macro import MacroSignalContext, MacroSignalPhase
 from app.domain.market import MarketBar, Timeframe
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.regime import MarketRegime
@@ -349,3 +350,26 @@ def test_prospective_guard_blocks_only_new_paper_entry(tmp_path: Path) -> None:
 
     assert still_open.open_trade is not None
     assert still_open.open_trade.trade_id == allowed.open_trade.trade_id
+
+
+def test_paper_trade_preserves_macro_signal_context() -> None:
+    context = MacroSignalContext(
+        phase=MacroSignalPhase.POST_SAFE,
+        at=START + timedelta(minutes=5),
+        event_id="nfp",
+        event_name="NFP",
+        event_start_at=START - timedelta(minutes=40),
+        safe_resume_at=START,
+        minutes_from_safe_resume=5.0,
+    )
+    trade = create_paper_trade(
+        diagnostic=diagnostic().model_copy(
+            update={"macro_context": context}
+        ),
+        spec=spec(),
+        evaluated_at=START + timedelta(minutes=5, seconds=2),
+    )
+
+    assert trade.macro_context is not None
+    assert trade.macro_context.phase == MacroSignalPhase.POST_SAFE
+    assert trade.macro_context.event_id == "nfp"

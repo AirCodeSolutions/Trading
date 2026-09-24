@@ -9,6 +9,23 @@ class MacroImpact(StrEnum):
     HIGH = "high"
 
 
+class MacroSignalPhase(StrEnum):
+    BLACKOUT = "blackout"
+    POST_SAFE = "post_safe"
+    NORMAL = "normal"
+
+
+class MacroSignalContext(BaseModel):
+    phase: MacroSignalPhase
+    at: datetime
+    event_id: str | None = None
+    event_name: str | None = None
+    event_start_at: datetime | None = None
+    safe_resume_at: datetime | None = None
+    minutes_from_safe_resume: float | None = None
+    post_safe_window_minutes: int = Field(default=135, ge=0)
+
+
 class MacroEvent(BaseModel):
     event_id: str
     name: str

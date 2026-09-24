@@ -110,6 +110,17 @@ type ShadowSizing = {
   spread_to_stop: number;
 };
 
+type MacroSignalContext = {
+  phase: "blackout" | "post_safe" | "normal";
+  at: string;
+  event_id: string | null;
+  event_name: string | null;
+  event_start_at: string | null;
+  safe_resume_at: string | null;
+  minutes_from_safe_resume: number | null;
+  post_safe_window_minutes: number;
+};
+
 type ShadowDiagnostic = {
   symbol: string;
   mechanism: string;
@@ -128,6 +139,7 @@ type ShadowDiagnostic = {
   target_r: number | null;
   max_holding_bars: number | null;
   base_risk: ShadowSizing | null;
+  macro_context: MacroSignalContext | null;
   reason: string;
 };
 
@@ -3149,7 +3161,19 @@ export default function App() {
               <span>{item.regime.replaceAll("_", " ")}</span>
               <span>{item.side?.toUpperCase() ?? "—"}</span>
               <span>{new Date(item.latest_closed_m5_at).toLocaleTimeString("fr-FR")}</span>
-              <span className="opportunity-reason">{item.reason}</span>
+              <span className="opportunity-reason">
+                {item.reason}
+                {item.macro_context?.phase === "post_safe"
+                  ? " · POST_SAFE · " +
+                    (item.macro_context.event_name ?? "macro") +
+                    " · +" +
+                    Math.round(item.macro_context.minutes_from_safe_resume ?? 0) +
+                    "m"
+                  : item.macro_context?.phase === "blackout"
+                    ? " · BLACKOUT · " +
+                      (item.macro_context.event_name ?? "macro")
+                    : ""}
+              </span>
               <span>
                 {item.state === "signal_executable" && item.side ? (
                   <button

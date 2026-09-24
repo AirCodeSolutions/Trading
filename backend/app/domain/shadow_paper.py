@@ -3,6 +3,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
+from app.domain.macro import MacroSignalContext
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.trading import Side
 
@@ -31,6 +32,7 @@ class ShadowPaperTrade(BaseModel):
     risk_distance: float = Field(gt=0)
     target_r: float = Field(gt=0)
     max_holding_bars: int = Field(gt=0)
+    macro_context: MacroSignalContext | None = None
     status: PaperTradeStatus = PaperTradeStatus.OPEN
     exit_at: datetime | None = None
     exit_price: float | None = None

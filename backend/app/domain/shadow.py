@@ -3,6 +3,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
+from app.domain.macro import MacroSignalContext
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.regime import MarketRegime
 from app.domain.shadow_paper import ShadowPaperSummary
@@ -49,6 +50,7 @@ class ShadowOpportunityDiagnostic(BaseModel):
     max_holding_bars: int | None = Field(default=None, gt=0)
     base_risk: ShadowSizingSnapshot | None = None
     max_risk: ShadowSizingSnapshot | None = None
+    macro_context: MacroSignalContext | None = None
     reason: str
 
 

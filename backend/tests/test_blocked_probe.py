@@ -3,6 +3,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from app.domain.broker import BrokerSymbolSpec
+from app.domain.macro import MacroSignalContext, MacroSignalPhase
 from app.domain.market import MarketBar, Timeframe
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.regime import MarketRegime
@@ -228,3 +229,26 @@ def test_existing_open_probe_is_enriched_with_capital_feasibility(
     assert second.open_probe is not None
     assert second.open_probe.min_lot_loss_eur == 3.0
     assert second.open_probe.required_capital_max_risk_eur == 150.0
+
+
+def test_blocked_probe_preserves_macro_signal_context() -> None:
+    context = MacroSignalContext(
+        phase=MacroSignalPhase.POST_SAFE,
+        at=START + timedelta(minutes=5),
+        event_id="cpi",
+        event_name="CPI",
+        event_start_at=START - timedelta(minutes=40),
+        safe_resume_at=START,
+        minutes_from_safe_resume=5.0,
+    )
+    probe = create_blocked_probe(
+        diagnostic=diagnostic().model_copy(
+            update={"macro_context": context}
+        ),
+        spec=spec(),
+        evaluated_at=START + timedelta(minutes=5, seconds=2),
+    )
+
+    assert probe.macro_context is not None
+    assert probe.macro_context.phase == MacroSignalPhase.POST_SAFE
+    assert probe.macro_context.event_id == "cpi"

@@ -126,6 +126,7 @@ def create_blocked_probe(
             if diagnostic.max_risk is not None
             else None
         ),
+        macro_context=diagnostic.macro_context,
     )
     return _with_capital_feasibility(probe, spec)
 

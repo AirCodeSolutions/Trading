@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.domain.macro import MacroSignalContext
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.shadow_paper import PaperTradeStatus
 from app.domain.trading import Side
@@ -30,6 +31,7 @@ class BlockedOpportunityProbe(BaseModel):
     required_capital_max_risk_eur: float = Field(default=0.0, ge=0)
     minimum_feasible_risk_fraction: float = Field(default=0.0, ge=0)
     capital_granularity_feasible_under_max_risk: bool = False
+    macro_context: MacroSignalContext | None = None
     status: PaperTradeStatus = PaperTradeStatus.OPEN
     exit_at: datetime | None = None
     exit_price: float | None = None

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from app.core.config import ExecutionMode, settings
@@ -7,6 +7,10 @@ from app.domain.opportunity import OpportunityMechanism
 from app.domain.shadow import ShadowCollectionResult
 from app.services.admission import paper_entry_allowed
 from app.services.blocked_probe import advance_blocked_probe_book
+from app.services.macro_gate import (
+    classify_macro_signal_context,
+    load_macro_events,
+)
 from app.services.market_universe import build_market_universe
 from app.services.mt4_market_data import load_closed_market_bars
 from app.services.mt4_specs import get_mt4_symbol_spec
@@ -46,6 +50,7 @@ def collect_all_shadow_once(
     results: list[ShadowCollectionResult] = []
     admissions = load_research_admissions(runtime_dir / "strategy_admissions.json")
     runtime_capital = resolve_demo_sizing_capital(files_dir)
+    macro_events = load_macro_events(settings.macro_events_path)
     sizing_capital_eur: float | None = None
     if settings.execution_mode == ExecutionMode.DEMO:
         sizing_capital_eur = runtime_capital.capital_eur or 0.0
@@ -88,6 +93,15 @@ def collect_all_shadow_once(
                 mechanism,
                 evaluated_at,
                 capital_eur=sizing_capital_eur,
+            )
+            signal_at = diagnostic.latest_closed_m5_at + timedelta(minutes=5)
+            diagnostic = diagnostic.model_copy(
+                update={
+                    "macro_context": classify_macro_signal_context(
+                        macro_events,
+                        signal_at,
+                    )
+                }
             )
             slug = _MECHANISM_SLUG[mechanism]
             prefix = f"{asset.symbol}_{slug}"

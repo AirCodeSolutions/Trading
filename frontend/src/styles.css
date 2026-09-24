@@ -1613,6 +1613,11 @@ h1 {
   }
 }
 
+.precursor-forward-row {
+  min-width: 960px;
+  grid-template-columns: 1.6fr 0.7fr 0.8fr 0.8fr 1fr 1fr 1fr;
+}
+
 .economic-feasibility-row {
   min-width: 980px;
   grid-template-columns: 0.8fr 0.9fr 1fr 1fr 1.2fr 1fr 1fr;

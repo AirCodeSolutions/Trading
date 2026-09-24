@@ -37,6 +37,7 @@ from app.domain.opportunity import (
 )
 from app.domain.opportunity_funnel import OpportunityFunnel
 from app.domain.portfolio import MarketUniverseAsset, TradingOverview
+from app.domain.precursor_forward_research import PrecursorForwardResearchReport
 from app.domain.qualification_history import QualificationHistoryEvent
 from app.domain.regime import RegimeSnapshot
 from app.domain.runtime_control import RuntimeDrainRequest, RuntimeDrainState
@@ -86,6 +87,7 @@ from app.services.opportunity_backtester import run_opportunity_backtest
 from app.services.opportunity_funnel import build_opportunity_funnel
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.portfolio_overview import build_trading_overview
+from app.services.precursor_forward_research import build_precursor_forward_research
 from app.services.prospective_qualification import MIN_PROSPECTIVE_TRADES
 from app.services.qualification_history import load_qualification_history
 from app.services.regime import classify_regime
@@ -341,6 +343,19 @@ def trading_intelligence_overview(hours: int = 24) -> TradingIntelligenceOvervie
         settings.shadow_ledger_dir,
         now=datetime.now(tz=_server_timezone()),
         window_hours=hours,
+        symbols=settings.session_watch_symbols,
+    )
+
+
+@app.get(
+    f"{settings.api_prefix}/research/precursor-forward",
+    response_model=PrecursorForwardResearchReport,
+)
+def precursor_forward_research() -> PrecursorForwardResearchReport:
+    return build_precursor_forward_research(
+        _mt4_files_dir(),
+        settings.shadow_ledger_dir,
+        now=datetime.now(tz=_server_timezone()),
         symbols=settings.session_watch_symbols,
     )
 

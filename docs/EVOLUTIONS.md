@@ -1426,3 +1426,24 @@ PR #102 is active. Future market opportunities born after prospective precursor 
 The Research view reports precursor-to-signal conversion and lead time. This is observability only and leaves all execution/admission/risk rules unchanged.
 
 Post-deploy: READY 5/5, DRAIN OFF, LIVE OFF, 6 qualified collectors, 0 PAPER/bridge/pending command.
+
+## 2026-09-24 — Precursor Forward-Excursion Pack
+
+Backend research additions:
+
+- `PrecursorForwardResearchReport` with raw and independent no-overlap samples;
+- forward 12-M5 favorable MFE / adverse MAE / signed close return for every
+  prospective causal precursor;
+- summaries by causal pattern and by symbol;
+- read-only `/api/v1/research/precursor-forward` endpoint;
+- fixed historical validation script for a selected existing causal pattern,
+  with no threshold/grid search.
+
+Frontend Research adds:
+
+- `Précurseurs · forward 12 M5` summary card;
+- compact per-pattern table with independent sample, MFE, MAE, signed close
+  return, favorable dominance and close alignment.
+
+No runtime execution behavior changes. Targeted backend tests and frontend Vite
+build pass.

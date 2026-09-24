@@ -36,6 +36,7 @@ def build_demo_guard(
     *,
     bridge_positions: list[DemoBridgePosition] | None = None,
     drain_enabled: bool = False,
+    target_symbol: str | None = None,
 ) -> DemoExecutionGuard:
     reasons: list[str] = []
     broker_is_demo = bool(overview.broker and overview.broker.is_demo)
@@ -83,12 +84,16 @@ def build_demo_guard(
         and not settings.demo_collection_enabled
     ):
         reasons.append("demo collection is disabled")
-    if bridge_position_count > 0:
-        reasons.append("Trading-New bridge already has open position")
+    normalized_target = target_symbol.upper() if target_symbol else None
+    if normalized_target is not None and any(
+        position.symbol.upper() == normalized_target
+        for position in (bridge_positions or [])
+    ):
+        reasons.append(
+            f"Trading-New bridge already has open position for {normalized_target}"
+        )
     if remaining_daily_loss <= 0:
         reasons.append("daily loss budget is exhausted")
-    if overview.risk.selected_open_risk_eur > remaining_daily_loss:
-        reasons.append("selected trade risk exceeds remaining daily loss budget")
     if macro.blocked:
         reasons.append(macro.reason)
 
@@ -128,27 +133,32 @@ def submit_selected_demo_order(
         macro,
         now,
         bridge_positions=bridge_positions,
+        target_symbol=proposal.symbol,
     )
     if not guard.ready:
         raise ValueError("; ".join(guard.reasons))
     if proposal.status != ProposalStatus.AUTHORIZED:
         raise ValueError("execution proposal is not authorized")
-    selected = overview.portfolio.selected_strategy_id
-    if selected is None or proposal.strategy_id != selected:
-        raise ValueError("proposal does not match selected portfolio strategy")
-
     row = next(
         (
             item
             for item in overview.paper_strategies
-            if item.strategy_id == selected and item.summary.open_trade is not None
+            if item.strategy_id == proposal.strategy_id
+            and item.summary.open_trade is not None
         ),
         None,
     )
     if row is None or row.summary.open_trade is None:
-        raise ValueError("selected strategy has no open paper trade")
+        raise ValueError("proposal strategy has no open paper trade")
+    if (
+        not row.paper_entry_allowed
+        and proposal.strategy_id != overview.portfolio.selected_strategy_id
+    ):
+        raise ValueError("proposal strategy is not PAPER-entry eligible")
 
     trade = row.summary.open_trade
+    if trade.risk_eur > overview.risk.remaining_daily_loss_budget_eur:
+        raise ValueError("trade risk exceeds remaining daily loss budget")
     if proposal.symbol.upper() != trade.symbol.upper():
         raise ValueError("proposal symbol does not match selected paper trade")
     if proposal.side != trade.side:
@@ -167,7 +177,7 @@ def submit_selected_demo_order(
         lots=trade.lots,
         stop_loss=trade.stop_price,
         take_profit=trade.target_price,
-        strategy_id=selected,
+        strategy_id=proposal.strategy_id,
         issued_at=now,
         magic_number=settings.demo_magic_number,
         slippage_points=settings.demo_max_slippage_points,

@@ -142,14 +142,25 @@ def build_manual_demo_preview(
         reasons.append("live trading must remain disabled for manual demo")
     if overview.broker is None or not overview.broker.is_demo:
         reasons.append("broker account is not confirmed as demo")
-    if overview.risk.research_paper_open_positions > 0:
-        reasons.append("manual demo is blocked while a PAPER trade is open")
+    if any(
+        row.summary.open_trade is not None
+        and row.symbol.upper() == symbol
+        for row in overview.paper_strategies
+    ):
+        reasons.append(
+            f"manual demo is blocked while a PAPER trade is open for {symbol}"
+        )
     if macro.blocked:
         reasons.append(macro.reason)
 
     bridge_positions = read_demo_positions(files_dir / POSITIONS_FILE)
-    if bridge_positions:
-        reasons.append("Trading-New bridge already has open position")
+    if any(
+        position.symbol.upper() == symbol
+        for position in bridge_positions
+    ):
+        reasons.append(
+            f"Trading-New bridge already has open position for {symbol}"
+        )
     if read_pending_command(files_dir / COMMAND_FILE) is not None:
         reasons.append("a demo open command is already pending")
     if read_pending_close_command(files_dir / CLOSE_COMMAND_FILE) is not None:

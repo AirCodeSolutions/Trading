@@ -299,7 +299,7 @@ void ProcessCommandLocked()
       return;
    }
 
-   if(HasBridgePosition())
+   if(HasBridgePositionForSymbol(symbol))
    {
       WriteResult(commandId, "REFUSED", 0, 9105, 0, stopLoss, takeProfit);
       FileDelete(COMMAND_FILE);
@@ -411,7 +411,7 @@ void ProcessCommandLocked()
    FileDelete(COMMAND_FILE);
 }
 
-bool HasBridgePosition()
+bool HasBridgePositionForSymbol(string symbol)
 {
    for(int i = OrdersTotal() - 1; i >= 0; i--)
    {
@@ -419,7 +419,10 @@ bool HasBridgePosition()
          continue;
       if(OrderMagicNumber() != MagicNumber)
          continue;
-      if(OrderType() == OP_BUY || OrderType() == OP_SELL)
+      if(
+         OrderSymbol() == symbol
+         && (OrderType() == OP_BUY || OrderType() == OP_SELL)
+      )
          return(true);
    }
    return(false);

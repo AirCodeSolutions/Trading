@@ -1539,3 +1539,13 @@ Changes cover position sizing, SHADOW/PAPER diagnostics, manual DEMO preview, li
 `reference_capital_eur` in runtime views now reflects the effective broker-derived capital and exposes its source. `research_fallback_capital_eur` retains the fixed historical fallback for reproducible backtests.
 
 No risk fraction, spread threshold, margin fraction, stop geometry, target or LIVE flag was relaxed.
+
+## 2026-09-24 — multi-symbol DEMO execution
+
+Removed the global Trading-New one-position bottleneck while keeping command transport serialized.
+
+Backend and MT4 now enforce one broker position per symbol instead of one position for the whole Trading-New portfolio. Auto-collection can advance through multiple PAPER-eligible symbols, broker position state is authoritative, and automatic close ownership is matched by exact `TradingNew:<strategy_id>` comments.
+
+Manual DEMO blocking is also per-symbol. Drain behavior and other-system isolation are preserved.
+
+Validation: 273 backend tests, Ruff clean, Vite build clean, MQL4 compile 0 errors / 0 warnings.

@@ -413,7 +413,7 @@ def test_manual_preview_rejects_stale_quote(
     assert "broker quote is stale" in preview.reasons
 
 
-def test_manual_preview_rejects_while_paper_is_open(
+def test_manual_preview_does_not_globally_block_for_other_paper_positions(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -428,8 +428,8 @@ def test_manual_preview_rejects_while_paper_is_open(
         now=NOW,
     )
 
-    assert preview.approved is False
-    assert "manual demo is blocked while a PAPER trade is open" in preview.reasons
+    assert preview.approved is True
+    assert not any("PAPER trade is open" in reason for reason in preview.reasons)
 
 
 def test_manual_submit_requires_explicit_confirmation(

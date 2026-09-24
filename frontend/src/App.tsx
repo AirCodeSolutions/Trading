@@ -2026,7 +2026,7 @@ export default function App() {
         ) : null}
 
         {manualMessage ? <p className="manual-message">{manualMessage}</p> : null}
-        <p className="manual-warning">DEMO uniquement. Le manuel est bloqué si un PAPER ou une position Trading-New est déjà ouvert. LIVE reste verrouillé.</p>
+        <p className="manual-warning">DEMO uniquement. Plusieurs actifs peuvent être ouverts en parallèle ; un nouveau trade est bloqué seulement si le même symbole a déjà un PAPER/Trading-New ouvert. LIVE reste verrouillé.</p>
       </section>
 
       <section

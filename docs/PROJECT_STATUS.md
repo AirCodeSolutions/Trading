@@ -2060,3 +2060,42 @@ All examples remain within the existing 1% policy and margin policy. They are DE
 Current read-only scanner replay after the sizing change: 24/24 scanners were `no_signal` at that instant; therefore the absence of a trade at that moment was signal scarcity, not capital granularity.
 
 The next separate chantier is multi-symbol broker concurrency: retain one MT4 command in flight at a time but allow filled Trading-New positions on different symbols to coexist. Same-symbol stacking will remain blocked.
+
+## 2026-09-24 — multi-symbol Trading-New DEMO concurrency
+
+After PR #112 moved runtime sizing to the actual MT4 DEMO equity, the remaining structural blocker was the global one-position Trading-New rule. The user explicitly requires simultaneous testing across all retained assets.
+
+New execution contract:
+
+- Trading-New may hold positions concurrently on different symbols;
+- at most one Trading-New broker position per symbol;
+- one MT4 open/close command file remains in flight at a time;
+- the next free-symbol PAPER opportunity can be submitted on a following worker cycle;
+- same-symbol stacking remains fail-closed in both Python and MQL4;
+- positions owned by other MT4 systems remain outside Trading-New control because the bridge exports only its MagicNumber;
+- unknown/manual Trading-New positions are never auto-closed by the automatic collector unless their `TradingNew:<strategy_id>` comment exactly matches a known PAPER strategy.
+
+Automatic DEMO collection no longer stores one filled ticket as global ownership. `trading_demo_positions.csv` is the broker truth for already-filled positions, while `demo_collection_state.json` tracks only command transport and a bounded set of completed PAPER trade IDs.
+
+Open candidate selection scans every PAPER-entry-eligible strategy, excludes symbols already occupied by Trading-New and excludes already-completed PAPER trade IDs. One candidate is submitted per worker cycle, oldest signal first.
+
+Close management scans bridge positions by exact strategy comment. When the matching PAPER strategy has no open PAPER trade, one close command is submitted. Drain ON continues to block new entries while still permitting these managed closes.
+
+Manual DEMO entry is also symbol-scoped: an open BTC PAPER/Trading-New position does not block manual XAU, but an existing XAU PAPER/Trading-New position does.
+
+MQL4 bridge change:
+
+- `HasBridgePosition()` replaced by `HasBridgePositionForSymbol(symbol)`;
+- error 9105 is retained for same-symbol duplicate attempts;
+- bridge command serialization and MagicNumber ownership are unchanged.
+
+Validation:
+
+- 33 focused multi-symbol/demo tests pass;
+- 273 full backend tests pass;
+- Ruff clean;
+- frontend Vite build clean;
+- updated MQL4 bridge compiles with MetaEditor: 0 errors, 0 warnings;
+- active MT4 bridge provenance verified as root `MQL4/Experts/TradingDemoExecutionBridge`, matching the repo source. The stale `Experts/TradingNew` copy is not used for deployment.
+
+Operational goal after deployment: BTC, XAU, EUR, GBP and XAG may coexist when each has an independently PAPER-eligible executable signal. This capability does not invent signals and does not alter 1% per-trade risk, spread policy, stops, targets or LIVE lock.

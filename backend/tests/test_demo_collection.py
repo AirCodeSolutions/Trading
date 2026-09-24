@@ -169,7 +169,7 @@ def test_demo_collection_closes_remaining_bridge_ticket_after_paper_timeout(tmp_
     )
     (tmp_path / "trading_demo_positions.csv").write_text(
         "ticket,symbol,side,lots,open_price,stop_loss,take_profit,profit,open_time,comment\n"
-        "321,GBPUSD,BUY,0.01,1.3400,1.3380,1.3430,0,2026.09.21 17:00,TradingNew:GBPUSD\n",
+        f"321,GBPUSD,BUY,0.01,1.3400,1.3380,1.3430,0,2026.09.21 17:00,TradingNew:{STRATEGY}\n",
         encoding="utf-8",
     )
     closed = trade(status=PaperTradeStatus.TIMEOUT)
@@ -178,7 +178,20 @@ def test_demo_collection_closes_remaining_bridge_ticket_after_paper_timeout(tmp_
         encoding="utf-8",
     )
 
-    advance_demo_collection(tmp_path, runtime, overview(None), macro(), NOW + timedelta(hours=1))
+    advance_demo_collection(
+        tmp_path,
+        runtime,
+        overview(None),
+        macro(),
+        NOW + timedelta(hours=1),
+    )
+    advance_demo_collection(
+        tmp_path,
+        runtime,
+        overview(None),
+        macro(),
+        NOW + timedelta(hours=1, seconds=30),
+    )
 
     close_command = read_pending_close_command(tmp_path / "trading_demo_close_command.csv")
     assert close_command is not None
@@ -250,7 +263,7 @@ def test_demo_collection_drain_still_allows_existing_close(
     )
     (tmp_path / "trading_demo_positions.csv").write_text(
         "ticket,symbol,side,lots,open_price,stop_loss,take_profit,profit,open_time,comment\n"
-        "321,GBPUSD,BUY,0.01,1.3400,1.3380,1.3430,0,2026.09.21 17:00,TradingNew:GBPUSD\n",
+        f"321,GBPUSD,BUY,0.01,1.3400,1.3380,1.3430,0,2026.09.21 17:00,TradingNew:{STRATEGY}\n",
         encoding="utf-8",
     )
     closed = trade(status=PaperTradeStatus.TIMEOUT)
@@ -265,6 +278,14 @@ def test_demo_collection_drain_still_allows_existing_close(
         overview(None),
         macro(),
         NOW + timedelta(hours=1),
+        allow_new_entries=False,
+    )
+    advance_demo_collection(
+        tmp_path,
+        runtime,
+        overview(None),
+        macro(),
+        NOW + timedelta(hours=1, seconds=30),
         allow_new_entries=False,
     )
 

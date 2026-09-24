@@ -110,3 +110,73 @@ def test_broker_history_ignores_other_magic_number(tmp_path: Path) -> None:
 
     assert summary.complete is False
     assert summary.missing_tickets == [123]
+
+
+def test_broker_history_counts_native_sl_close_from_trading_new_open(
+    tmp_path: Path,
+) -> None:
+    audit = tmp_path / "demo_execution_audit.jsonl"
+    audit_rows = [
+        {
+            "event_id": "open-command",
+            "event_type": "open_command",
+            "at": "2026-09-24T13:30:16+03:00",
+            "command_id": "open-1",
+            "symbol": "XAUUSD",
+            "strategy_id": "XAUUSD:break_retest_reaccel",
+            "side": "sell",
+            "ticket": 0,
+        },
+        {
+            "event_id": "open-result",
+            "event_type": "bridge_result",
+            "at": "2026-09-24T13:31:23+03:00",
+            "command_id": "open-1",
+            "symbol": "XAUUSD",
+            "strategy_id": "XAUUSD:break_retest_reaccel",
+            "side": "sell",
+            "ticket": 185357042,
+            "status": "filled",
+        },
+    ]
+    audit.write_text(
+        "\n".join(json.dumps(row) for row in audit_rows) + "\n",
+        encoding="utf-8",
+    )
+    payload = {
+        "timestamp": "1790256800",
+        "symbol": "XAUUSD",
+        "history": {
+            "185357042": {
+                "ticket": "185357042",
+                "symbol": "XAUUSD",
+                "type": "SELL",
+                "lots": "11.22000000",
+                "openPrice": "4245.22000000",
+                "closePrice": "4252.69000000",
+                "stopLoss": "4252.69000000",
+                "takeProfit": "4230.88000000",
+                "profit": "-7374.50000000",
+                "openTime": "1790256653",
+                "closeTime": "1790256797",
+                "magic": "560619",
+                "comment": "[sl]",
+            }
+        },
+    }
+    (tmp_path / "mt4_history_XAUUSD.json").write_text(
+        json.dumps(payload),
+        encoding="utf-8",
+    )
+
+    summary = summarize_trading_new_closed_tickets(
+        tmp_path,
+        audit,
+        magic_number=560619,
+        report_date=date(2026, 9, 24),
+    )
+
+    assert summary.complete is True
+    assert summary.trades == 1
+    assert summary.realized_pnl_eur == -7374.5
+    assert summary.closed_trades[0].ticket == 185357042

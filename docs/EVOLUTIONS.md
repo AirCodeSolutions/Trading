@@ -1629,3 +1629,11 @@ Classification is fixed and research-only: `blackout`, `post_safe` (safe resume 
 Added `analyze_post_macro_opportunities.py` for reproducible broker-equity historical stratification and lightweight POST_SAFE annotations in the Opportunity dashboard.
 
 Historical result does not authorize a strategy: XAU failed auction is promising but only 6 POST_SAFE trades; BTC failed auction is negative; XAU directional transition fails holdout.
+
+## 2026-09-24 — demote XAU break/retest + reconcile native broker closes
+
+Revalidated XAU break/retest at current broker-equity sizing after its first prospective loss. Validation and holdout are negative, so only that family was demoted from PAPER/DEMO authority. Qualified collectors decrease 8 -> 7; all other admissions remain unchanged.
+
+Broker realized-PnL reconciliation now recognizes Trading-New tickets closed natively by MT4 SL/TP, using filled Trading-New open-command ownership plus broker closed history. Explicit close commands remain a completeness check.
+
+Production ticket 185357042 now reconciles to -7,374.50 EUR instead of being omitted from the daily broker PnL.

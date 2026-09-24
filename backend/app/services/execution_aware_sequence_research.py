@@ -61,6 +61,7 @@ def build_execution_aware_sequence_report(
     sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
     target_r: float = DEFAULT_TARGET_R,
     max_holding_bars: int = DEFAULT_MAX_HOLDING_BARS,
+    capital_eur: float | None = None,
 ) -> ExecutionAwareSequenceResearchReport:
     if train_end >= validation_end:
         raise ValueError("train_end must be earlier than validation_end")
@@ -71,11 +72,16 @@ def build_execution_aware_sequence_report(
     if max_holding_bars <= 0:
         raise ValueError("max_holding_bars must be positive")
 
+    selected_capital = capital_eur or settings.reference_capital_eur
+    if selected_capital <= 0:
+        raise ValueError("capital_eur must be positive")
+
     economic = build_economic_feasibility_report(
         files_dir,
         execution_model_path,
         symbols,
         generated_at=generated_at,
+        capital_eur=selected_capital,
     )
     economic_by_symbol = {asset.symbol: asset for asset in economic.assets}
     execution_model = load_research_execution_model(execution_model_path)
@@ -127,6 +133,7 @@ def build_execution_aware_sequence_report(
                 stop_atr_multiple=best_profile.stop_atr_multiple,
                 target_r=target_r,
                 max_holding_bars=max_holding_bars,
+                capital_eur=selected_capital,
             )
         )
 
@@ -137,7 +144,7 @@ def build_execution_aware_sequence_report(
         sequence_length=sequence_length,
         target_r=target_r,
         max_holding_bars=max_holding_bars,
-        reference_capital_eur=settings.reference_capital_eur,
+        reference_capital_eur=selected_capital,
         assets=assets,
     )
 
@@ -153,6 +160,7 @@ def _analyze_asset(
     stop_atr_multiple: float,
     target_r: float,
     max_holding_bars: int,
+    capital_eur: float,
 ) -> AssetExecutionAwareSequenceResearch:
     bars = read_mt4_csv(
         resolve_mt4_history_path(files_dir, symbol, Timeframe.M5),
@@ -164,6 +172,7 @@ def _analyze_asset(
         spec=spec,
         mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
         split=split,
+        capital_eur=capital_eur,
         macro_events=macro_events,
     )
 

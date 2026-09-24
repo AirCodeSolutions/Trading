@@ -1563,3 +1563,9 @@ Deployment proof: account flat, drain ON during activation, MT4 bridge reloaded 
 Opportunity backtests and portfolio research now accept optional `capital_eur`. This lets research compare the historical 400 EUR baseline with broker-equity execution feasibility while preserving deterministic historical experiments.
 
 Runtime strategy logic and admissions are unchanged. The first broker-equity matrix produced no new ACTIVE family; it primarily increased XAU/XAG executable sample size and strengthened the already-positive BTC structural displacement sequence evidence.
+
+## 2026-09-24 — broker-equity execution-aware sequence research
+
+Added optional `capital_eur` to economic-feasibility and execution-aware sequence research, including CLI support. This removes the obsolete 400 EUR feasibility ceiling from DEMO-equity research while preserving the old default when no override is supplied.
+
+Discovery result: a new XAU three-state sequence (`directional_displacement -> structural_extreme -> directional_displacement`) is robust enough for a separate SHADOW/PAPER candidate PR. No runtime scanner or admission is changed in this research PR.

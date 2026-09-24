@@ -36,14 +36,18 @@ def build_economic_feasibility_report(
     *,
     generated_at: datetime,
     risk_fraction: float | None = None,
+    capital_eur: float | None = None,
     stop_atr_multiples: tuple[float, ...] = DEFAULT_STOP_ATR_MULTIPLES,
 ) -> EconomicFeasibilityReport:
     if not stop_atr_multiples or any(value <= 0 for value in stop_atr_multiples):
         raise ValueError("stop_atr_multiples must all be positive")
 
     selected_risk = risk_fraction or settings.risk_per_trade_fraction
+    selected_capital = capital_eur or settings.reference_capital_eur
     if selected_risk <= 0 or selected_risk > settings.absolute_max_risk_fraction:
         raise ValueError("risk_fraction is outside the configured policy")
+    if selected_capital <= 0:
+        raise ValueError("capital_eur must be positive")
 
     execution_model = load_research_execution_model(execution_model_path)
     live_specs = list_mt4_symbol_specs(files_dir)
@@ -60,13 +64,14 @@ def build_economic_feasibility_report(
                 symbol.upper(),
                 spec=spec,
                 risk_fraction=selected_risk,
+                capital_eur=selected_capital,
                 stop_atr_multiples=stop_atr_multiples,
             )
         )
 
     return EconomicFeasibilityReport(
         generated_at=generated_at,
-        reference_capital_eur=settings.reference_capital_eur,
+        reference_capital_eur=selected_capital,
         risk_fraction=selected_risk,
         max_spread_to_stop=settings.max_spread_to_stop,
         max_margin_fraction=settings.max_margin_fraction,
@@ -81,6 +86,7 @@ def _analyze_asset_feasibility(
     *,
     spec: BrokerSymbolSpec,
     risk_fraction: float,
+    capital_eur: float,
     stop_atr_multiples: tuple[float, ...],
 ) -> AssetEconomicFeasibility:
     bars = read_mt4_csv(
@@ -99,10 +105,9 @@ def _analyze_asset_feasibility(
     spread_floor, risk_ceiling, minimum_capital = _feasible_stop_envelope(
         spec,
         risk_fraction=risk_fraction,
+        capital_eur=capital_eur,
     )
-    max_margin_budget = (
-        settings.reference_capital_eur * settings.max_margin_fraction
-    )
+    max_margin_budget = capital_eur * settings.max_margin_fraction
     min_lot_margin = spec.margin_required * spec.min_lot
     interval = (
         spread_floor <= risk_ceiling
@@ -114,6 +119,7 @@ def _analyze_asset_feasibility(
             episodes,
             spec=spec,
             risk_fraction=risk_fraction,
+            capital_eur=capital_eur,
             stop_atr_multiple=multiple,
         )
         for multiple in stop_atr_multiples
@@ -131,6 +137,7 @@ def _analyze_asset_feasibility(
                     grouped.get(pattern, []),
                     spec=spec,
                     risk_fraction=risk_fraction,
+                    capital_eur=capital_eur,
                     stop_atr_multiple=multiple,
                 )
                 for multiple in stop_atr_multiples
@@ -158,9 +165,11 @@ def _feasible_stop_envelope(
     spec: BrokerSymbolSpec,
     *,
     risk_fraction: float,
+    capital_eur: float | None = None,
 ) -> tuple[float, float, float]:
+    selected_capital = capital_eur or settings.reference_capital_eur
     spread_floor = spec.spread / settings.max_spread_to_stop
-    risk_budget = settings.reference_capital_eur * risk_fraction
+    risk_budget = selected_capital * risk_fraction
     risk_ceiling = (
         risk_budget
         * spec.tick_size
@@ -192,6 +201,7 @@ def _summarize_stop_profile(
     *,
     spec: BrokerSymbolSpec,
     risk_fraction: float,
+    capital_eur: float | None = None,
     stop_atr_multiple: float,
 ) -> StopFeasibilitySummary:
     approved_results = []
@@ -214,6 +224,7 @@ def _summarize_stop_profile(
                 entry=entry,
                 stop=stop,
                 requested_risk_fraction=risk_fraction,
+                capital_eur=capital_eur,
             )
         )
         if result.approved:

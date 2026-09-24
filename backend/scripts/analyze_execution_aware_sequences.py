@@ -23,6 +23,12 @@ def main() -> None:
     )
     parser.add_argument("--sequence-length", type=int, default=3)
     parser.add_argument("--target-r", type=float, default=1.0)
+    parser.add_argument(
+        "--capital-eur",
+        type=float,
+        default=None,
+        help="Explicit research capital; defaults to configured fallback.",
+    )
     args = parser.parse_args()
 
     report = build_execution_aware_sequence_report(
@@ -35,6 +41,7 @@ def main() -> None:
         validation_end=datetime(2026, 9, 1, tzinfo=ATHENS),
         sequence_length=args.sequence_length,
         target_r=args.target_r,
+        capital_eur=args.capital_eur,
     )
     print(json.dumps(report.model_dump(mode="json"), indent=2))
 

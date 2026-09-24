@@ -6,6 +6,7 @@ from app.domain.shadow import ShadowCollectionResult
 from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
 from app.services.mt4_live_bars import read_closed_bar_snapshot
 from app.services.mt4_specs import get_mt4_symbol_spec
+from app.services.runtime_capital import resolve_demo_sizing_capital
 from app.services.shadow_ledger import append_shadow_observation
 from app.services.shadow_paper import advance_shadow_paper_book
 
@@ -26,11 +27,13 @@ def collect_btc_break_retest_once(
 
     bars_m5 = read_closed_bar_snapshot(m5_path, "BTCUSD", Timeframe.M5)
     bars_m15 = read_closed_bar_snapshot(m15_path, "BTCUSD", Timeframe.M15)
+    runtime_capital = resolve_demo_sizing_capital(files_dir)
     diagnostic = scan_btc_break_retest_shadow(
         bars_m5,
         bars_m15,
         spec,
         evaluated_at,
+        capital_eur=runtime_capital.capital_eur or 0.0,
     )
     appended = append_shadow_observation(ledger_path, diagnostic)
 

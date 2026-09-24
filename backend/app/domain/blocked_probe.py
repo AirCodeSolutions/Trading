@@ -22,6 +22,7 @@ class BlockedOpportunityProbe(BaseModel):
     target_r: float = Field(gt=0)
     max_holding_bars: int = Field(gt=0)
     block_reason: str
+    capital_eur: float = Field(default=0.0, ge=0)
     max_risk_approved: bool
     max_risk_reason: str | None = None
     min_lot_loss_eur: float = Field(default=0.0, ge=0)

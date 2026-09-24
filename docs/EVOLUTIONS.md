@@ -1529,3 +1529,13 @@ Operational result: dedicated M1 worker healthy, canonical shadow worker unchang
 First production M1 closed successfully with 58 quote samples; the worker continued collecting with fresh broker quotes (~2.5 s age).
 
 No strategy/risk/admission change was made.
+
+## 2026-09-24 — broker-equity DEMO sizing
+
+Replaced the active 400 EUR DEMO sizing base with broker account equity (balance fallback).
+
+Changes cover position sizing, SHADOW/PAPER diagnostics, manual DEMO preview, live market-quality economics, portfolio daily-loss budget and runtime config observability.
+
+`reference_capital_eur` in runtime views now reflects the effective broker-derived capital and exposes its source. `research_fallback_capital_eur` retains the fixed historical fallback for reproducible backtests.
+
+No risk fraction, spread threshold, margin fraction, stop geometry, target or LIVE flag was relaxed.

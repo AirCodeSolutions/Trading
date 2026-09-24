@@ -200,6 +200,7 @@ def build_manual_demo_preview(
                 entry=entry,
                 stop=request.stop_loss,
                 requested_risk_fraction=request.risk_fraction,
+                capital_eur=overview.risk.reference_capital_eur,
             )
         )
         if not sizing.approved:

@@ -11,7 +11,7 @@ from app.services.portfolio_overview import build_trading_overview
 TZ = ZoneInfo("Europe/Athens")
 
 
-def test_overview_keeps_demo_balance_separate_from_400_eur_reference(
+def test_overview_uses_demo_broker_equity_as_runtime_capital(
     tmp_path: Path,
 ) -> None:
     files_dir = tmp_path / "mt4"
@@ -43,7 +43,11 @@ def test_overview_keeps_demo_balance_separate_from_400_eur_reference(
 
     assert overview.broker is not None
     assert overview.broker.balance == 873900
-    assert overview.risk.reference_capital_eur == 400
+    assert overview.broker.equity == 873800
+    assert overview.risk.reference_capital_eur == 873800
+    assert overview.risk.reference_capital_source == "broker_equity"
+    assert overview.risk.max_daily_loss_eur == 26214
+    assert overview.risk.remaining_daily_loss_budget_eur == 26214
     assert overview.portfolio.action == "no_trade"
     assert overview.qualifications == []
     assert overview.paper_strategies == []

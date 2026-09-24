@@ -42,7 +42,8 @@ def size_position(request: PositionSizeRequest) -> PositionSizeResult:
             "spread consumes too much of the stop distance",
         )
 
-    risk_budget = settings.reference_capital_eur * risk_fraction
+    capital_eur = request.capital_eur or settings.reference_capital_eur
+    risk_budget = capital_eur * risk_fraction
     loss_per_lot = monetary_loss_per_lot(request.spec, stop_distance)
     min_lot_loss = loss_per_lot * request.spec.min_lot
 
@@ -71,7 +72,7 @@ def size_position(request: PositionSizeRequest) -> PositionSizeResult:
 
     expected_loss = loss_per_lot * lots
     margin = request.spec.margin_required * lots
-    max_margin = settings.reference_capital_eur * settings.max_margin_fraction
+    max_margin = capital_eur * settings.max_margin_fraction
     if margin > max_margin:
         return _rejected(
             request,
@@ -115,7 +116,8 @@ def _rejected(
     min_lot_loss: float = 0,
     margin: float = 0,
 ) -> PositionSizeResult:
-    risk_budget = settings.reference_capital_eur * risk_fraction
+    capital_eur = request.capital_eur or settings.reference_capital_eur
+    risk_budget = capital_eur * risk_fraction
     spread_to_stop = spread / stop_distance if stop_distance > 0 else 0
     if min_lot_loss == 0 and stop_distance > 0:
         min_lot_loss = monetary_loss_per_lot(request.spec, stop_distance) * request.spec.min_lot

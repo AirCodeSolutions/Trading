@@ -8,6 +8,7 @@ from app.services.capital_risk import monetary_loss_per_lot, size_position
 
 
 def assess_market(request: MarketQualityRequest) -> MarketQualityResult:
+    capital_eur = request.capital_eur or settings.reference_capital_eur
     spread_m5 = request.spec.spread / request.atr_m5
     spread_m15 = request.spec.spread / request.atr_m15
 
@@ -16,6 +17,7 @@ def assess_market(request: MarketQualityRequest) -> MarketQualityResult:
             spec=request.spec,
             entry=request.spec.ask,
             stop=request.spec.ask - request.atr_m15,
+            capital_eur=capital_eur,
         )
     )
     absolute_sizing = size_position(
@@ -24,6 +26,7 @@ def assess_market(request: MarketQualityRequest) -> MarketQualityResult:
             entry=request.spec.ask,
             stop=request.spec.ask - request.atr_m15,
             requested_risk_fraction=settings.absolute_max_risk_fraction,
+            capital_eur=capital_eur,
         )
     )
 
@@ -32,7 +35,7 @@ def assess_market(request: MarketQualityRequest) -> MarketQualityResult:
     )
     required_base = min_lot_loss / settings.risk_per_trade_fraction
     required_max = min_lot_loss / settings.absolute_max_risk_fraction
-    minimum_fraction = min_lot_loss / settings.reference_capital_eur
+    minimum_fraction = min_lot_loss / capital_eur
     cost_score = max(0.0, 1.0 - spread_m15 / settings.max_spread_to_stop)
     capital_score = 1.0 if absolute_sizing.approved else 0.0
     score = round(100 * (0.7 * cost_score + 0.3 * capital_score), 1)

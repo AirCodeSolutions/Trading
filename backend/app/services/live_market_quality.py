@@ -7,6 +7,7 @@ from app.services.market_quality import assess_market
 from app.services.mt4_market_data import load_closed_market_bars
 from app.services.mt4_specs import get_mt4_symbol_spec
 from app.services.opportunity_strategies import _atr_series
+from app.services.runtime_capital import resolve_demo_sizing_capital
 
 
 def build_live_market_quality(
@@ -15,6 +16,8 @@ def build_live_market_quality(
     symbols: tuple[str, ...],
 ) -> list[MarketQualityResult]:
     rows: list[MarketQualityResult] = []
+    runtime_capital = resolve_demo_sizing_capital(files_dir)
+    capital_eur = runtime_capital.capital_eur
 
     for symbol in symbols:
         normalized = symbol.upper()
@@ -48,6 +51,7 @@ def build_live_market_quality(
                     spec=spec,
                     atr_m5=atr_m5,
                     atr_m15=atr_m15,
+                    capital_eur=capital_eur,
                 )
             )
         )

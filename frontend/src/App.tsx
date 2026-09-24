@@ -608,6 +608,29 @@ type TradingIntelligence = {
   limitations: string[];
 };
 
+type PrecursorForwardSummary = {
+  label: string;
+  raw_resolved: number;
+  independent_resolved: number;
+  average_favorable_mfe_atr: number;
+  average_adverse_mae_atr: number;
+  average_signed_close_return_atr: number;
+  favorable_dominance_rate: number;
+  close_alignment_rate: number;
+};
+
+type PrecursorForwardResearch = {
+  generated_at: string;
+  prospective_started_at: string | null;
+  horizon_bars: number;
+  raw_resolved: number;
+  independent_resolved: number;
+  pending: number;
+  overall: PrecursorForwardSummary;
+  by_pattern: PrecursorForwardSummary[];
+  by_symbol: PrecursorForwardSummary[];
+};
+
 type EconomicFeasibilityReport = {
   generated_at: string;
   reference_capital_eur: number;
@@ -847,6 +870,7 @@ export default function App() {
   const [opportunityFunnel, setOpportunityFunnel] = useState<OpportunityFunnel | null>(null);
   const [intelligence, setIntelligence] = useState<TradingIntelligence | null>(null);
   const [trailingShadow, setTrailingShadow] = useState<TrailingShadowSummary | null>(null);
+  const [precursorForward, setPrecursorForward] = useState<PrecursorForwardResearch | null>(null);
   const [economicFeasibility, setEconomicFeasibility] = useState<EconomicFeasibilityReport | null>(null);
   const [dailyReport, setDailyReport] = useState<DailyTradingReport | null>(null);
   const [qualificationHistory, setQualificationHistory] = useState<QualificationHistoryEvent[]>([]);
@@ -896,6 +920,7 @@ export default function App() {
           opportunityFunnelResponse,
           intelligenceResponse,
           trailingShadowResponse,
+          precursorForwardResponse,
           economicFeasibilityResponse,
           dailyReportResponse,
           qualificationHistoryResponse
@@ -917,6 +942,7 @@ export default function App() {
           fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           fetch("/api/v1/intelligence/overview?hours=24"),
           fetch("/api/v1/research/trailing-shadow"),
+          fetch("/api/v1/research/precursor-forward"),
           fetch("/api/v1/research/economic-feasibility"),
           fetch("/api/v1/reports/daily"),
           fetch("/api/v1/qualification/history?limit=50")
@@ -954,6 +980,9 @@ export default function App() {
         const trailingShadowPayload = trailingShadowResponse.ok
           ? await trailingShadowResponse.json()
           : null;
+        const precursorForwardPayload = precursorForwardResponse.ok
+          ? await precursorForwardResponse.json()
+          : null;
         const economicFeasibilityPayload = economicFeasibilityResponse.ok
           ? await economicFeasibilityResponse.json()
           : null;
@@ -982,6 +1011,7 @@ export default function App() {
         setOpportunityFunnel(opportunityFunnelPayload);
         setIntelligence(intelligencePayload);
         setTrailingShadow(trailingShadowPayload);
+        setPrecursorForward(precursorForwardPayload);
         setEconomicFeasibility(economicFeasibilityPayload);
         setDailyReport(dailyReportPayload);
         setQualificationHistory(qualificationHistoryPayload);
@@ -1924,7 +1954,7 @@ export default function App() {
       <section className="intelligence-panel" hidden={activeView !== "research"}>
         <div className="section-heading">
           <div>
-            <p className="eyebrow">TRADING INTELLIGENCE · 9 CHANTIERS</p>
+            <p className="eyebrow">TRADING INTELLIGENCE · 10 CHANTIERS</p>
             <h2>Comprendre avant de modifier</h2>
           </div>
           <p>
@@ -2006,6 +2036,26 @@ export default function App() {
                   intelligence.average_precursor_lead_minutes.toFixed(1) +
                   " min."
                 : "Collecte prospective non initialisée. Aucun historique first_seen n’est backfillé."}
+            </p>
+          </div>
+          <div className="intelligence-card">
+            <span className="label">Précurseurs · forward 12 M5</span>
+            <strong>
+              {precursorForward
+                ? precursorForward.independent_resolved +
+                  " indépendants"
+                : "—"}
+            </strong>
+            <p>
+              {precursorForward
+                ? "MFE " +
+                  precursorForward.overall.average_favorable_mfe_atr.toFixed(2) +
+                  " ATR · MAE " +
+                  precursorForward.overall.average_adverse_mae_atr.toFixed(2) +
+                  " ATR · clôture alignée " +
+                  (precursorForward.overall.close_alignment_rate * 100).toFixed(1) +
+                  " %. Research-only."
+                : "Mesure prospective non disponible."}
             </p>
           </div>
           <div className="intelligence-card">
@@ -2146,6 +2196,44 @@ export default function App() {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="intelligence-subsection">
+          <h3>Précurseurs · excursion prospective</h3>
+          <p className="intelligence-note">
+            Toutes les occurrences prospectives sont mesurées sur 12 M5. La vue
+            indépendante retire les observations qui se chevauchent sur un même actif.
+            Aucun résultat n’autorise une entrée ou une promotion automatique.
+          </p>
+          {precursorForward ? (
+            <div className="intelligence-table">
+              <div className="intelligence-row precursor-forward-row intelligence-head">
+                <span>Pattern</span>
+                <span>n indép.</span>
+                <span>MFE</span>
+                <span>MAE</span>
+                <span>Clôture signée</span>
+                <span>Dom. favorable</span>
+                <span>Clôture alignée</span>
+              </div>
+              {precursorForward.by_pattern.map((row) => (
+                <div className="intelligence-row precursor-forward-row" key={row.label}>
+                  <strong>{row.label}</strong>
+                  <span>{row.independent_resolved}</span>
+                  <span>{row.average_favorable_mfe_atr.toFixed(2)} ATR</span>
+                  <span>{row.average_adverse_mae_atr.toFixed(2)} ATR</span>
+                  <span className={row.average_signed_close_return_atr >= 0 ? "positive-text" : "negative-text"}>
+                    {row.average_signed_close_return_atr >= 0 ? "+" : ""}
+                    {row.average_signed_close_return_atr.toFixed(2)} ATR
+                  </span>
+                  <span>{(row.favorable_dominance_rate * 100).toFixed(1)} %</span>
+                  <span>{(row.close_alignment_rate * 100).toFixed(1)} %</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="strategy-empty">Mesure prospective non disponible.</p>
+          )}
         </div>
 
         <div className="intelligence-subsection">

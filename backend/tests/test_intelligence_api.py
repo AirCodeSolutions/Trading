@@ -9,6 +9,10 @@ from app.core.config import settings
 from app.domain.daily_report import DailyTradingReport
 from app.domain.execution_audit import ExecutionQualitySummary
 from app.domain.portfolio import PortfolioAction, ProspectiveQualificationState
+from app.domain.precursor_forward_research import (
+    PrecursorForwardResearchReport,
+    PrecursorForwardSummary,
+)
 from app.domain.qualification_history import QualificationHistoryEvent
 from app.domain.trading_intelligence import TradingIntelligenceOverview
 from app.main import app
@@ -234,3 +238,42 @@ def test_economic_feasibility_endpoint_is_404_without_snapshot(
     )
 
     assert response.status_code == 404
+
+
+def test_precursor_forward_endpoint_is_read_only(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "shadow_ledger_dir", tmp_path)
+    monkeypatch.setattr(settings, "mt4_files_dir", tmp_path)
+    report = PrecursorForwardResearchReport(
+        generated_at=NOW,
+        prospective_started_at=NOW,
+        horizon_bars=12,
+        raw_resolved=8,
+        independent_resolved=3,
+        pending=1,
+        overall=PrecursorForwardSummary(
+            label="all",
+            raw_resolved=8,
+            independent_resolved=3,
+            average_favorable_mfe_atr=2.0,
+            average_adverse_mae_atr=1.0,
+            average_signed_close_return_atr=0.5,
+            favorable_dominance_rate=2 / 3,
+            close_alignment_rate=2 / 3,
+        ),
+        by_pattern=[],
+        by_symbol=[],
+        recent_independent=[],
+    )
+    monkeypatch.setattr(
+        "app.main.build_precursor_forward_research",
+        lambda *args, **kwargs: report,
+    )
+
+    response = TestClient(app).get("/api/v1/research/precursor-forward")
+
+    assert response.status_code == 200
+    assert response.json()["independent_resolved"] == 3
+    assert response.json()["overall"]["average_signed_close_return_atr"] == 0.5

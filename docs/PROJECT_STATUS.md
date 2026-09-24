@@ -1706,3 +1706,58 @@ Deployment safety:
 - DRAIN released OFF after verification; auto-DEMO armed; LIVE OFF.
 
 The prospective first_seen denominator is still 0 immediately after deployment because the collector only started at 21:08:36 Europe/Athens and each market-first opportunity requires the full 12-M5 future horizon before it can be classified. This is expected and prevents premature conclusions.
+
+## 2026-09-24 — Precursor Forward-Excursion research candidate
+
+The prospective causal-precursor collector has now accumulated enough overnight
+observations to diagnose the first_seen conversion gap.
+
+Current 24 h conversion funnel:
+
+- 51 market opportunities born after precursor collection start;
+- 24 / 51 had an aligned precursor before birth (47.1%);
+- 22 were PRECURSOR_ONLY: the engine saw causal direction but no strategy signal followed;
+- 2 precursor-covered opportunities became SIGNAL_BLOCKED;
+- 0 precursor-covered opportunities became SIGNAL_EXECUTABLE;
+- precursor -> any signal conversion = 8.3%;
+- 27 / 51 remained completely UNSEEN;
+- average first_seen lead = 10 minutes.
+
+This points to a conversion problem after causal detection, not merely a lack of
+market sensing.
+
+A new research-only Forward-Excursion Pack evaluates every prospective precursor
+occurrence over the next 12 closed M5 bars without conditioning on future market
+opportunities. To avoid duplicate evidence, it also produces a no-overlap sample
+per symbol.
+
+Current prospective sample:
+
+- 265 resolved raw precursor observations;
+- 48 independent no-overlap observations;
+- overall average favorable MFE 1.94 ATR;
+- overall average adverse MAE 1.88 ATR;
+- overall signed close return -0.19 ATR;
+- close alignment only 37.5%.
+
+By pattern, `directional_displacement` is frequent but weak prospectively:
+29 independent observations, -0.75 ATR average signed close return and 24.1%
+close alignment.
+
+`compression_breakout` looked promising prospectively on only 8 independent
+observations: +2.21 ATR average signed close return, 3.14 ATR MFE versus
+0.86 ATR MAE and 75% close alignment.
+
+A fixed historical all-occurrence validation was therefore run with the exact
+existing classifier, 12-M5 horizon and no parameter search. It rejected
+`compression_breakout` as a standalone entry precursor:
+
+- train: n=4944, signed close +0.017 ATR, close alignment 48.5%;
+- validation: n=1714, signed close -0.073 ATR, close alignment 46.6%;
+- holdout: n=655, signed close -0.155 ATR, close alignment 45.3%.
+
+Decision: REJECT standalone compression-breakout activation. The overnight
+prospective strength is treated as small-sample/regime-specific evidence.
+
+The new API/dashboard surface is descriptive only. No signal, admission, PAPER,
+DEMO, risk, sizing, stop/target, spread or LIVE authority changes.

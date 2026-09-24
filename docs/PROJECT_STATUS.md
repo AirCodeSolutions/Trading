@@ -2099,3 +2099,33 @@ Validation:
 - active MT4 bridge provenance verified as root `MQL4/Experts/TradingDemoExecutionBridge`, matching the repo source. The stale `Experts/TradingNew` copy is not used for deployment.
 
 Operational goal after deployment: BTC, XAU, EUR, GBP and XAG may coexist when each has an independently PAPER-eligible executable signal. This capability does not invent signals and does not alter 1% per-trade risk, spread policy, stops, targets or LIVE lock.
+
+## 2026-09-24 — PR #112–#114 deployed: broker-equity sizing + multi-symbol DEMO
+
+Runtime deployment is complete.
+
+- PR #112 uses observed MT4 DEMO equity as active sizing capital, with balance fallback;
+- current broker equity after deployment: 873,864.61 EUR;
+- 1% per-trade budget: 8,738.65 EUR;
+- 2% absolute cap: 17,477.29 EUR;
+- 3% daily-loss budget: 26,215.94 EUR;
+- fixed 400 EUR remains only as research/backtest fallback;
+- PR #113 allows concurrent Trading-New positions across different symbols while blocking same-symbol stacking;
+- the MT4 transport still serializes one open/close command at a time;
+- PR #114 identifies the bridge generation as `multi_symbol_v1` on init.
+
+Controlled activation:
+
+- drain ON;
+- direct proof of 0 PAPER, 0 bridge positions, 0 pending commands and 0 broker positions;
+- backend/worker already running merged #112/#113 code;
+- active MT4 bridge provenance confirmed as root `MQL4/Experts/TradingDemoExecutionBridge`;
+- root source hash matches repo source;
+- root EX4 was freshly compiled from the new source;
+- MT4 terminal restarted while completely flat;
+- all five bridge charts reloaded successfully: BTCUSD, EURUSD, GBPUSD, XAUUSD, XAGUSD;
+- all five scoped broker spec/quote files refreshed to sub-second age;
+- drain returned OFF;
+- session READY 5/5, 24 scanners, 6 qualified collectors, auto-DEMO armed, LIVE OFF.
+
+Operational meaning: the system can now hold BTC/XAU/EUR/GBP/XAG Trading-New DEMO positions concurrently when independent qualified signals exist. No trade is forced merely to increase frequency.

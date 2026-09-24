@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     max_daily_loss_fraction: float = 0.03
     max_spread_to_stop: float = 0.15
     max_margin_fraction: float = 0.25
+    max_lots_per_trade: float = 5.0
 
     mt4_files_dir: Path | None = None
     mt4_server_timezone: str = "Europe/Athens"

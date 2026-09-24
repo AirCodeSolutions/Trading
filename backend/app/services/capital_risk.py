@@ -58,7 +58,10 @@ def size_position(request: PositionSizeRequest) -> PositionSizeResult:
         )
 
     raw_lots = risk_budget / loss_per_lot
-    lots = _floor_to_step(min(raw_lots, request.spec.max_lot), request.spec.lot_step)
+    lots = _floor_to_step(
+        min(raw_lots, request.spec.max_lot, settings.max_lots_per_trade),
+        request.spec.lot_step,
+    )
     if lots < request.spec.min_lot:
         return _rejected(
             request,

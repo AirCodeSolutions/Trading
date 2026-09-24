@@ -159,6 +159,8 @@ def submit_selected_demo_order(
     trade = row.summary.open_trade
     if trade.risk_eur > overview.risk.remaining_daily_loss_budget_eur:
         raise ValueError("trade risk exceeds remaining daily loss budget")
+    if trade.lots > settings.max_lots_per_trade:
+        raise ValueError("trade size exceeds max lots per trade")
     if proposal.symbol.upper() != trade.symbol.upper():
         raise ValueError("proposal symbol does not match selected paper trade")
     if proposal.side != trade.side:

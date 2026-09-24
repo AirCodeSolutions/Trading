@@ -52,7 +52,9 @@ def test_xau_m15_atr_stop_is_approved_with_demo_broker_equity() -> None:
 
     assert result.approved is True
     assert result.risk_budget_eur == pytest.approx(8738.5985)
-    assert result.lots == pytest.approx(7.54)
+    assert result.raw_lots == pytest.approx(7.544424, rel=1e-5)
+    assert result.lots == pytest.approx(5.0)
+    assert result.expected_loss_eur == pytest.approx(5791.4285, rel=1e-5)
     assert result.expected_loss_eur <= result.risk_budget_eur
 
 

@@ -2542,3 +2542,21 @@ Real production validation with ticket 185357042 now returns:
 - closed ticket metadata from `mt4_history_XAUUSD.json`.
 
 Validation: 4 broker-history tests including native-SL RED/GREEN, 295 full backend tests, Ruff clean. No risk/lot/SL/TP/LIVE change.
+
+## 2026-09-24 — hard 5-lot ceiling per Trading-New trade
+
+The large MT4 DEMO equity remains the runtime sizing base, but broker-equity sizing is now bounded by a hard portfolio safety ceiling of 5.00 lots per trade.
+
+Reason: the first XAU break/retest DEMO trade under broker-equity sizing was sent at 11.22 lots and later stopped. The family was independently revalidated and demoted in PR #125 because validation/holdout were negative; separately, 11+ lots is operationally too large for a DEMO experiment even when 1% equity would permit it.
+
+Implementation:
+- new central setting `max_lots_per_trade=5.0`;
+- `size_position()` uses `min(raw_lots, broker_max_lot, max_lots_per_trade)` before lot-step rounding;
+- all runtime, PAPER, manual DEMO and research sizing paths inherit the cap through the shared sizing engine;
+- DEMO command submission has a second defense-in-depth rejection if an open PAPER somehow carries more than 5 lots;
+- runtime `/config` exposes `max_lots_per_trade`;
+- manual dashboard exposes the hard ceiling.
+
+The cap only reduces realized monetary risk relative to the 1% target when the unconstrained size exceeds 5 lots. It never increases risk and does not change signal/admission evidence.
+
+External strategy scan remains aligned with the existing PR #124 direction: recent Federal Reserve work shows macro reactions are state/attention dependent, while recent generic order-flow/momentum evidence is less stable out of sample. The next research hypothesis therefore remains attention-aware macro conditioning using observed ATR/volume/context, not an approximate Level-2 signal.

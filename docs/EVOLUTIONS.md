@@ -1485,3 +1485,10 @@ Research-only components added:
 No XAU admission, PAPER, DEMO, risk, lot, spread, stop or target policy changes.
 
 Validation: 16 targeted tests, 256 full backend tests, Ruff clean, Vite build clean, and a real-data no-backfill /tmp dry-run.
+
+## 2026-09-24 — deployed XAU feasible-pullback SHADOW
+
+The XAU Asia risk-feasible pullback counterfactual is now collecting prospectively.
+Initial state is zero-resolved by construction; historical counterfactual results were not imported into the runtime ledger.
+
+Operational state after deployment: READY 5/5, 24 scanners, 6 qualified collectors, DRAIN OFF, auto-DEMO armed, LIVE OFF, 0 open Trading-New position.

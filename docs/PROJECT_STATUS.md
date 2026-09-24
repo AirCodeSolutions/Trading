@@ -1990,3 +1990,37 @@ Current 24 h evidence behind the UI:
 - the other three qualified collectors produced no signal.
 
 This confirms the low trade count is currently a combination of sparse qualified signals and broker economics, not a disabled execution path.
+
+## 2026-09-24 — PR #110 deployed: XAU M1 microbar collector
+
+PR #110 (`8a6e99b`) is merged and deployed.
+
+Deployment procedure:
+
+- drain ON;
+- second BOOK_FLAT proof: 0 PAPER, 0 Trading-New bridge positions, 0 pending commands;
+- merge/pull;
+- backend + frontend restarted only;
+- canonical shadow worker PID preserved (`1346837`);
+- new independent `xau-microbar-worker` started;
+- postflight verified;
+- drain returned OFF.
+
+Production verification:
+
+- backend healthy;
+- session READY 5/5;
+- auto-DEMO armed;
+- 6 qualified collectors;
+- LIVE OFF;
+- 0 open Trading-New PAPER/broker position;
+- 0 pending open/close command;
+- XAU M1 microbar worker healthy;
+- first production closed M1 contained 58 broker quote samples;
+- shortly after release: 95 quote samples collected, quote age about 2.5 seconds;
+- `/api/v1/research/xau-microbars` healthy;
+- Research dashboard exposes `XAU · microstructure M1` and the no-trade explainability panel from PR #109.
+
+The M1 collector remains research-only. It has no authority to create signals, PAPER trades, broker commands or admissions.
+
+Next development gate: use prospective M1 only inside already-existing XAU M5/M15 opportunity windows to test whether a local causal confirmation can provide naturally risk-feasible 1–4 USD stops. No M1-based trade authorization before independent prospective evidence.

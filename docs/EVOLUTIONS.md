@@ -1519,3 +1519,13 @@ Trading view adds a compact per-asset explanation built from already-fetched run
 - current state: EXECUTABLE, BLOQUÉ, ATTENTE SIGNAL or RESEARCH.
 
 This is frontend-only observability. It does not change scanners, qualification, PAPER/DEMO authority or risk.
+
+## 2026-09-24 — deployed XAU M1 microstructure collector
+
+PR #110 is live at `8a6e99b`.
+
+Operational result: dedicated M1 worker healthy, canonical shadow worker unchanged, drain OFF, auto-DEMO armed and book flat after deployment.
+
+First production M1 closed successfully with 58 quote samples; the worker continued collecting with fresh broker quotes (~2.5 s age).
+
+No strategy/risk/admission change was made.

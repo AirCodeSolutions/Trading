@@ -2820,3 +2820,27 @@ Forward-shadow contract:
 The Research dashboard exposes resolved count, expectancy, PF, wins/losses and drawdown. A minimum of 20 genuinely post-deployment resolved observations remains required before this candidate can even be reconsidered for admission.
 
 Validation: 12 focused tests, 308 full backend tests, Ruff clean, frontend build clean.
+
+## 2026-09-24 — PR #133 deployed / external-position observability
+
+PR #133 (`a08e57d`) is deployed and verified.
+
+Deployment state:
+- drain returned OFF;
+- Trading-New book remains flat: no PAPER, no bridge position, no pending command;
+- 26 scanners / 7 qualified collectors / READY 5/5;
+- hard 5-lot ceiling remains active;
+- `XAUUSD:precursor_compression_breakout_shadow` started at 2026-09-24 18:44:59 Europe/Athens with exactly 0 resolved forward-validation trades;
+- the 8 positive XAU selection trades are not backfilled.
+
+Postflight also exposed two broker positions owned by Freezebee, not Trading-New:
+- BTCUSD SELL 0.01, magic 51051, comment prefix `FZ:`;
+- XAUUSD SELL 0.01, magic 51051, comment prefix `FZ:`.
+
+Trading-New correctly isolates these from its own bridge (`trading_demo_positions.csv` remains empty) and does not manage or close them.
+
+Observability bug found: `read_broker_demo_snapshot()` returned after the first `mt4_data_*` file, so `broker_observed_positions` could undercount positions spread across per-symbol files. Fix: aggregate all valid symbol snapshots and deduplicate positions by broker ticket while retaining account/equity values from the first valid account snapshot.
+
+This changes reporting only. Demo-order gating continues to use Trading-New bridge positions for ownership isolation; sizing capital and the 5-lot cap are unchanged.
+
+Validation: dedicated RED/GREEN aggregation test, runtime-capital tests, 309 full backend tests and Ruff clean.

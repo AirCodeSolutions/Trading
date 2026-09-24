@@ -5,9 +5,11 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from app.domain.xau_microbar import XauMicrobarM1
 from app.services.xau_microbar import (
     LEDGER_FILE,
     STATE_FILE,
+    append_xau_microbar,
     load_xau_microbar_summary,
     sample_xau_microbar_once,
 )
@@ -250,3 +252,68 @@ def test_microbar_summary_marks_live_quote_healthy(
 
     assert summary.healthy is True
     assert summary.quote_age_seconds == 8.0
+
+
+def test_microbar_summary_exposes_causal_geometry_windows(tmp_path: Path) -> None:
+    runtime_dir = tmp_path / "runtime"
+    runtime_dir.mkdir()
+    ledger = runtime_dir / LEDGER_FILE
+
+    closes = [100.5, 101.0, 100.0, 102.0, 103.0, 102.5]
+    for index, close in enumerate(closes):
+        minute = START + timedelta(minutes=index)
+        open_price = 100.0 if index == 0 else closes[index - 1]
+        low = min(open_price, close) - 0.25
+        high = max(open_price, close) + 0.25
+        append_xau_microbar(
+            ledger,
+            XauMicrobarM1(
+                minute_at=minute,
+                first_quote_at=minute,
+                last_quote_at=minute + timedelta(seconds=59),
+                bid_open=open_price - 0.14,
+                bid_high=high - 0.14,
+                bid_low=low - 0.14,
+                bid_close=close - 0.14,
+                ask_open=open_price + 0.14,
+                ask_high=high + 0.14,
+                ask_low=low + 0.14,
+                ask_close=close + 0.14,
+                mid_open=open_price,
+                mid_high=high,
+                mid_low=low,
+                mid_close=close,
+                spread_open=0.28,
+                spread_high=0.30,
+                spread_low=0.26,
+                spread_close=0.28,
+                spread_sum=16.8,
+                quote_count=60,
+            ),
+        )
+
+    summary = load_xau_microbar_summary(
+        runtime_dir,
+        now=START + timedelta(minutes=6),
+    )
+
+    assert summary.geometry_5m is not None
+    assert summary.geometry_5m.bars == 5
+    assert summary.geometry_5m.mid_open == pytest.approx(100.5)
+    assert summary.geometry_5m.mid_close == pytest.approx(102.5)
+    assert summary.geometry_5m.mid_high == pytest.approx(103.25)
+    assert summary.geometry_5m.mid_low == pytest.approx(99.75)
+    assert summary.geometry_5m.range_price == pytest.approx(3.5)
+    assert summary.geometry_5m.signed_move == pytest.approx(2.0)
+    assert 0 <= summary.geometry_5m.close_location <= 1
+    assert 0 <= summary.geometry_5m.path_efficiency <= 1
+    assert summary.geometry_5m.average_spread == pytest.approx(0.28)
+    assert summary.geometry_5m.max_spread == pytest.approx(0.30)
+    assert summary.geometry_5m.average_quotes_per_bar == pytest.approx(60.0)
+    assert summary.geometry_5m.distance_to_low == pytest.approx(2.75)
+    assert summary.geometry_5m.distance_to_high == pytest.approx(0.75)
+
+    assert summary.geometry_15m is not None
+    assert summary.geometry_15m.bars == 6
+    assert summary.geometry_15m.mid_open == pytest.approx(100.0)
+    assert summary.geometry_15m.mid_close == pytest.approx(102.5)

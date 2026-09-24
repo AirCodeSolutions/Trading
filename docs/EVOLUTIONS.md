@@ -1603,3 +1603,11 @@ Trailing research now propagates explicit `capital_eur` through both baseline si
 The unchanged TP-only policy was tested on both deployed XAU sequence families at current broker-equity sizing. It fails the cross-window improvement gate on both, so no trailing execution change is made.
 
 PR #120 deployment is also recorded: 26 scanners, 8 qualified collectors, drain OFF, auto-DEMO armed, LIVE OFF.
+
+## 2026-09-24 — XAU M1 geometry observability
+
+Added causal 5m/15m geometry aggregation on top of the existing broker-native XAU M1 collector and surfaced it in the Research dashboard. The pack includes move, range, path efficiency, close location, spread and quote-density metrics.
+
+Research-only: no entry filter, stop rule, target rule or execution authority is added.
+
+The broker-equity length-4 sequence expansion was also closed after its best supported incremental XAU candidate failed direction robustness (BUY validation negative). No post-hoc SELL-only filter is introduced.

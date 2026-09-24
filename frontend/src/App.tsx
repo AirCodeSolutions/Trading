@@ -58,6 +58,26 @@ type XauFeasiblePullbackSummary = {
   } | null;
 };
 
+type XauMicrobarGeometry = {
+  window_minutes: number;
+  bars: number;
+  start_at: string;
+  end_at: string;
+  mid_open: number;
+  mid_high: number;
+  mid_low: number;
+  mid_close: number;
+  range_price: number;
+  signed_move: number;
+  close_location: number;
+  path_efficiency: number;
+  average_spread: number;
+  max_spread: number;
+  average_quotes_per_bar: number;
+  distance_to_low: number;
+  distance_to_high: number;
+};
+
 type XauMicrobarSummary = {
   symbol: string;
   timeframe: string;
@@ -77,6 +97,8 @@ type XauMicrobarSummary = {
     average_spread?: number;
     quote_count: number;
   } | null;
+  geometry_5m: XauMicrobarGeometry | null;
+  geometry_15m: XauMicrobarGeometry | null;
 };
 
 type ShadowSizing = {
@@ -2186,6 +2208,23 @@ export default function App() {
                   " s. Research-only."
                 : "Collecte M1 prospective non initialisée. Aucun ordre broker."}
             </p>
+            {xauMicrobars?.geometry_5m ? (
+              <p>
+                5m Δ {xauMicrobars.geometry_5m.signed_move >= 0 ? "+" : ""}
+                {xauMicrobars.geometry_5m.signed_move.toFixed(2)} · range{" "}
+                {xauMicrobars.geometry_5m.range_price.toFixed(2)} · efficacité{" "}
+                {(xauMicrobars.geometry_5m.path_efficiency * 100).toFixed(0)} % · spread{" "}
+                {xauMicrobars.geometry_5m.average_spread.toFixed(2)}
+                {xauMicrobars.geometry_15m
+                  ? " · 15m Δ " +
+                    (xauMicrobars.geometry_15m.signed_move >= 0 ? "+" : "") +
+                    xauMicrobars.geometry_15m.signed_move.toFixed(2) +
+                    " / eff " +
+                    (xauMicrobars.geometry_15m.path_efficiency * 100).toFixed(0) +
+                    " %"
+                  : ""}
+              </p>
+            ) : null}
           </div>
           <div className="intelligence-card">
             <span className="label">Mouvements market-first</span>

@@ -2371,3 +2371,41 @@ Decision: REJECTED because train expectancy and drawdown worsen.
 Decision: REJECTED because train and validation expectancy decline.
 
 No XAU TP/SL broker modification is authorized. Static 1R targets remain unchanged for both XAU sequence families.
+
+## 2026-09-24 — broker-equity length-4 sequence follow-up
+
+Execution-aware length-4 discovery was rerun at current DEMO-equity research capital because the earlier 400 EUR screen had excluded too many occurrences.
+
+Positive-stable screen produced 2 BTC and 6 XAU length-4 sequences, but the strongest supported incremental XAU candidate after priority to the two deployed XAU sequence families was:
+
+`directional_displacement -> structural_extreme_stretch -> structural_extreme_stretch -> auction_failure_reclaim`
+
+Incremental no-overlap results:
+- train: 52, +0.0516R, PF 1.117;
+- validation: 26, +0.1184R, PF 1.304;
+- holdout: 8, +0.3964R, PF 2.585.
+
+Direction robustness check invalidated the family without post-hoc filtering:
+- BUY train: 31, +0.0134R;
+- BUY validation: 17, -0.0073R;
+- BUY holdout: 6, +0.3333R;
+- SELL remained positive in all windows but only 2 SELL holdout trades existed.
+
+Decision: REJECT the family as-is and do not add a SELL-only rule after inspecting results. Length-4 expansion is closed for now.
+
+## 2026-09-24 — XAU M1 Geometry Pack
+
+The prospective XAU M1 collector is extended with read-only 5-minute and 15-minute geometry packs. Each pack reports:
+- aggregate swing high/low and range;
+- signed mid-price move;
+- close location inside the window;
+- path efficiency;
+- weighted average spread and maximum spread;
+- quote density;
+- distance from current close to local high/low.
+
+These fields are derived only from already-closed broker-native M1 bars. They have zero admission/execution authority and exist to measure future XAU entry/stop timing around M5 sequence signals.
+
+Live branch validation on production data: 148 closed M1 bars / 8,599 quotes, healthy feed. 5m geometry: +2.59 signed move, 5.92 range, 52.5% path efficiency, 0.28 average spread. 15m geometry: +3.74 signed move, 29.1% efficiency.
+
+Dashboard research card now exposes the 5m and 15m geometry. No signal, stop, target, lot, risk or LIVE behavior changes.

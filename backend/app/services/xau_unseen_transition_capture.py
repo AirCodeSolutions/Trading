@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
+from statistics import median
 
 from app.domain.market import MarketBar, Timeframe
 from app.domain.trading_intelligence import (
@@ -12,6 +13,7 @@ from app.domain.trading_intelligence import (
     TradingIntelligenceOverview,
 )
 from app.domain.xau_microbar import (
+    UnseenTransitionResearchSummary,
     XauMicrobarM1,
     XauUnseenTransitionSnapshot,
 )
@@ -59,6 +61,58 @@ def load_xau_unseen_transition_snapshots(
     path: Path,
 ) -> list[XauUnseenTransitionSnapshot]:
     return load_unseen_transition_snapshots(path)
+
+
+def summarize_unseen_transition_snapshots(
+    symbol: str,
+    snapshots: list[XauUnseenTransitionSnapshot],
+) -> UnseenTransitionResearchSummary:
+    resolved = [row for row in snapshots if row.transition_aligned is not None]
+    aligned = [row for row in resolved if row.transition_aligned is True]
+    opposed = [row for row in resolved if row.transition_aligned is False]
+    waits = [
+        row.transition_bars_waited
+        for row in resolved
+        if row.transition_bars_waited is not None
+    ]
+    consumed = [
+        row.move_consumed_atr
+        for row in resolved
+        if row.move_consumed_atr is not None
+    ]
+    aligned_consumed = [
+        row.move_consumed_atr
+        for row in aligned
+        if row.move_consumed_atr is not None
+    ]
+    return UnseenTransitionResearchSummary(
+        symbol=symbol.upper(),
+        episodes=len(snapshots),
+        resolved=len(resolved),
+        aligned=len(aligned),
+        opposed=len(opposed),
+        unresolved=len(snapshots) - len(resolved),
+        alignment_rate=(len(aligned) / len(resolved) if resolved else None),
+        median_transition_bars=(median(waits) if waits else None),
+        median_move_consumed_atr=(median(consumed) if consumed else None),
+        median_aligned_move_consumed_atr=(
+            median(aligned_consumed) if aligned_consumed else None
+        ),
+    )
+
+
+def load_all_unseen_transition_summaries(
+    runtime_dir: Path,
+) -> list[UnseenTransitionResearchSummary]:
+    return [
+        summarize_unseen_transition_snapshots(
+            symbol,
+            load_unseen_transition_snapshots(
+                runtime_dir / unseen_transition_file(symbol)
+            ),
+        )
+        for symbol in SUPPORTED_SYMBOLS
+    ]
 
 
 def append_unseen_transition_snapshot(

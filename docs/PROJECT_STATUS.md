@@ -2931,3 +2931,20 @@ Central admission contract is tightened:
 Dry-run recalculation on a temporary registry shows exactly one currently tradable family loses PAPER/DEMO permission: `GBPUSD:directional_pullback_resumption`. All other currently admitted collectors remain unchanged. Expected qualified collector count: 7 -> 6.
 
 Validation: 43 targeted tests, 312 full backend tests, Ruff clean. Runtime remains drained during audit/deployment; Trading-New book is flat.
+
+
+## 2026-09-25 — PR #137 postflight + multi-asset unseen transition summary
+
+PR #137 is deployed on `main` at `bcff0a7`. Runtime postflight confirms drain OFF, READY 5/5, no Trading-New PAPER position, no bridge position and no pending command. `GBPUSD:directional_pullback_resumption` is now observation-only: weakest historical expectancy -0.2397R, `paper_collection_candidate=false`, `paper_entry_allowed=false`.
+
+The remaining `candidate=false / paper_entry_allowed=true` rows are intentional PR #48 semantics: a SHADOW may collect when independent validation/holdout expectancy is positive even if the train-based candidate marker is false. No negative independent window is bypassed.
+
+Forward XAU evidence remains insufficient and is not promoted:
+- compression precursor: 9 resolved, expectancy -0.0597R, PF 0.882;
+- auction-failure precursor: 2 resolved, expectancy -0.1316R, PF 0.737.
+
+New research-only API `/api/v1/research/unseen-transitions` summarizes the prospective M1 unseen-transition ledger for BTC/EUR/GBP/XAU/XAG: episode count, resolved/aligned/opposed/unresolved counts, alignment rate, median transition delay and median ATR consumed. It does not change scanners, admissions, PAPER/DEMO execution, risk, stops, targets or the 5-lot ceiling.
+
+Current prospective sample remains too small for a trading rule. XAU has 23 unseen M1 episodes, 14 aligned resolved transitions, with roughly 1.06 ATR median consumed on aligned transitions. Continue collecting without threshold tuning.
+
+Validation: 5 focused tests, then 314 full backend tests, Ruff clean and `git diff --check` clean.

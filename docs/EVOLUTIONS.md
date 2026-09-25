@@ -1741,3 +1741,19 @@ The imbalance is deliberately named as a mid-price tick proxy, not OFI. The curr
 The change is motivated by the current frequency bottleneck: eligible strategies produced no signals after the 2026-09-24 XAU trade while several observation-only mechanisms remained active. New microstructure fields are collected only for future evidence and are not wired into execution.
 
 Validation: 314 backend tests pass, Ruff clean, diff check clean.
+
+
+## 2026-09-25 — PR #139 deployed
+
+Merged and deployed the prospective M1 directional tick-imbalance instrumentation as PR #139 (`26d9591`).
+
+Runtime postflight:
+- backend and M1 worker restarted under drain;
+- shadow worker was not restarted;
+- drain returned OFF;
+- five markets healthy;
+- Trading-New book and bridge flat;
+- no pending demo command;
+- 5-lot ceiling and broker-equity sizing unchanged.
+
+New up/down tick counts are being populated prospectively on BTCUSD, EURUSD, GBPUSD, XAUUSD and XAGUSD. Geometry-level imbalance intentionally waits for newly closed M1 bars; there is no synthetic backfill.

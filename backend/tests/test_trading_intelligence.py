@@ -23,6 +23,7 @@ from app.domain.trading_intelligence import (
 )
 from app.domain.xau_microbar import XauMicrobarM1
 from app.services.trading_intelligence import (
+    _build_probe_early_context_report,
     _build_waiting_early_context_report,
     _market_opportunity_episodes,
     _side_aligned_imbalance,
@@ -789,3 +790,134 @@ def test_side_aligned_tick_imbalance_flips_sell_direction() -> None:
     assert _side_aligned_imbalance(Side.SELL, -0.25) == 0.25
     assert _side_aligned_imbalance(Side.SELL, 0.25) == -0.25
     assert _side_aligned_imbalance(Side.BUY, None) is None
+
+
+def test_probe_early_context_separates_winners_and_losses(
+    tmp_path: Path,
+) -> None:
+    signal_win = NOW.replace(hour=9, minute=30)
+    signal_loss = NOW.replace(hour=10, minute=30)
+
+    def microbar(
+        minute_at: datetime,
+        *,
+        up: int,
+        down: int,
+    ) -> XauMicrobarM1:
+        spread = 0.0002
+        return XauMicrobarM1(
+            minute_at=minute_at,
+            first_quote_at=minute_at,
+            last_quote_at=minute_at + timedelta(seconds=50),
+            bid_open=1.0,
+            bid_high=1.001,
+            bid_low=0.999,
+            bid_close=1.0,
+            ask_open=1.0002,
+            ask_high=1.0012,
+            ask_low=0.9992,
+            ask_close=1.0002,
+            mid_open=1.0001,
+            mid_high=1.0011,
+            mid_low=0.9991,
+            mid_close=1.0001,
+            spread_open=spread,
+            spread_high=spread,
+            spread_low=spread,
+            spread_close=spread,
+            spread_sum=spread * (up + down + 1),
+            quote_count=up + down + 1,
+            mid_up_ticks=up,
+            mid_down_ticks=down,
+        )
+
+    rows: list[XauMicrobarM1] = []
+    for signal_at, up, down in (
+        (signal_win, 4, 1),
+        (signal_loss, 3, 2),
+    ):
+        for index in range(15):
+            rows.append(
+                microbar(
+                    signal_at - timedelta(minutes=15 - index),
+                    up=up,
+                    down=down,
+                )
+            )
+    (tmp_path / "BTCUSD_micro_m1.jsonl").write_text(
+        "".join(row.model_dump_json() + "\n" for row in rows),
+        encoding="utf-8",
+    )
+
+    def probe(
+        trade_id: str,
+        signal_at: datetime,
+        result_r: float,
+    ) -> ShadowPaperTrade:
+        return ShadowPaperTrade(
+            trade_id=trade_id,
+            symbol="BTCUSD",
+            mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+            side=Side.BUY,
+            signal_at=signal_at,
+            entry_bar_at=signal_at,
+            opened_at=signal_at,
+            entry_price=100.0,
+            stop_price=99.0,
+            target_price=101.8,
+            spread_at_entry=0.1,
+            lots=0.01,
+            risk_eur=10.0,
+            risk_distance=1.0,
+            target_r=1.8,
+            max_holding_bars=12,
+            status=(
+                PaperTradeStatus.TARGET
+                if result_r > 0
+                else PaperTradeStatus.STOP
+            ),
+            exit_at=signal_at + timedelta(minutes=10),
+            exit_price=101.8 if result_r > 0 else 99.0,
+            result_r=result_r,
+            pnl_eur=result_r * 10.0,
+            bars_held=2,
+        )
+
+    precursor = CausalPrecursorObservation(
+        symbol="BTCUSD",
+        first_seen_at=signal_win - timedelta(minutes=5),
+        latest_closed_m5_at=signal_win - timedelta(minutes=5),
+        pattern=OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+        side=Side.BUY,
+        context=OpportunityCausalContext(
+            pattern=OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+            side=Side.BUY,
+        ),
+    )
+
+    report = _build_probe_early_context_report(
+        probes=[
+            probe("win", signal_win, 1.8),
+            probe("loss", signal_loss, -1.0),
+        ],
+        precursors=[precursor],
+        runtime_dir=tmp_path,
+        now=NOW,
+        window_hours=168,
+    )
+
+    assert report.resolved_probes == 2
+    assert report.m1_eligible_probes == 2
+    assert report.tick_pressure_eligible_probes == 2
+    assert report.tick_pressure_wins == 1
+    assert report.tick_pressure_losses == 1
+    summary = report.summaries[0]
+    assert summary.tick_pressure_wins == 1
+    assert summary.tick_pressure_losses == 1
+    assert summary.tick_pressure_total_r == 0.8
+    assert summary.tick_pressure_expectancy_r == 0.4
+    assert summary.winner_median_side_aligned_tick_imbalance_5m == 0.6
+    assert summary.loser_median_side_aligned_tick_imbalance_5m == 0.2
+    assert abs(summary.winner_minus_loser_tick_imbalance_5m - 0.4) < 1e-12
+    assert summary.winner_precursor_rate == 1.0
+    assert summary.loser_precursor_rate == 0.0

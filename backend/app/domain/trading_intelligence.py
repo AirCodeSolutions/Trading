@@ -220,6 +220,57 @@ class WaitingEarlyContextReport(BaseModel):
     limitations: list[str] = Field(default_factory=list)
 
 
+class ProbeEarlyContextEpisode(BaseModel):
+    trade_id: str
+    strategy_id: str
+    symbol: str
+    mechanism: OpportunityMechanism
+    side: Side
+    signal_at: datetime
+    status: str
+    result_r: float
+    directional_tick_samples_5m: int = Field(default=0, ge=0)
+    side_aligned_tick_imbalance_5m: float | None = Field(default=None, ge=-1, le=1)
+    directional_tick_samples_15m: int = Field(default=0, ge=0)
+    side_aligned_tick_imbalance_15m: float | None = Field(default=None, ge=-1, le=1)
+    precursor_first_seen_at: datetime | None = None
+    precursor_pattern: OpportunityCausalPattern | None = None
+    precursor_lead_minutes_to_signal: float | None = Field(default=None, ge=0)
+
+
+class ProbeEarlyContextSummary(BaseModel):
+    strategy_id: str
+    symbol: str
+    mechanism: OpportunityMechanism
+    resolved_probes: int = Field(ge=0)
+    m1_eligible_probes: int = Field(ge=0)
+    tick_pressure_eligible_probes: int = Field(ge=0)
+    tick_pressure_wins: int = Field(ge=0)
+    tick_pressure_losses: int = Field(ge=0)
+    tick_pressure_total_r: float = 0.0
+    tick_pressure_expectancy_r: float = 0.0
+    winner_median_side_aligned_tick_imbalance_5m: float | None = Field(default=None, ge=-1, le=1)
+    loser_median_side_aligned_tick_imbalance_5m: float | None = Field(default=None, ge=-1, le=1)
+    winner_minus_loser_tick_imbalance_5m: float | None = Field(default=None, ge=-2, le=2)
+    winner_median_side_aligned_tick_imbalance_15m: float | None = Field(default=None, ge=-1, le=1)
+    loser_median_side_aligned_tick_imbalance_15m: float | None = Field(default=None, ge=-1, le=1)
+    winner_precursor_rate: float | None = Field(default=None, ge=0, le=1)
+    loser_precursor_rate: float | None = Field(default=None, ge=0, le=1)
+
+
+class ProbeEarlyContextReport(BaseModel):
+    generated_at: datetime
+    window_hours: int = Field(gt=0)
+    resolved_probes: int = Field(ge=0)
+    m1_eligible_probes: int = Field(ge=0)
+    tick_pressure_eligible_probes: int = Field(ge=0)
+    tick_pressure_wins: int = Field(ge=0)
+    tick_pressure_losses: int = Field(ge=0)
+    summaries: list[ProbeEarlyContextSummary] = Field(default_factory=list)
+    recent_tick_pressure_probes: list[ProbeEarlyContextEpisode] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+
+
 class AssetIntelligence(BaseModel):
     symbol: str
     paper_closed_trades: int = Field(ge=0)
@@ -265,4 +316,5 @@ class TradingIntelligenceOverview(BaseModel):
     )
     waiting_costs: list[OpportunityWaitingSummary] = Field(default_factory=list)
     waiting_early_context: WaitingEarlyContextReport | None = None
+    probe_early_context: ProbeEarlyContextReport | None = None
     limitations: list[str] = Field(default_factory=list)

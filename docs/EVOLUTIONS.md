@@ -1860,3 +1860,16 @@ The dashboard now exposes collection counters and compares the requested 25-40% 
 Current evidence is collection-only: 71 waiting episodes, 6 with M1 coverage, 5 historical episodes in the 25-40% cohort, and 0 target-cohort episodes with prospective M1 coverage so far.
 
 Validation: 20 focused tests, 322 full backend tests, Ruff clean and frontend production build clean.
+
+
+## 2026-09-25 — probe winner/loser early-context comparison
+
+Added a research-only outcome discriminator for resolved prospective unqualified probes.
+
+The report joins each probe to causal M1 pressure and same-side precursor context available before its signal, then separates tick-pressure winners from losses by strategy. It exposes coverage, W/L, total R, expectancy, winner/loser 5m and 15m imbalance medians, and precursor rates.
+
+Current post-collector evidence is deliberately small but already rejects a naive rule: 4 probes have genuine tick-pressure, all 4 lost, despite mildly positive side-aligned 5m imbalance and precursor presence. Therefore neither positive quote-direction pressure nor pressure+precursor is treated as a standalone early-entry signal.
+
+No scanner, admission, spread, sizing, stop, target, macro or 5-lot rule changes.
+
+Validation: 21 focused tests and 323 full backend tests pass; Ruff and frontend production build are clean.

@@ -3149,3 +3149,29 @@ Current 168 h runtime snapshot:
 No M1/tick-pressure data is backfilled before its collector start. Candidate preparation remains research-only and cannot promote admission or send orders.
 
 Validation: 20 focused tests, 322 full backend tests, Ruff clean, frontend production build clean and diff check clean.
+
+
+## 2026-09-25 — prospective probe outcome discriminator
+
+Trading Intelligence now compares causal pre-signal M1 context against resolved prospective unqualified-probe outcomes. This report is kept separate from admitted PAPER/DEMO trades and from the retrospective market-opportunity denominator.
+
+For each resolved unqualified probe with M1 coverage, the report records only context available before signal_at:
+- side-aligned 5m/15m mid-tick imbalance;
+- directional tick sample counts;
+- same-symbol/same-side precursor inside the existing 15-minute capture window;
+- realized probe result R and status.
+
+It then splits true tick-pressure observations into winners and losers by strategy and reports total R, expectancy, winner/loser imbalance medians and precursor rates. No selection rule or threshold is derived automatically.
+
+Current 168 h snapshot:
+- 46 resolved unqualified probes;
+- 15 overlap M1 coverage;
+- 4 have genuine directional tick-pressure samples;
+- 0/4 winners and 4/4 losers, -4.00R total;
+- XAUUSD post_shock_continuation: 3 tick-pressure probes, all losses, -3.00R, median loser side-aligned imbalance about +0.018;
+- BTCUSD failed_auction_reversal: 1 tick-pressure probe, loss -1.00R, side-aligned imbalance about +0.063;
+- all four tick-pressure losses also had a same-side causal precursor in the 15-minute window.
+
+This is a critical negative result for early-entry research: mildly positive side-aligned quote pressure plus a precursor is not sufficient evidence of a profitable early entry. Sample size is still far too small to infer an inverse rule or threshold.
+
+Validation: 21 focused tests, 323 full backend tests, Ruff clean, frontend production build clean and diff check clean.

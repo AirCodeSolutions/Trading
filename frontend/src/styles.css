@@ -2159,3 +2159,9 @@ h1 {
   min-width: 1240px;
   grid-template-columns: 2.1fr 0.8fr 0.65fr 0.75fr 0.65fr 0.9fr 0.9fr 0.9fr 0.8fr;
 }
+
+
+.probe-context-row {
+  min-width: 1380px;
+  grid-template-columns: 2.2fr 0.65fr 0.9fr 0.9fr 0.8fr 0.8fr 1fr 1fr 0.8fr 1.1fr;
+}

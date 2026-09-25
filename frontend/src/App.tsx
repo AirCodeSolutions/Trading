@@ -797,6 +797,35 @@ type TradingIntelligence = {
     }[];
     limitations: string[];
   } | null;
+  probe_early_context: {
+    generated_at: string;
+    window_hours: number;
+    resolved_probes: number;
+    m1_eligible_probes: number;
+    tick_pressure_eligible_probes: number;
+    tick_pressure_wins: number;
+    tick_pressure_losses: number;
+    summaries: {
+      strategy_id: string;
+      symbol: string;
+      mechanism: string;
+      resolved_probes: number;
+      m1_eligible_probes: number;
+      tick_pressure_eligible_probes: number;
+      tick_pressure_wins: number;
+      tick_pressure_losses: number;
+      tick_pressure_total_r: number;
+      tick_pressure_expectancy_r: number;
+      winner_median_side_aligned_tick_imbalance_5m: number | null;
+      loser_median_side_aligned_tick_imbalance_5m: number | null;
+      winner_minus_loser_tick_imbalance_5m: number | null;
+      winner_median_side_aligned_tick_imbalance_15m: number | null;
+      loser_median_side_aligned_tick_imbalance_15m: number | null;
+      winner_precursor_rate: number | null;
+      loser_precursor_rate: number | null;
+    }[];
+    limitations: string[];
+  } | null;
   limitations: string[];
 };
 
@@ -1078,6 +1107,8 @@ export default function App() {
   const [waitingCosts, setWaitingCosts] = useState<TradingIntelligence["waiting_costs"]>([]);
   const [waitingEarlyContext, setWaitingEarlyContext] =
     useState<TradingIntelligence["waiting_early_context"]>(null);
+  const [probeEarlyContext, setProbeEarlyContext] =
+    useState<TradingIntelligence["probe_early_context"]>(null);
   const [trailingShadow, setTrailingShadow] = useState<TrailingShadowSummary | null>(null);
   const [xauFeasiblePullback, setXauFeasiblePullback] =
     useState<XauFeasiblePullbackSummary | null>(null);
@@ -1320,6 +1351,7 @@ export default function App() {
         if (active) {
           setWaitingCosts(payload.waiting_costs ?? []);
           setWaitingEarlyContext(payload.waiting_early_context ?? null);
+          setProbeEarlyContext(payload.probe_early_context ?? null);
         }
       } catch {
         // Keep the last valid research snapshot; do not block the 24 h dashboard refresh.
@@ -2921,6 +2953,95 @@ export default function App() {
             </>
           ) : (
             <p className="strategy-empty">Snapshot M1 early-context en cours de chargement.</p>
+          )}
+        </div>
+
+        <div className="intelligence-subsection">
+          <h3>Probe Outcome Discriminator · M1 avant signal · 168 h</h3>
+          <p className="intelligence-note">
+            Compare uniquement les probes prospectifs résolus. La pression M1 est figée avant
+            signal ; gagnants et perdants restent séparés des trades PAPER/DEMO admis.
+            Tant que les deux classes ne sont pas suffisamment représentées, aucune règle
+            de sélection n’est dérivée.
+          </p>
+          {probeEarlyContext ? (
+            <>
+              <div className="early-context-kpis">
+                <span><b>{probeEarlyContext.resolved_probes}</b> probes résolus</span>
+                <span><b>{probeEarlyContext.m1_eligible_probes}</b> avec M1</span>
+                <span><b>{probeEarlyContext.tick_pressure_eligible_probes}</b> avec pression</span>
+                <span><b>{probeEarlyContext.tick_pressure_wins}</b> gagnants pression</span>
+                <span><b>{probeEarlyContext.tick_pressure_losses}</b> perdants pression</span>
+              </div>
+              {probeEarlyContext.tick_pressure_eligible_probes > 0 &&
+              probeEarlyContext.tick_pressure_wins === 0 ? (
+                <p className="strategy-empty">
+                  Échantillon actuel : aucune observation gagnante avec tick-pressure.
+                  Une imbalance positive ne peut donc pas être considérée comme discriminante.
+                </p>
+              ) : null}
+              {probeEarlyContext.summaries.some((row) => row.m1_eligible_probes > 0) ? (
+                <div className="intelligence-table">
+                  <div className="intelligence-row probe-context-row intelligence-head">
+                    <span>Stratégie</span>
+                    <span>Résolus</span>
+                    <span>M1 / pression</span>
+                    <span>W / L pression</span>
+                    <span>Total R</span>
+                    <span>Exp.</span>
+                    <span>Imb5 gagnants</span>
+                    <span>Imb5 perdants</span>
+                    <span>Δ W-L</span>
+                    <span>Precursor W / L</span>
+                  </div>
+                  {probeEarlyContext.summaries
+                    .filter((row) => row.m1_eligible_probes > 0)
+                    .map((row) => (
+                      <div className="intelligence-row probe-context-row" key={row.strategy_id}>
+                        <strong>{row.strategy_id.replaceAll("_", " ")}</strong>
+                        <span>{row.resolved_probes}</span>
+                        <span>{row.m1_eligible_probes} / {row.tick_pressure_eligible_probes}</span>
+                        <span>{row.tick_pressure_wins} / {row.tick_pressure_losses}</span>
+                        <span className={row.tick_pressure_total_r >= 0 ? "positive-text" : "negative-text"}>
+                          {row.tick_pressure_total_r >= 0 ? "+" : ""}
+                          {row.tick_pressure_total_r.toFixed(2)} R
+                        </span>
+                        <span className={row.tick_pressure_expectancy_r >= 0 ? "positive-text" : "negative-text"}>
+                          {row.tick_pressure_expectancy_r >= 0 ? "+" : ""}
+                          {row.tick_pressure_expectancy_r.toFixed(2)} R
+                        </span>
+                        <span>
+                          {row.winner_median_side_aligned_tick_imbalance_5m == null
+                            ? "—"
+                            : row.winner_median_side_aligned_tick_imbalance_5m.toFixed(2)}
+                        </span>
+                        <span>
+                          {row.loser_median_side_aligned_tick_imbalance_5m == null
+                            ? "—"
+                            : row.loser_median_side_aligned_tick_imbalance_5m.toFixed(2)}
+                        </span>
+                        <span>
+                          {row.winner_minus_loser_tick_imbalance_5m == null
+                            ? "—"
+                            : (row.winner_minus_loser_tick_imbalance_5m >= 0 ? "+" : "") +
+                              row.winner_minus_loser_tick_imbalance_5m.toFixed(2)}
+                        </span>
+                        <span>
+                          {row.winner_precursor_rate == null
+                            ? "—"
+                            : `${(row.winner_precursor_rate * 100).toFixed(0)} %`}
+                          {" / "}
+                          {row.loser_precursor_rate == null
+                            ? "—"
+                            : `${(row.loser_precursor_rate * 100).toFixed(0)} %`}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <p className="strategy-empty">Snapshot probe early-context en cours de chargement.</p>
           )}
         </div>
 

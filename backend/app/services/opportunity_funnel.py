@@ -290,18 +290,21 @@ def build_opportunity_funnel(
         ),
         unqualified_probe_review_ready_strategies=len(review_ready),
         unqualified_probe_review_queue=[
-            _candidate_progress(row)
+            _candidate_progress(row, grouped_unqualified_all[row.strategy_id])
             for row in review_ready
             if row.unqualified_probe_qualification is not None
         ],
         most_observed_unqualified_candidate=(
-            _candidate_progress(most_observed)
+            _candidate_progress(
+                most_observed,
+                grouped_unqualified_all[most_observed.strategy_id],
+            )
             if most_observed is not None
             and most_observed.unqualified_probe_qualification is not None
             else None
         ),
         positive_unqualified_candidates=[
-            _candidate_progress(row)
+            _candidate_progress(row, grouped_unqualified_all[row.strategy_id])
             for row in positive_candidates
             if row.unqualified_probe_qualification is not None
         ],
@@ -521,19 +524,21 @@ def _assess_unqualified_probe_evidence(
 
 def _candidate_progress(
     row: OpportunityFunnelStrategy,
+    all_probes: list[ShadowPaperTrade],
 ) -> ResearchProbeCandidateProgress:
     qualification = row.unqualified_probe_qualification
     if qualification is None:
         raise ValueError("candidate progress requires probe qualification")
+    results = _resolved_trade_results(all_probes)
     remaining = max(0, qualification.minimum_trades - qualification.closed_trades)
     return ResearchProbeCandidateProgress(
         strategy_id=row.strategy_id,
         symbol=row.symbol,
         mechanism=row.mechanism,
         qualification=qualification,
-        wins=row.unqualified_probe_wins,
-        losses=row.unqualified_probe_losses,
-        total_r=row.unqualified_probe_total_r,
+        wins=sum(result > 0 for result in results),
+        losses=sum(result < 0 for result in results),
+        total_r=sum(results),
         remaining_trades_to_review=remaining,
         sample_progress=min(
             1.0,

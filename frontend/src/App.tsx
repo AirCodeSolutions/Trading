@@ -559,6 +559,25 @@ type OpportunityFunnel = {
       reason: string;
     };
   } | null;
+  positive_unqualified_candidates?: {
+    strategy_id: string;
+    symbol: string;
+    mechanism: string;
+    qualification: {
+      state: "collecting" | "failed" | "supports_review";
+      closed_trades: number;
+      minimum_trades: number;
+      expectancy_r: number;
+      profit_factor: number;
+      max_drawdown_r: number;
+      reason: string;
+    };
+    wins: number;
+    losses: number;
+    total_r: number;
+    remaining_trades_to_review: number;
+    sample_progress: number;
+  }[];
   tracked_blocked_probes: number;
   resolved_blocked_probes: number;
   open_blocked_probes: number;
@@ -1684,24 +1703,22 @@ export default function App() {
             <small>{paperCandidates.length} stratégie(s) PAPER-éligible(s)</small>
           </article>
           <article>
-            <span>Recherche · candidat le plus observé</span>
+            <span>Recherche · edge prospectif positif</span>
             <strong
               className={
-                opportunityFunnel?.most_observed_unqualified_candidate?.qualification.closed_trades
-                  ? opportunityFunnel.most_observed_unqualified_candidate.qualification.expectancy_r >= 0
-                    ? "positive-text"
-                    : "negative-text"
+                (opportunityFunnel?.positive_unqualified_candidates?.length ?? 0) > 0
+                  ? "positive-text"
                   : ""
               }
             >
-              {opportunityFunnel?.most_observed_unqualified_candidate
-                ? `${opportunityFunnel.most_observed_unqualified_candidate.symbol} · ${opportunityFunnel.most_observed_unqualified_candidate.qualification.closed_trades}/${opportunityFunnel.most_observed_unqualified_candidate.qualification.minimum_trades}`
+              {opportunityFunnel?.positive_unqualified_candidates?.[0]
+                ? `${opportunityFunnel.positive_unqualified_candidates[0].symbol} · ${opportunityFunnel.positive_unqualified_candidates[0].qualification.closed_trades}/${opportunityFunnel.positive_unqualified_candidates[0].qualification.minimum_trades}`
                 : "—"}
             </strong>
             <small>
-              {opportunityFunnel?.most_observed_unqualified_candidate
-                ? `${opportunityFunnel.most_observed_unqualified_candidate.mechanism.replaceAll("_", " ")} · ${opportunityFunnel.most_observed_unqualified_candidate.qualification.state.replaceAll("_", " ").toUpperCase()} · exp. ${opportunityFunnel.most_observed_unqualified_candidate.qualification.expectancy_r >= 0 ? "+" : ""}${opportunityFunnel.most_observed_unqualified_candidate.qualification.expectancy_r.toFixed(2)} R`
-                : "Aucun probe exécutable non qualifié résolu."}
+              {opportunityFunnel?.positive_unqualified_candidates?.[0]
+                ? `${opportunityFunnel.positive_unqualified_candidates[0].mechanism.replaceAll("_", " ")} · +${opportunityFunnel.positive_unqualified_candidates[0].total_r.toFixed(2)} R · exp. +${opportunityFunnel.positive_unqualified_candidates[0].qualification.expectancy_r.toFixed(2)} R`
+                : "Aucun candidat prospectif actuellement positif."}
             </small>
           </article>
         </div>
@@ -3535,6 +3552,53 @@ export default function App() {
             </p>
           </div>
         </div>
+
+        {(opportunityFunnel?.positive_unqualified_candidates?.length ?? 0) > 0 ? (
+          <div className="candidate-progress">
+            <div className="review-queue-heading">
+              <div>
+                <span className="label">EDGE PROSPECTIF POSITIF · OBSERVATION</span>
+                <strong>
+                  {opportunityFunnel?.positive_unqualified_candidates?.length ?? 0} famille(s)
+                </strong>
+              </div>
+              <p>
+                Signal de recherche uniquement. Une expectancy positive avant 20 observations
+                ne donne aucune autorité PAPER/DEMO.
+              </p>
+            </div>
+            <div className="candidate-progress-grid">
+              {opportunityFunnel?.positive_unqualified_candidates?.map((item) => (
+                <article className="candidate-progress-card" key={item.strategy_id}>
+                  <div className="candidate-progress-top">
+                    <div>
+                      <span>{item.symbol}</span>
+                      <strong>{item.mechanism.replaceAll("_", " ")}</strong>
+                    </div>
+                    <b>{item.qualification.closed_trades}/{item.qualification.minimum_trades}</b>
+                  </div>
+                  <div className="candidate-progress-bar" aria-label="progression échantillon">
+                    <span
+                      style={{
+                        width: `${Math.min(100, item.sample_progress * 100)}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="candidate-progress-metrics">
+                    <span><b>{item.wins}/{item.losses}</b> W/L</span>
+                    <span><b>+{item.total_r.toFixed(2)} R</b> total</span>
+                    <span><b>+{item.qualification.expectancy_r.toFixed(2)} R</b> exp.</span>
+                    <span><b>{item.qualification.profit_factor.toFixed(2)}</b> PF</span>
+                  </div>
+                  <small>
+                    {item.remaining_trades_to_review} observation(s) restante(s) avant revue · DD{" "}
+                    {item.qualification.max_drawdown_r.toFixed(2)} R
+                  </small>
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {(opportunityFunnel?.unqualified_probe_review_queue?.length ?? 0) > 0 ? (
           <div className="review-queue">

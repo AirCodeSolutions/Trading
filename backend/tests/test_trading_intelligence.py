@@ -20,16 +20,16 @@ from app.domain.trading_intelligence import (
     BlockedProbeEarlyContextReport,
     BlockedProbeEarlyContextSummary,
     MarketOpportunityEpisode,
-    OpportunityWaitingSummary,
-    ProbeEarlyContextReport,
-    ProbeEarlyContextSummary,
-    WaitingEarlyContextReport,
-    WaitingEarlyContextSummary,
     OpportunityCaptureState,
     OpportunityCausalContext,
     OpportunityCausalPattern,
     OpportunityDetectionStage,
+    OpportunityWaitingSummary,
+    ProbeEarlyContextReport,
+    ProbeEarlyContextSummary,
     TradeIntelligence,
+    WaitingEarlyContextReport,
+    WaitingEarlyContextSummary,
 )
 from app.domain.xau_microbar import XauMicrobarM1
 from app.services.trading_intelligence import (

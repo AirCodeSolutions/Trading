@@ -1818,3 +1818,12 @@ The positive candidate surface is now visible on the dashboard with sample progr
 Fixed an associated consistency issue: candidate W/L and total R now use the same lifetime prospective probe sample as qualification, rather than the shorter funnel display window.
 
 No scanner, admission, order, risk, stop, target, spread, macro or lot-cap behavior changes.
+
+
+## 2026-09-25 — faster MT4 live quote readiness path
+
+Replaced full-history M5 loading inside live quote sparkline construction with the existing recent-bar loader capped at 48 bars.
+
+Observed cold quote-read latency dropped from roughly 7.5 s to 0.36 s, with warm reads around 0.01 s. This directly reduces /session/preflight and market-universe latency without changing trading logic or quote semantics.
+
+Validation: 9 focused tests and 319 full backend tests pass; Ruff and diff checks clean.

@@ -3069,3 +3069,20 @@ Current positive prospective candidates remain:
 - BTCUSD post_shock_continuation: 2/20, 1W/1L, +0.80R, +0.40R expectancy.
 
 Validation: 10 focused backend tests, 319 full backend tests, Ruff clean, frontend production build clean and diff check clean.
+
+
+## 2026-09-25 — live quote / preflight latency optimization
+
+A post-deployment runtime check found that /api/v1/session/preflight could exceed 10 seconds while other endpoints stayed fast. Profiling isolated the bottleneck to read_live_market_quotes() rebuilding far more M5 history than needed for its 48-bar sparkline.
+
+The quote path now uses the existing recent-bar loader with limit=48 instead of the full-history loader.
+
+Measured on the production MT4 files before/after:
+- previous live-quote read: about 7.5 s during a cold/history-refresh path;
+- optimized cold read: about 0.36 s;
+- optimized warm read: about 0.01 s;
+- market-universe rebuild after warm quote cache: about 0.006 s.
+
+This is a read-path optimization only. Quote selection, freshness rules, price values, M5 close timestamps, scanner logic and execution authority are unchanged.
+
+Validation: 9 focused tests, 319 full backend tests, Ruff clean and diff check clean.

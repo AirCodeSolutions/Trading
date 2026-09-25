@@ -1827,3 +1827,14 @@ Replaced full-history M5 loading inside live quote sparkline construction with t
 Observed cold quote-read latency dropped from roughly 7.5 s to 0.36 s, with warm reads around 0.01 s. This directly reduces /session/preflight and market-universe latency without changing trading logic or quote semantics.
 
 Validation: 9 focused tests and 319 full backend tests pass; Ruff and diff checks clean.
+
+
+## 2026-09-25 — market-first Value of Waiting surface
+
+Added causal first-system-reaction timing to market-first opportunity episodes and a new waiting_costs aggregation by strategy.
+
+The Research dashboard now shows how much of each later market move was already consumed when SHADOW first reacted, how much remained, and whether a prospective precursor existed before the signal.
+
+Pre-birth signals are treated as early reactions and count as 0 ATR consumed. The future move remains retrospective research metadata only and cannot authorize an order.
+
+Validation: 18 focused tests, 320 full backend tests, Ruff clean and frontend production build clean.

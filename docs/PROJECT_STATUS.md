@@ -3086,3 +3086,31 @@ Measured on the production MT4 files before/after:
 This is a read-path optimization only. Quote selection, freshness rules, price values, M5 close timestamps, scanner logic and execution authority are unchanged.
 
 Validation: 9 focused tests, 319 full backend tests, Ruff clean and diff check clean.
+
+
+## 2026-09-25 — market-first Value of Waiting instrumentation
+
+Trading Intelligence now joins each market-first opportunity episode to the first same-direction SHADOW reaction inside the existing capture window.
+
+For every measurable episode it records:
+- first signal timestamp/state/strategy and causal M5 close available to that reaction;
+- signed signal lead/lag versus retrospective market-opportunity birth;
+- favorable move already consumed at the signal in ATR;
+- favorable move remaining after the signal within the market-opportunity horizon;
+- consumed fraction of the observed move;
+- precursor-to-signal delay when a prospective precursor existed first.
+
+A negative signal lead/lag means the system reacted before the retrospective birth and therefore counts as 0 ATR consumed. Future horizon data is used only to measure consumed/remaining move after the fact; these fields have no execution authority.
+
+A new waiting_costs summary aggregates the measurements by first-reacting strategy, and the Research dashboard exposes episodes, executable/blocked counts, lead/lag, total move, consumed ATR, remaining ATR, consumed percentage and precursor-to-signal delay.
+
+Preliminary 168 h snapshot, not an admission decision:
+- BTCUSD failed_auction_reversal: n=9, +1.7 min average lag, 0.04 ATR / 3% consumed; timing does not currently look like its primary bottleneck;
+- XAUUSD post_shock_continuation: n=9, +5.0 min, 0.89 ATR / 26% consumed;
+- BTCUSD directional_transition: n=3, +6.8 min, 0.52 ATR / 30% consumed; sample too small and distinct from its 5/20 executable-probe qualification sample;
+- BTCUSD post_shock_continuation: n=3, +8.7 min, 1.58 ATR / 37% consumed;
+- XAUUSD directional_transition: n=1, +10.2 min, 1.04 ATR / 48% consumed, far too small for action.
+
+No scanner, admission, spread, sizing, stop, target, macro or 5-lot rule changes.
+
+Validation: 18 focused tests, 320 full backend tests, Ruff clean, frontend production build clean and diff check clean.

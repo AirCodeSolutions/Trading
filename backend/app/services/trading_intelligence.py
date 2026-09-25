@@ -19,6 +19,7 @@ from app.domain.trading_intelligence import (
     OpportunityCausalPattern,
     OpportunityCausalPatternSummary,
     OpportunityDetectionStage,
+    OpportunityWaitingSummary,
     TradeIntelligence,
     TradingIntelligenceOverview,
     UnseenOpportunityPatternSummary,
@@ -199,6 +200,7 @@ def build_trading_intelligence(
     )
     causal_patterns = _causal_pattern_summaries(opportunities)
     unseen_patterns = _unseen_pattern_summaries(precursor_eligible)
+    waiting_costs = _waiting_cost_summaries(opportunities)
     return TradingIntelligenceOverview(
         generated_at=now,
         window_hours=window_hours,
@@ -232,6 +234,7 @@ def build_trading_intelligence(
         assets=assets,
         causal_patterns=causal_patterns,
         unseen_patterns=unseen_patterns,
+        waiting_costs=waiting_costs,
         limitations=[
             (
                 "Market opportunities are a retrospective research denominator: "
@@ -248,6 +251,11 @@ def build_trading_intelligence(
             (
                 "Causal-pattern labels use only bars available by episode birth. "
                 "Pattern alignment with the later move is retrospective research metadata."
+            ),
+            (
+                "Waiting-cost signal timestamps and prices are causal, but consumed/remaining "
+                "move metrics are measured against the retrospective market-opportunity horizon "
+                "and are research-only."
             ),
         ],
     )
@@ -757,6 +765,54 @@ def _market_opportunity_episodes(
         strategies = sorted(
             {f"{row.symbol}:{row.mechanism.value}" for row in matches}
         )
+        first_signal = (
+            min(
+                matches,
+                key=lambda row: (
+                    row.evaluated_at,
+                    row.mechanism.value,
+                    row.state.value,
+                ),
+            )
+            if matches
+            else None
+        )
+        first_signal_price = (
+            _closed_bar_price(bars, first_signal.latest_closed_m5_at)
+            if first_signal is not None
+            else None
+        )
+        signal_lead_lag_minutes = (
+            (first_signal.evaluated_at - birth_at).total_seconds() / 60.0
+            if first_signal is not None
+            else None
+        )
+        move_consumed_at_signal_atr = (
+            0.0
+            if first_signal_price is not None
+            and signal_lead_lag_minutes is not None
+            and signal_lead_lag_minutes <= 0
+            else (
+                _aligned_move_atr(
+                    side=side,
+                    reference_price=bar.close,
+                    observed_price=first_signal_price,
+                    atr=current_atr,
+                )
+                if first_signal_price is not None
+                else None
+            )
+        )
+        move_remaining_after_signal_atr = (
+            max(0.0, move_atr - move_consumed_at_signal_atr)
+            if move_consumed_at_signal_atr is not None
+            else None
+        )
+        move_consumed_fraction = (
+            min(1.0, move_consumed_at_signal_atr / move_atr)
+            if move_consumed_at_signal_atr is not None and move_atr > 0
+            else None
+        )
         aligned_precursors = [
             row
             for row in (precursors or [])
@@ -777,6 +833,15 @@ def _market_opportunity_episodes(
         else:
             detection_stage = OpportunityDetectionStage.UNSEEN
 
+        precursor_to_signal_minutes = (
+            (first_signal.evaluated_at - earliest_precursor.first_seen_at).total_seconds()
+            / 60.0
+            if first_signal is not None
+            and earliest_precursor is not None
+            and first_signal.evaluated_at >= earliest_precursor.first_seen_at
+            else None
+        )
+
         causal_context = _classify_causal_context(
             bars=bars,
             atr=atr,
@@ -796,6 +861,25 @@ def _market_opportunity_episodes(
                 capture_state=capture_state,
                 detection_stage=detection_stage,
                 matching_strategies=strategies,
+                first_signal_at=(
+                    first_signal.evaluated_at if first_signal is not None else None
+                ),
+                first_signal_state=(
+                    first_signal.state if first_signal is not None else None
+                ),
+                first_signal_strategy_id=(
+                    f"{first_signal.symbol}:{first_signal.mechanism.value}"
+                    if first_signal is not None
+                    else None
+                ),
+                first_signal_mechanism=(
+                    first_signal.mechanism if first_signal is not None else None
+                ),
+                first_signal_price=first_signal_price,
+                signal_lead_lag_minutes=signal_lead_lag_minutes,
+                move_consumed_at_signal_atr=move_consumed_at_signal_atr,
+                move_remaining_after_signal_atr=move_remaining_after_signal_atr,
+                move_consumed_fraction=move_consumed_fraction,
                 precursor_first_seen_at=(
                     earliest_precursor.first_seen_at
                     if earliest_precursor is not None
@@ -813,11 +897,116 @@ def _market_opportunity_episodes(
                     else None
                 ),
                 precursor_observations=len(aligned_precursors),
+                precursor_to_signal_minutes=precursor_to_signal_minutes,
                 causal_context=causal_context,
             )
         )
         index += horizon_bars
     return episodes
+
+
+def _closed_bar_price(
+    bars: list[MarketBar],
+    timestamp: datetime,
+) -> float | None:
+    for bar in bars:
+        if bar.timestamp == timestamp:
+            return bar.close
+    return None
+
+
+def _aligned_move_atr(
+    *,
+    side: Side,
+    reference_price: float,
+    observed_price: float,
+    atr: float,
+) -> float:
+    if atr <= 0:
+        return 0.0
+    distance = (
+        observed_price - reference_price
+        if side == Side.BUY
+        else reference_price - observed_price
+    )
+    return max(0.0, distance / atr)
+
+
+def _waiting_cost_summaries(
+    opportunities: list[MarketOpportunityEpisode],
+) -> list[OpportunityWaitingSummary]:
+    grouped: dict[str, list[MarketOpportunityEpisode]] = defaultdict(list)
+    for row in opportunities:
+        if (
+            row.first_signal_strategy_id is None
+            or row.first_signal_mechanism is None
+            or row.first_signal_state is None
+            or row.signal_lead_lag_minutes is None
+            or row.move_consumed_at_signal_atr is None
+            or row.move_remaining_after_signal_atr is None
+            or row.move_consumed_fraction is None
+        ):
+            continue
+        grouped[row.first_signal_strategy_id].append(row)
+
+    output: list[OpportunityWaitingSummary] = []
+    for strategy_id, rows in grouped.items():
+        precursor_delays = [
+            row.precursor_to_signal_minutes
+            for row in rows
+            if row.precursor_to_signal_minutes is not None
+        ]
+        first = rows[0]
+        output.append(
+            OpportunityWaitingSummary(
+                strategy_id=strategy_id,
+                symbol=first.symbol,
+                mechanism=first.first_signal_mechanism,
+                episodes_with_signal=len(rows),
+                executable_signals=sum(
+                    row.first_signal_state == ShadowSignalState.SIGNAL_EXECUTABLE
+                    for row in rows
+                ),
+                blocked_signals=sum(
+                    row.first_signal_state == ShadowSignalState.SIGNAL_BLOCKED
+                    for row in rows
+                ),
+                precursor_then_signal_episodes=len(precursor_delays),
+                average_signal_lead_lag_minutes=fmean(
+                    row.signal_lead_lag_minutes
+                    for row in rows
+                    if row.signal_lead_lag_minutes is not None
+                ),
+                average_move_atr=fmean(row.move_atr for row in rows),
+                average_move_consumed_at_signal_atr=fmean(
+                    row.move_consumed_at_signal_atr
+                    for row in rows
+                    if row.move_consumed_at_signal_atr is not None
+                ),
+                average_move_remaining_after_signal_atr=fmean(
+                    row.move_remaining_after_signal_atr
+                    for row in rows
+                    if row.move_remaining_after_signal_atr is not None
+                ),
+                average_move_consumed_fraction=fmean(
+                    row.move_consumed_fraction
+                    for row in rows
+                    if row.move_consumed_fraction is not None
+                ),
+                average_precursor_to_signal_minutes=(
+                    fmean(precursor_delays) if precursor_delays else 0.0
+                ),
+            )
+        )
+
+    return sorted(
+        output,
+        key=lambda row: (
+            -row.episodes_with_signal,
+            -row.average_move_consumed_fraction,
+            row.strategy_id,
+        ),
+    )
 
 
 def _atr_series(bars: list[MarketBar], period: int = 14) -> list[float]:

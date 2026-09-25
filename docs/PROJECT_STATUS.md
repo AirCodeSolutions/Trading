@@ -3123,3 +3123,29 @@ The main dashboard intelligence refresh remains a 24 h operational view. Value o
 This prevents the heavier 168 h research computation from delaying the 30-second core dashboard refresh while making the waiting-cost table immediately useful with the currently available 17 strategy summaries. On a temporary research-fetch failure, the UI preserves the last valid 168 h snapshot instead of clearing it.
 
 Frontend-only observability change; no trading or backend decision semantics changed. Production frontend build passes.
+
+
+## 2026-09-25 — M1 early-context join for delayed M5 reactions
+
+Runtime guard checkpoint before development: drain is OFF, DEMO transport and auto-collection are armed, Trading-New bridge open positions = 0 and no open/close command is pending.
+
+Trading Intelligence can now optionally enrich the 168 h Value of Waiting research view with causal M1 context available before the first SHADOW reaction. The enrichment is opt-in through include_waiting_early_context=true, so the normal 24 h dashboard and shadow-worker path do not incur the extra M1 ledger scan.
+
+For each measurable waiting episode the research view uses only fully closed M1 bars available before first_signal_at and records:
+- 5m/15m directional tick sample counts;
+- side-aligned mid-tick imbalance, where positive means pressure in the later market-opportunity direction;
+- same-symbol/same-side causal precursor observed within the existing 15-minute signal-capture window before the first SHADOW reaction;
+- the already-existing consumed-move fraction and signal lead/lag.
+
+The 25-40% consumed interval is explicitly a diagnostic cohort, not a trading threshold. A baseline cohort under 25% consumed is retained so future evidence can compare delayed reactions with earlier reactions rather than assuming that any M1 pressure is useful.
+
+Current 168 h runtime snapshot:
+- 71 waiting episodes in the full market-first denominator;
+- 6 episodes occur inside the available M1 coverage;
+- 5 historical waiting episodes fall in the 25-40% consumed cohort;
+- 0/5 currently overlap M1 coverage, so no tick-pressure conclusion is permitted yet;
+- M1 coverage starts at 2026-09-24 18:19 Europe/Athens for BTC/EUR/GBP/XAG and 2026-09-24 10:33 for XAU.
+
+No M1/tick-pressure data is backfilled before its collector start. Candidate preparation remains research-only and cannot promote admission or send orders.
+
+Validation: 20 focused tests, 322 full backend tests, Ruff clean, frontend production build clean and diff check clean.

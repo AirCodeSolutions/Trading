@@ -3,6 +3,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from app.domain.blocked_probe import BlockedOpportunityProbe
+from app.domain.causal_precursor import CausalPrecursorObservation
 from app.domain.market import MarketBar, Timeframe
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.regime import MarketRegime
@@ -20,8 +21,11 @@ from app.domain.trading_intelligence import (
     OpportunityCausalPattern,
     OpportunityDetectionStage,
 )
+from app.domain.xau_microbar import XauMicrobarM1
 from app.services.trading_intelligence import (
+    _build_waiting_early_context_report,
     _market_opportunity_episodes,
+    _side_aligned_imbalance,
     _trade_metrics,
     _unseen_pattern_summaries,
     _waiting_cost_summaries,
@@ -601,3 +605,187 @@ def test_unseen_pattern_summaries_are_prospective_pattern_radar() -> None:
     neutral = result[1]
     assert neutral.episodes == 1
     assert neutral.neutral_context_rate == 1.0
+
+
+def test_waiting_early_context_uses_only_closed_m1_and_pre_signal_precursor(
+    tmp_path: Path,
+) -> None:
+    target_signal = NOW.replace(hour=10, minute=20)
+    early_signal = NOW.replace(hour=11, minute=0)
+    microbars: list[XauMicrobarM1] = []
+
+    def microbar(
+        minute_at: datetime,
+        *,
+        mid_open: float,
+        mid_close: float,
+        up: int,
+        down: int,
+    ) -> XauMicrobarM1:
+        spread = 0.0002
+        bid_open = mid_open - spread / 2
+        bid_close = mid_close - spread / 2
+        ask_open = mid_open + spread / 2
+        ask_close = mid_close + spread / 2
+        return XauMicrobarM1(
+            minute_at=minute_at,
+            first_quote_at=minute_at,
+            last_quote_at=minute_at + timedelta(seconds=50),
+            bid_open=bid_open,
+            bid_high=max(bid_open, bid_close),
+            bid_low=min(bid_open, bid_close),
+            bid_close=bid_close,
+            ask_open=ask_open,
+            ask_high=max(ask_open, ask_close),
+            ask_low=min(ask_open, ask_close),
+            ask_close=ask_close,
+            mid_open=mid_open,
+            mid_high=max(mid_open, mid_close),
+            mid_low=min(mid_open, mid_close),
+            mid_close=mid_close,
+            spread_open=spread,
+            spread_high=spread,
+            spread_low=spread,
+            spread_close=spread,
+            spread_sum=spread * (up + down + 1),
+            quote_count=up + down + 1,
+            mid_up_ticks=up,
+            mid_down_ticks=down,
+        )
+
+    for index in range(15):
+        minute = target_signal - timedelta(minutes=15 - index)
+        microbars.append(
+            microbar(
+                minute,
+                mid_open=100.0 + index * 0.05,
+                mid_close=100.03 + index * 0.05,
+                up=3,
+                down=1,
+            )
+        )
+    # This bar closes after target_signal and must not leak into the geometry.
+    microbars.append(
+        microbar(
+            target_signal,
+            mid_open=101.0,
+            mid_close=100.0,
+            up=0,
+            down=20,
+        )
+    )
+    for index in range(15):
+        minute = early_signal - timedelta(minutes=15 - index)
+        microbars.append(
+            microbar(
+                minute,
+                mid_open=102.0 - index * 0.02,
+                mid_close=101.98 - index * 0.02,
+                up=1,
+                down=3,
+            )
+        )
+
+    ledger = tmp_path / "BTCUSD_micro_m1.jsonl"
+    ledger.write_text(
+        "".join(row.model_dump_json() + "\n" for row in microbars),
+        encoding="utf-8",
+    )
+
+    target = MarketOpportunityEpisode(
+        episode_id="target",
+        symbol="BTCUSD",
+        side=Side.BUY,
+        birth_at=target_signal - timedelta(minutes=5),
+        horizon_end_at=target_signal + timedelta(minutes=55),
+        reference_price=100.0,
+        atr_m5=1.0,
+        move_atr=3.0,
+        capture_state=OpportunityCaptureState.BLOCKED,
+        first_signal_at=target_signal,
+        first_signal_state=ShadowSignalState.SIGNAL_BLOCKED,
+        first_signal_strategy_id="BTCUSD:directional_transition",
+        first_signal_mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+        first_signal_price=100.9,
+        signal_lead_lag_minutes=5.0,
+        move_consumed_at_signal_atr=0.9,
+        move_remaining_after_signal_atr=2.1,
+        move_consumed_fraction=0.30,
+    )
+    early = target.model_copy(
+        update={
+            "episode_id": "early",
+            "birth_at": early_signal - timedelta(minutes=5),
+            "horizon_end_at": early_signal + timedelta(minutes=55),
+            "first_signal_at": early_signal,
+            "first_signal_price": 102.1,
+            "move_consumed_at_signal_atr": 0.2,
+            "move_remaining_after_signal_atr": 2.8,
+            "move_consumed_fraction": 0.10,
+        }
+    )
+    precursor_before = CausalPrecursorObservation(
+        symbol="BTCUSD",
+        first_seen_at=target_signal - timedelta(minutes=10),
+        latest_closed_m5_at=target_signal - timedelta(minutes=15),
+        pattern=OpportunityCausalPattern.COMPRESSION_BREAKOUT,
+        side=Side.BUY,
+        context=OpportunityCausalContext(
+            pattern=OpportunityCausalPattern.COMPRESSION_BREAKOUT,
+            side=Side.BUY,
+        ),
+    )
+    precursor_after = precursor_before.model_copy(
+        update={
+            "first_seen_at": early_signal + timedelta(minutes=1),
+            "latest_closed_m5_at": early_signal,
+        }
+    )
+
+    report = _build_waiting_early_context_report(
+        opportunities=[target, early],
+        precursors=[precursor_before, precursor_after],
+        runtime_dir=tmp_path,
+        now=NOW,
+        window_hours=168,
+    )
+
+    assert report.waiting_episodes == 2
+    assert report.m1_eligible_episodes == 2
+    assert report.tick_pressure_eligible_episodes == 2
+    assert report.target_band_episodes == 1
+    assert report.target_band_m1_eligible_episodes == 1
+    assert report.target_band_tick_pressure_eligible_episodes == 1
+    assert report.target_band_with_precursor == 1
+    assert report.m1_coverage_started_at["BTCUSD"] == microbars[0].minute_at
+
+    summary = report.summaries[0]
+    assert summary.strategy_id == "BTCUSD:directional_transition"
+    assert summary.tick_pressure_eligible_episodes == 2
+    assert summary.early_reaction_m1_episodes == 1
+    assert summary.target_band_m1_episodes == 1
+    assert summary.target_band_tick_pressure_episodes == 1
+    assert summary.target_band_with_precursor == 1
+    assert summary.target_band_precursor_rate == 1.0
+    assert summary.median_target_side_aligned_tick_imbalance_5m == 0.5
+    assert summary.median_early_side_aligned_tick_imbalance_5m == -0.5
+    assert summary.target_minus_early_tick_imbalance_5m == 1.0
+
+    target_row = next(
+        row for row in report.recent_m1_episodes if row.episode_id == "target"
+    )
+    early_row = next(
+        row for row in report.recent_m1_episodes if row.episode_id == "early"
+    )
+    assert target_row.directional_tick_samples_5m == 20
+    assert target_row.side_aligned_tick_imbalance_5m == 0.5
+    assert target_row.precursor_first_seen_at == precursor_before.first_seen_at
+    assert target_row.precursor_lead_minutes_to_signal == 10.0
+    assert early_row.precursor_first_seen_at is None
+
+
+def test_side_aligned_tick_imbalance_flips_sell_direction() -> None:
+    assert _side_aligned_imbalance(Side.BUY, 0.25) == 0.25
+    assert _side_aligned_imbalance(Side.SELL, -0.25) == 0.25
+    assert _side_aligned_imbalance(Side.SELL, 0.25) == -0.25
+    assert _side_aligned_imbalance(Side.BUY, None) is None

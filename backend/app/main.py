@@ -373,13 +373,20 @@ def shadow_opportunity_funnel(hours: int = 24) -> OpportunityFunnel:
     f"{settings.api_prefix}/intelligence/overview",
     response_model=TradingIntelligenceOverview,
 )
-def trading_intelligence_overview(hours: int = 24) -> TradingIntelligenceOverview:
+def trading_intelligence_overview(
+    hours: int = 24,
+    include_waiting_early_context: bool = False,
+) -> TradingIntelligenceOverview:
     if hours < 1 or hours > 168:
         raise HTTPException(status_code=422, detail="hours must be between 1 and 168")
     cached = load_trading_intelligence(
         settings.shadow_ledger_dir / INTELLIGENCE_FILE
     )
-    if cached is not None and cached.window_hours == hours:
+    if (
+        not include_waiting_early_context
+        and cached is not None
+        and cached.window_hours == hours
+    ):
         return cached
     return build_trading_intelligence(
         _mt4_files_dir(),
@@ -387,6 +394,7 @@ def trading_intelligence_overview(hours: int = 24) -> TradingIntelligenceOvervie
         now=datetime.now(tz=_server_timezone()),
         window_hours=hours,
         symbols=settings.session_watch_symbols,
+        include_waiting_early_context=include_waiting_early_context,
     )
 
 

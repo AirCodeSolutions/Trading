@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from datetime import datetime, timedelta
 from pathlib import Path
-from statistics import fmean
+from statistics import fmean, median
 
 from app.domain.blocked_probe import BlockedOpportunityProbe
 from app.domain.causal_precursor import CausalPrecursorObservation
@@ -23,7 +24,11 @@ from app.domain.trading_intelligence import (
     TradeIntelligence,
     TradingIntelligenceOverview,
     UnseenOpportunityPatternSummary,
+    WaitingEarlyContextEpisode,
+    WaitingEarlyContextReport,
+    WaitingEarlyContextSummary,
 )
+from app.domain.xau_microbar import XauMicrobarM1
 from app.services.blocked_probe import load_blocked_probe_state, load_closed_probes
 from app.services.causal_precursor import (
     load_causal_precursor_collection_state,
@@ -31,11 +36,18 @@ from app.services.causal_precursor import (
 )
 from app.services.mt4_market_data import load_recent_closed_market_bars
 from app.services.shadow_paper import load_closed_trades, load_shadow_paper_state
+from app.services.xau_microbar import (
+    _geometry_window,
+    load_xau_microbars,
+    microbar_ledger_file,
+)
 
 DEFAULT_WINDOW_HOURS = 48
 MARKET_MOVE_THRESHOLD_ATR = 1.5
 MARKET_MOVE_HORIZON_BARS = 12
 SIGNAL_CAPTURE_WINDOW_BARS = 3
+WAITING_TARGET_MIN_CONSUMED_FRACTION = 0.25
+WAITING_TARGET_MAX_CONSUMED_FRACTION = 0.40
 
 
 def build_trading_intelligence(
@@ -47,6 +59,7 @@ def build_trading_intelligence(
     symbols: tuple[str, ...] | None = None,
     market_move_threshold_atr: float = MARKET_MOVE_THRESHOLD_ATR,
     market_move_horizon_bars: int = MARKET_MOVE_HORIZON_BARS,
+    include_waiting_early_context: bool = False,
 ) -> TradingIntelligenceOverview:
     if window_hours <= 0:
         raise ValueError("window_hours must be positive")
@@ -201,6 +214,17 @@ def build_trading_intelligence(
     causal_patterns = _causal_pattern_summaries(opportunities)
     unseen_patterns = _unseen_pattern_summaries(precursor_eligible)
     waiting_costs = _waiting_cost_summaries(opportunities)
+    waiting_early_context = (
+        _build_waiting_early_context_report(
+            opportunities=opportunities,
+            precursors=precursor_rows,
+            runtime_dir=runtime_dir,
+            now=now,
+            window_hours=window_hours,
+        )
+        if include_waiting_early_context
+        else None
+    )
     return TradingIntelligenceOverview(
         generated_at=now,
         window_hours=window_hours,
@@ -235,6 +259,7 @@ def build_trading_intelligence(
         causal_patterns=causal_patterns,
         unseen_patterns=unseen_patterns,
         waiting_costs=waiting_costs,
+        waiting_early_context=waiting_early_context,
         limitations=[
             (
                 "Market opportunities are a retrospective research denominator: "
@@ -1007,6 +1032,317 @@ def _waiting_cost_summaries(
             row.strategy_id,
         ),
     )
+
+
+def _build_waiting_early_context_report(
+    *,
+    opportunities: list[MarketOpportunityEpisode],
+    precursors: list[CausalPrecursorObservation],
+    runtime_dir: Path,
+    now: datetime,
+    window_hours: int,
+) -> WaitingEarlyContextReport:
+    symbols = sorted({row.symbol.upper() for row in opportunities})
+    microbars_by_symbol = {
+        symbol: load_xau_microbars(runtime_dir / microbar_ledger_file(symbol))
+        for symbol in symbols
+    }
+    coverage_started_at = {
+        symbol: rows[0].minute_at
+        for symbol, rows in microbars_by_symbol.items()
+        if rows
+    }
+    precursors_by_symbol: dict[str, list[CausalPrecursorObservation]] = defaultdict(list)
+    for row in precursors:
+        precursors_by_symbol[row.symbol.upper()].append(row)
+    for rows in precursors_by_symbol.values():
+        rows.sort(key=lambda item: item.first_seen_at)
+
+    waiting = [
+        row
+        for row in opportunities
+        if row.first_signal_at is not None
+        and row.first_signal_strategy_id is not None
+        and row.first_signal_mechanism is not None
+        and row.signal_lead_lag_minutes is not None
+        and row.move_consumed_fraction is not None
+        and row.move_consumed_at_signal_atr is not None
+        and row.move_remaining_after_signal_atr is not None
+    ]
+    episodes: list[WaitingEarlyContextEpisode] = []
+    grouped_waiting: dict[str, list[MarketOpportunityEpisode]] = defaultdict(list)
+    for row in waiting:
+        grouped_waiting[row.first_signal_strategy_id].append(row)
+        microbars = _microbars_closed_before(
+            microbars_by_symbol.get(row.symbol.upper(), []),
+            row.first_signal_at,
+            minutes=15,
+        )
+        geometry_5m = _geometry_window(microbars, 5) if microbars else None
+        geometry_15m = _geometry_window(microbars, 15) if microbars else None
+        if geometry_5m is None:
+            continue
+        precursor = _latest_matching_precursor_before_signal(
+            precursors_by_symbol.get(row.symbol.upper(), []),
+            side=row.side,
+            signal_at=row.first_signal_at,
+        )
+        episodes.append(
+            WaitingEarlyContextEpisode(
+                episode_id=row.episode_id,
+                strategy_id=row.first_signal_strategy_id,
+                symbol=row.symbol,
+                mechanism=row.first_signal_mechanism,
+                side=row.side,
+                first_signal_at=row.first_signal_at,
+                signal_lead_lag_minutes=row.signal_lead_lag_minutes,
+                move_consumed_fraction=row.move_consumed_fraction,
+                move_consumed_at_signal_atr=row.move_consumed_at_signal_atr,
+                move_remaining_after_signal_atr=row.move_remaining_after_signal_atr,
+                directional_tick_samples_5m=geometry_5m.directional_tick_samples,
+                side_aligned_tick_imbalance_5m=_side_aligned_imbalance(
+                    row.side,
+                    geometry_5m.mid_tick_imbalance,
+                ),
+                directional_tick_samples_15m=(
+                    geometry_15m.directional_tick_samples
+                    if geometry_15m is not None
+                    else 0
+                ),
+                side_aligned_tick_imbalance_15m=(
+                    _side_aligned_imbalance(
+                        row.side,
+                        geometry_15m.mid_tick_imbalance,
+                    )
+                    if geometry_15m is not None
+                    else None
+                ),
+                precursor_first_seen_at=(
+                    precursor.first_seen_at if precursor is not None else None
+                ),
+                precursor_pattern=(
+                    precursor.pattern if precursor is not None else None
+                ),
+                precursor_lead_minutes_to_signal=(
+                    (row.first_signal_at - precursor.first_seen_at).total_seconds()
+                    / 60.0
+                    if precursor is not None
+                    else None
+                ),
+            )
+        )
+
+    grouped_eligible: dict[str, list[WaitingEarlyContextEpisode]] = defaultdict(list)
+    for row in episodes:
+        grouped_eligible[row.strategy_id].append(row)
+
+    summaries: list[WaitingEarlyContextSummary] = []
+    for strategy_id, waiting_rows in grouped_waiting.items():
+        eligible = grouped_eligible.get(strategy_id, [])
+        early = [
+            row
+            for row in eligible
+            if row.move_consumed_fraction < WAITING_TARGET_MIN_CONSUMED_FRACTION
+        ]
+        target = [
+            row
+            for row in eligible
+            if WAITING_TARGET_MIN_CONSUMED_FRACTION
+            <= row.move_consumed_fraction
+            <= WAITING_TARGET_MAX_CONSUMED_FRACTION
+        ]
+        late = [
+            row
+            for row in eligible
+            if row.move_consumed_fraction > WAITING_TARGET_MAX_CONSUMED_FRACTION
+        ]
+        first = waiting_rows[0]
+        target_imbalance_5m = _nonnull(
+            row.side_aligned_tick_imbalance_5m for row in target
+        )
+        early_imbalance_5m = _nonnull(
+            row.side_aligned_tick_imbalance_5m for row in early
+        )
+        target_imbalance_15m = _nonnull(
+            row.side_aligned_tick_imbalance_15m for row in target
+        )
+        early_imbalance_15m = _nonnull(
+            row.side_aligned_tick_imbalance_15m for row in early
+        )
+        tick_pressure_eligible = [
+            row
+            for row in eligible
+            if row.side_aligned_tick_imbalance_5m is not None
+        ]
+        target_tick_pressure = [
+            row
+            for row in target
+            if row.side_aligned_tick_imbalance_5m is not None
+        ]
+        target_precursors = sum(
+            row.precursor_first_seen_at is not None for row in target
+        )
+        target_median_5m = (
+            median(target_imbalance_5m) if target_imbalance_5m else None
+        )
+        early_median_5m = (
+            median(early_imbalance_5m) if early_imbalance_5m else None
+        )
+        summaries.append(
+            WaitingEarlyContextSummary(
+                strategy_id=strategy_id,
+                symbol=first.symbol,
+                mechanism=first.first_signal_mechanism,
+                waiting_episodes=len(waiting_rows),
+                m1_eligible_episodes=len(eligible),
+                tick_pressure_eligible_episodes=len(tick_pressure_eligible),
+                early_reaction_m1_episodes=len(early),
+                target_band_m1_episodes=len(target),
+                target_band_tick_pressure_episodes=len(target_tick_pressure),
+                late_reaction_m1_episodes=len(late),
+                target_band_with_precursor=target_precursors,
+                target_band_precursor_rate=(
+                    target_precursors / len(target) if target else None
+                ),
+                median_target_directional_tick_samples_5m=(
+                    median(
+                        row.directional_tick_samples_5m
+                        for row in target
+                    )
+                    if target
+                    else None
+                ),
+                median_target_side_aligned_tick_imbalance_5m=target_median_5m,
+                median_early_side_aligned_tick_imbalance_5m=early_median_5m,
+                target_minus_early_tick_imbalance_5m=(
+                    target_median_5m - early_median_5m
+                    if target_median_5m is not None
+                    and early_median_5m is not None
+                    else None
+                ),
+                median_target_side_aligned_tick_imbalance_15m=(
+                    median(target_imbalance_15m)
+                    if target_imbalance_15m
+                    else None
+                ),
+                median_early_side_aligned_tick_imbalance_15m=(
+                    median(early_imbalance_15m)
+                    if early_imbalance_15m
+                    else None
+                ),
+            )
+        )
+
+    target_waiting = [
+        row
+        for row in waiting
+        if WAITING_TARGET_MIN_CONSUMED_FRACTION
+        <= row.move_consumed_fraction
+        <= WAITING_TARGET_MAX_CONSUMED_FRACTION
+    ]
+    target_eligible = [
+        row
+        for row in episodes
+        if WAITING_TARGET_MIN_CONSUMED_FRACTION
+        <= row.move_consumed_fraction
+        <= WAITING_TARGET_MAX_CONSUMED_FRACTION
+    ]
+    return WaitingEarlyContextReport(
+        generated_at=now,
+        window_hours=window_hours,
+        target_band_min_fraction=WAITING_TARGET_MIN_CONSUMED_FRACTION,
+        target_band_max_fraction=WAITING_TARGET_MAX_CONSUMED_FRACTION,
+        m1_coverage_started_at=coverage_started_at,
+        waiting_episodes=len(waiting),
+        m1_eligible_episodes=len(episodes),
+        tick_pressure_eligible_episodes=sum(
+            row.side_aligned_tick_imbalance_5m is not None for row in episodes
+        ),
+        target_band_episodes=len(target_waiting),
+        target_band_m1_eligible_episodes=len(target_eligible),
+        target_band_tick_pressure_eligible_episodes=sum(
+            row.side_aligned_tick_imbalance_5m is not None
+            for row in target_eligible
+        ),
+        target_band_with_precursor=sum(
+            row.precursor_first_seen_at is not None for row in target_eligible
+        ),
+        summaries=sorted(
+            summaries,
+            key=lambda row: (
+                -row.target_band_m1_episodes,
+                -row.m1_eligible_episodes,
+                row.strategy_id,
+            ),
+        ),
+        recent_m1_episodes=sorted(
+            episodes,
+            key=lambda row: row.first_signal_at,
+            reverse=True,
+        )[:100],
+        limitations=[
+            (
+                "M1 pressure is computed only from microbars fully closed before the "
+                "first SHADOW reaction; no pre-collector backfill is performed."
+            ),
+            (
+                "The 25-40% consumed band is a descriptive research cohort requested "
+                "for diagnosis, not a trading threshold."
+            ),
+            (
+                "Positive side-aligned tick imbalance means quote-direction pressure "
+                "matched the later market-opportunity side; this is not Level-2 OFI."
+            ),
+            (
+                "A precursor counts only when the same-symbol/same-side observation "
+                "was first seen within 15 minutes before the first SHADOW reaction."
+            ),
+        ],
+    )
+
+
+def _microbars_closed_before(
+    rows: list[XauMicrobarM1],
+    signal_at: datetime,
+    *,
+    minutes: int,
+) -> list[XauMicrobarM1]:
+    start_at = signal_at - timedelta(minutes=minutes)
+    return [
+        row
+        for row in rows
+        if start_at <= row.minute_at + timedelta(minutes=1) <= signal_at
+    ]
+
+
+def _latest_matching_precursor_before_signal(
+    rows: list[CausalPrecursorObservation],
+    *,
+    side: Side,
+    signal_at: datetime,
+) -> CausalPrecursorObservation | None:
+    start_at = signal_at - timedelta(
+        minutes=5 * SIGNAL_CAPTURE_WINDOW_BARS
+    )
+    matches = [
+        row
+        for row in rows
+        if row.side == side and start_at <= row.first_seen_at <= signal_at
+    ]
+    return max(matches, key=lambda row: row.first_seen_at) if matches else None
+
+
+def _side_aligned_imbalance(
+    side: Side,
+    imbalance: float | None,
+) -> float | None:
+    if imbalance is None:
+        return None
+    return imbalance if side == Side.BUY else -imbalance
+
+
+def _nonnull(values: Iterable[float | None]) -> list[float]:
+    return [value for value in values if value is not None]
 
 
 def _atr_series(bars: list[MarketBar], period: int = 14) -> list[float]:

@@ -7,6 +7,7 @@ from app.domain.opportunity import (
     ResearchSplit,
 )
 from app.domain.probe_review import ProbeReviewPack
+from app.domain.trading_intelligence import TradingIntelligenceOverview
 from app.services.opportunity_funnel import build_opportunity_funnel
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.trading_intelligence import build_trading_intelligence
@@ -103,7 +104,7 @@ def build_probe_review_pack(
 
 
 def _review_evidence_fields(
-    intelligence,
+    intelligence: TradingIntelligenceOverview,
     strategy_id: str,
 ) -> dict[str, object]:
     probe_context = (

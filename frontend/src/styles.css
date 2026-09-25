@@ -2177,3 +2177,44 @@ h1 {
   min-width: 2020px;
   grid-template-columns: 2.1fr 0.65fr 0.9fr 0.75fr 0.8fr 0.8fr 1fr 1fr 0.9fr 0.9fr 1.05fr 0.9fr 0.9fr 1.1fr 1.1fr;
 }
+
+
+.review-pack-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.review-pack-card {
+  padding: 14px;
+  border: 1px solid #1c2b3a;
+  border-radius: 12px;
+  background: rgba(8, 17, 26, 0.72);
+}
+
+.review-pack-card > small {
+  display: block;
+  margin-top: 10px;
+  color: #718297;
+  font-size: 10px;
+}
+
+.review-pack-metrics {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.review-pack-metrics span {
+  display: grid;
+  gap: 3px;
+  color: #718297;
+  font-size: 10px;
+}
+
+.review-pack-metrics b {
+  color: #d8e4ed;
+  font-size: 11px;
+}

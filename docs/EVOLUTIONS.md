@@ -1921,3 +1921,14 @@ Current post-M1 sample is intentionally immature: 2 admitted trades overlap M1 c
 No signal, admission, spread, risk, sizing, stop, target, macro or 5-lot rule changes.
 
 Validation: 327 backend tests pass, Ruff clean and frontend production build clean.
+
+
+## 2026-09-25 — pre-signal displacement normalized by risk
+
+Added side-aligned 5m/15m M1 price displacement in structural-risk units to admitted-trade and executable-probe early-context research.
+
+The metric measures how much directional move has already occurred before a signal and is reported separately for winners and losses. It is observational only and introduces no exhaustion threshold.
+
+Current probe evidence remains small (12 tick-pressure observations, 2W/10L). Aggregate winner/loss displacement is not sufficiently separated for a rule; continuation-specific cases will be accumulated prospectively.
+
+No trading guard or execution behavior changes.

@@ -234,6 +234,8 @@ class ProbeEarlyContextEpisode(BaseModel):
     directional_tick_samples_15m: int = Field(default=0, ge=0)
     side_aligned_tick_imbalance_15m: float | None = Field(default=None, ge=-1, le=1)
     pressure_agreement_5m_15m: bool | None = None
+    side_aligned_move_5m_r: float
+    side_aligned_move_15m_r: float | None = None
     spread_to_risk: float = Field(ge=0)
     average_quotes_per_bar_5m: float = Field(ge=0)
     path_efficiency_5m: float = Field(ge=0, le=1)
@@ -260,6 +262,10 @@ class ProbeEarlyContextSummary(BaseModel):
     loser_median_side_aligned_tick_imbalance_15m: float | None = Field(default=None, ge=-1, le=1)
     winner_pressure_agreement_rate: float | None = Field(default=None, ge=0, le=1)
     loser_pressure_agreement_rate: float | None = Field(default=None, ge=0, le=1)
+    winner_median_side_aligned_move_5m_r: float | None = None
+    loser_median_side_aligned_move_5m_r: float | None = None
+    winner_median_side_aligned_move_15m_r: float | None = None
+    loser_median_side_aligned_move_15m_r: float | None = None
     winner_median_spread_to_risk: float | None = Field(default=None, ge=0)
     loser_median_spread_to_risk: float | None = Field(default=None, ge=0)
     winner_median_path_efficiency_5m: float | None = Field(default=None, ge=0, le=1)
@@ -356,6 +362,8 @@ class AdmittedTradeEarlyContextEpisode(BaseModel):
     side_aligned_tick_imbalance_5m: float | None = Field(default=None, ge=-1, le=1)
     side_aligned_tick_imbalance_15m: float | None = Field(default=None, ge=-1, le=1)
     pressure_agreement_5m_15m: bool | None = None
+    side_aligned_move_5m_r: float
+    side_aligned_move_15m_r: float | None = None
     path_efficiency_5m: float = Field(ge=0, le=1)
     precursor_pattern: OpportunityCausalPattern | None = None
 
@@ -379,6 +387,10 @@ class AdmittedTradeEarlyContextSummary(BaseModel):
     )
     winner_pressure_agreement_rate: float | None = Field(default=None, ge=0, le=1)
     loser_pressure_agreement_rate: float | None = Field(default=None, ge=0, le=1)
+    winner_median_side_aligned_move_5m_r: float | None = None
+    loser_median_side_aligned_move_5m_r: float | None = None
+    winner_median_side_aligned_move_15m_r: float | None = None
+    loser_median_side_aligned_move_15m_r: float | None = None
     winner_median_spread_to_risk: float | None = Field(default=None, ge=0)
     loser_median_spread_to_risk: float | None = Field(default=None, ge=0)
     winner_median_mfe_r: float | None = Field(default=None, ge=0)

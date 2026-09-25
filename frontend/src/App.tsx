@@ -823,6 +823,10 @@ type TradingIntelligence = {
       loser_median_side_aligned_tick_imbalance_15m: number | null;
       winner_pressure_agreement_rate: number | null;
       loser_pressure_agreement_rate: number | null;
+      winner_median_side_aligned_move_5m_r: number | null;
+      loser_median_side_aligned_move_5m_r: number | null;
+      winner_median_side_aligned_move_15m_r: number | null;
+      loser_median_side_aligned_move_15m_r: number | null;
       winner_median_spread_to_risk: number | null;
       loser_median_spread_to_risk: number | null;
       winner_median_path_efficiency_5m: number | null;
@@ -888,6 +892,10 @@ type TradingIntelligence = {
       loser_median_side_aligned_tick_imbalance_5m: number | null;
       winner_pressure_agreement_rate: number | null;
       loser_pressure_agreement_rate: number | null;
+      winner_median_side_aligned_move_5m_r: number | null;
+      loser_median_side_aligned_move_5m_r: number | null;
+      winner_median_side_aligned_move_15m_r: number | null;
+      loser_median_side_aligned_move_15m_r: number | null;
       winner_median_spread_to_risk: number | null;
       loser_median_spread_to_risk: number | null;
       winner_median_mfe_r: number | null;
@@ -3076,6 +3084,8 @@ export default function App() {
                     <span>Exp.</span>
                     <span>Imb5 W / L</span>
                     <span>Accord W / L</span>
+                    <span>Move5/R W / L</span>
+                    <span>Move15/R W / L</span>
                     <span>Spread/R W / L</span>
                     <span>MFE W / L</span>
                     <span>MAE W / L</span>
@@ -3096,6 +3106,8 @@ export default function App() {
                         <span>{row.tick_pressure_expectancy_r >= 0 ? "+" : ""}{row.tick_pressure_expectancy_r.toFixed(2)} R</span>
                         <span>{row.winner_median_side_aligned_tick_imbalance_5m == null ? "—" : row.winner_median_side_aligned_tick_imbalance_5m.toFixed(2)} / {row.loser_median_side_aligned_tick_imbalance_5m == null ? "—" : row.loser_median_side_aligned_tick_imbalance_5m.toFixed(2)}</span>
                         <span>{row.winner_pressure_agreement_rate == null ? "—" : `${(row.winner_pressure_agreement_rate * 100).toFixed(0)} %`} / {row.loser_pressure_agreement_rate == null ? "—" : `${(row.loser_pressure_agreement_rate * 100).toFixed(0)} %`}</span>
+                        <span>{row.winner_median_side_aligned_move_5m_r == null ? "—" : row.winner_median_side_aligned_move_5m_r.toFixed(2)} / {row.loser_median_side_aligned_move_5m_r == null ? "—" : row.loser_median_side_aligned_move_5m_r.toFixed(2)}</span>
+                        <span>{row.winner_median_side_aligned_move_15m_r == null ? "—" : row.winner_median_side_aligned_move_15m_r.toFixed(2)} / {row.loser_median_side_aligned_move_15m_r == null ? "—" : row.loser_median_side_aligned_move_15m_r.toFixed(2)}</span>
                         <span>{row.winner_median_spread_to_risk == null ? "—" : `${(row.winner_median_spread_to_risk * 100).toFixed(1)} %`} / {row.loser_median_spread_to_risk == null ? "—" : `${(row.loser_median_spread_to_risk * 100).toFixed(1)} %`}</span>
                         <span>{row.winner_median_mfe_r == null ? "—" : row.winner_median_mfe_r.toFixed(2)} / {row.loser_median_mfe_r == null ? "—" : row.loser_median_mfe_r.toFixed(2)}</span>
                         <span>{row.winner_median_mae_r == null ? "—" : row.winner_median_mae_r.toFixed(2)} / {row.loser_median_mae_r == null ? "—" : row.loser_median_mae_r.toFixed(2)}</span>

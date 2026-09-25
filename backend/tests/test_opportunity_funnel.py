@@ -600,3 +600,41 @@ def test_funnel_recomputes_capital_feasibility_for_current_reference(
     assert strategy.capital_limited_probes == 3
     assert strategy.capital_base_feasible_probes == 1
     assert strategy.capital_base_feasible_total_r == 1.5
+
+
+def test_candidate_progress_uses_same_lifetime_sample_as_qualification(
+    tmp_path: Path,
+) -> None:
+    probes = [
+        unqualified_probe(
+            "old-win",
+            NOW - timedelta(hours=30),
+            1.5,
+            PaperTradeStatus.TARGET,
+        ),
+        unqualified_probe(
+            "recent-loss",
+            NOW - timedelta(hours=2),
+            -1.0,
+            PaperTradeStatus.STOP,
+        ),
+    ]
+    (tmp_path / "BTCUSD_directional_transition_unqualified_probes.jsonl").write_text(
+        "".join(row.model_dump_json() + "\n" for row in probes),
+        encoding="utf-8",
+    )
+
+    funnel = build_opportunity_funnel(
+        tmp_path,
+        now=NOW,
+        window_hours=24,
+        symbols=("BTCUSD",),
+    )
+
+    assert funnel.unqualified_probe_total_r == -1.0
+    candidate = funnel.positive_unqualified_candidates[0]
+    assert candidate.qualification.closed_trades == 2
+    assert candidate.wins == 1
+    assert candidate.losses == 1
+    assert candidate.total_r == 0.5
+    assert candidate.remaining_trades_to_review == 18

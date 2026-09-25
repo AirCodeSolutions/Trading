@@ -3052,3 +3052,20 @@ This is descriptive research progress only. Candidates are included when current
 No candidate receives admission or execution authority from appearing in this list. The 20-observation review floor remains unchanged.
 
 Current runtime evidence remains led by BTCUSD directional transition at 5/20, 4 wins / 1 loss, +5.02R and +1.00R expectancy. GBPUSD failed-auction and BTCUSD post-shock are also currently positive but remain substantially under-sampled.
+
+
+## 2026-09-25 — prospective edge dashboard and sample-consistency fix
+
+While wiring the positive prospective candidates into the dashboard, a reporting inconsistency was found and corrected: candidate qualification/progress was lifetime-prospective, but candidate W/L and total R could inherit the funnel display window (24 h on the UI). Candidate progress now derives all outcome metrics from the exact same lifetime prospective sample used by the 20-observation qualification contract.
+
+Dashboard changes:
+- Overview command center now surfaces the leading currently-positive prospective candidate instead of the merely most-observed family.
+- Research view now shows every currently-positive prospective candidate with x/20 progress, W/L, total R, expectancy, PF, max DD and observations remaining.
+- The panel explicitly states that positive evidence before 20 observations has no PAPER/DEMO authority.
+
+Current positive prospective candidates remain:
+- BTCUSD directional_transition: 5/20, 4W/1L, +5.02R, +1.00R expectancy;
+- GBPUSD failed_auction_reversal: 4/20, 2W/2L, +1.00R, +0.25R expectancy;
+- BTCUSD post_shock_continuation: 2/20, 1W/1L, +0.80R, +0.40R expectancy.
+
+Validation: 10 focused backend tests, 319 full backend tests, Ruff clean, frontend production build clean and diff check clean.

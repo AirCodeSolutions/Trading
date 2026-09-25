@@ -1807,3 +1807,14 @@ The new read-only surface reports current positive executable-probe candidates w
 This avoids conflating “most observed” with “most promising” while preserving the existing prospective qualification contract. No auto-promotion or trading rule is added.
 
 Validation: 9 focused tests and 318 full backend tests pass; Ruff and diff checks clean.
+
+
+## 2026-09-25 — prospective edge progress dashboard
+
+Improved research observability while prospective samples accumulate.
+
+The positive candidate surface is now visible on the dashboard with sample progress toward 20/20, W/L, total R, expectancy, PF and DD. The overview card also prefers a currently-positive prospective candidate over the merely most-observed family.
+
+Fixed an associated consistency issue: candidate W/L and total R now use the same lifetime prospective probe sample as qualification, rather than the shorter funnel display window.
+
+No scanner, admission, order, risk, stop, target, spread, macro or lot-cap behavior changes.

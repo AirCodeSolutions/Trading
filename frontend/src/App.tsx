@@ -981,6 +981,31 @@ type TradingIntelligence = {
     }[];
     limitations: string[];
   } | null;
+  candidate_evidence_coverage: {
+    strategy_id: string;
+    symbol: string;
+    mechanism: string;
+    probe_resolved: number;
+    probe_m1_eligible: number;
+    probe_tick_pressure_eligible: number;
+    probe_m1_coverage_rate: number | null;
+    probe_tick_pressure_coverage_rate: number | null;
+    waiting_episodes: number;
+    waiting_m1_eligible: number;
+    waiting_tick_pressure_eligible: number;
+    waiting_m1_coverage_rate: number | null;
+    waiting_tick_pressure_coverage_rate: number | null;
+    admitted_resolved: number;
+    admitted_m1_eligible: number;
+    admitted_tick_pressure_eligible: number;
+    admitted_m1_coverage_rate: number | null;
+    admitted_tick_pressure_coverage_rate: number | null;
+    blocked_resolved: number;
+    blocked_m1_eligible: number;
+    blocked_tick_pressure_eligible: number;
+    blocked_m1_coverage_rate: number | null;
+    blocked_tick_pressure_coverage_rate: number | null;
+  }[];
   limitations: string[];
 };
 
@@ -1272,6 +1297,8 @@ export default function App() {
     useState<TradingIntelligence["blocked_probe_early_context"]>(null);
   const [admittedTradeEarlyContext, setAdmittedTradeEarlyContext] =
     useState<TradingIntelligence["admitted_trade_early_context"]>(null);
+  const [candidateEvidenceCoverage, setCandidateEvidenceCoverage] =
+    useState<TradingIntelligence["candidate_evidence_coverage"]>([]);
   const [trailingShadow, setTrailingShadow] = useState<TrailingShadowSummary | null>(null);
   const [xauFeasiblePullback, setXauFeasiblePullback] =
     useState<XauFeasiblePullbackSummary | null>(null);
@@ -1579,6 +1606,7 @@ export default function App() {
           setProbeEarlyContext(payload.probe_early_context ?? null);
           setBlockedProbeEarlyContext(payload.blocked_probe_early_context ?? null);
           setAdmittedTradeEarlyContext(payload.admitted_trade_early_context ?? null);
+          setCandidateEvidenceCoverage(payload.candidate_evidence_coverage ?? []);
         }
       } catch {
         // Keep the last valid research snapshot; do not block the 24 h dashboard refresh.
@@ -4356,7 +4384,11 @@ export default function App() {
               </p>
             </div>
             <div className="candidate-progress-grid">
-              {opportunityFunnel?.positive_unqualified_candidates?.map((item) => (
+              {opportunityFunnel?.positive_unqualified_candidates?.map((item) => {
+                const coverage = candidateEvidenceCoverage.find(
+                  (row) => row.strategy_id === item.strategy_id
+                );
+                return (
                 <article className="candidate-progress-card" key={item.strategy_id}>
                   <div className="candidate-progress-top">
                     <div>
@@ -4386,8 +4418,31 @@ export default function App() {
                     {item.research_readiness.state.replaceAll("_", " ").toUpperCase()} ·{" "}
                     {item.research_readiness.reason}
                   </small>
+                  {coverage ? (
+                    <div className="candidate-evidence-coverage">
+                      <span>
+                        Probe tick
+                        <b>{coverage.probe_tick_pressure_eligible}/{coverage.probe_resolved}</b>
+                      </span>
+                      <span>
+                        Waiting tick
+                        <b>{coverage.waiting_tick_pressure_eligible}/{coverage.waiting_episodes}</b>
+                      </span>
+                      <span>
+                        Admis tick
+                        <b>{coverage.admitted_tick_pressure_eligible}/{coverage.admitted_resolved}</b>
+                      </span>
+                      <span>
+                        Bloqués tick
+                        <b>{coverage.blocked_tick_pressure_eligible}/{coverage.blocked_resolved}</b>
+                      </span>
+                    </div>
+                  ) : (
+                    <small>Couverture causale 168 h en collecte.</small>
+                  )}
                 </article>
-              ))}
+                );
+              })}
             </div>
           </div>
         ) : null}

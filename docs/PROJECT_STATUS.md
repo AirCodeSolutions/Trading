@@ -2986,3 +2986,18 @@ Deployment was performed under runtime drain with Trading-New flat. Only the bac
 The new M1 quote-direction counters are live on all five assets. Immediately after restart, current bars already contained non-zero up/down tick counts. Five-minute imbalance remains null until post-deployment M1 bars close, which is the intended causal behavior; no historical tick imbalance is backfilled.
 
 Current no-trade conclusion remains unchanged: runtime is healthy, but the current admitted set has not generated a signal since the 2026-09-24 XAU trade. Continue collecting unqualified probes and the new M1 pressure features rather than relaxing admission.
+
+
+## 2026-09-25 — prospective unseen tick-pressure summary
+
+Post-PR #139 deployment review found that the long-running shadow worker had not been restarted, so it still held the pre-#139 unseen-transition code in memory. Trading-New was flat; the worker was refreshed under drain and the drain was returned OFF. This is important because new unseen snapshots must be built with the same M1 tick-pressure fields that the M1 collector now persists.
+
+A new research-only summary is added for genuinely prospective unseen episodes. Legacy snapshots with zero directional tick samples are explicitly excluded rather than backfilled.
+
+For each eligible episode, raw mid-tick imbalance is side-adjusted:
+- BUY keeps the raw sign;
+- SELL inverts the sign.
+
+Positive values therefore mean that M1 quote pressure points in the same direction as the opportunity at birth. The summary separates aligned, opposed and unresolved transition outcomes and reports median side-adjusted pressure and directional tick sample density on 5m and 15m windows.
+
+This remains observability only. No trading threshold, scanner, admission, PAPER/DEMO order, sizing, stop, target, macro gate or lot cap consumes the new summary.

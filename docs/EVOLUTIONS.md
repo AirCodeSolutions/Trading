@@ -1770,3 +1770,18 @@ Added a prospective-only aggregation layer over unseen M1 opportunity births:
 Also refreshed the shadow worker under drain after detecting it had remained on the pre-PR #139 in-memory code. This ensures future unseen snapshots carry the newly collected M1 microstructure fields.
 
 No execution logic consumes these metrics.
+
+
+## 2026-09-25 — blocked probe outcomes by guard reason
+
+Extended the opportunity funnel so resolved blocked-probe outcomes are attributed to their exact `block_reason`.
+
+Each reason now reports:
+- tracked / resolved / open probes;
+- wins / losses;
+- total R;
+- expectancy R.
+
+This prevents spread rejects and minimum-lot/risk-granularity rejects from being conflated in research analysis.
+
+Current evidence supports keeping the spread guard unchanged: 150 resolved spread-blocked probes are -49.55R in aggregate with -0.33R expectancy; even the marginal 0.15-0.20 spread/stop band is negative.

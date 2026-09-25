@@ -6,6 +6,7 @@ from pathlib import Path
 
 from app.domain.blocked_probe import BlockedOpportunityProbe
 from app.domain.opportunity_funnel import (
+    BlockedProbeOutcomeSummary,
     OpportunityFunnel,
     OpportunityFunnelStrategy,
     ResearchProbeCandidateProgress,
@@ -201,6 +202,9 @@ def build_opportunity_funnel(
                 min_required_capital_base_risk_eur=min(capitals) if capitals else None,
                 max_required_capital_base_risk_eur=max(capitals) if capitals else None,
                 block_reasons=dict(sorted(reasons.items())),
+                blocked_probe_outcomes_by_reason=_blocked_probe_outcomes_by_reason(
+                    strategy_probes
+                ),
             )
         )
 
@@ -325,6 +329,7 @@ def build_opportunity_funnel(
             "capital_base_feasible_expectancy_r"
         ],
         block_reasons=dict(sorted(all_reasons.items())),
+        blocked_probe_outcomes_by_reason=_blocked_probe_outcomes_by_reason(probes),
         strategies=strategies,
     )
 
@@ -504,6 +509,31 @@ def _assess_unqualified_probe_evidence(
         max_drawdown_r=qualification.max_drawdown_r,
         reason=reason,
     )
+
+
+def _blocked_probe_outcomes_by_reason(
+    probes: list[BlockedOpportunityProbe],
+) -> dict[str, BlockedProbeOutcomeSummary]:
+    grouped: dict[str, list[BlockedOpportunityProbe]] = defaultdict(list)
+    for probe in probes:
+        grouped[probe.block_reason].append(probe)
+
+    summaries: dict[str, BlockedProbeOutcomeSummary] = {}
+    for reason, reason_probes in sorted(grouped.items()):
+        results = _resolved_results(reason_probes)
+        total_r = sum(results)
+        summaries[reason] = BlockedProbeOutcomeSummary(
+            tracked=len(reason_probes),
+            resolved=len(results),
+            open=sum(
+                probe.status == PaperTradeStatus.OPEN for probe in reason_probes
+            ),
+            wins=sum(result > 0 for result in results),
+            losses=sum(result < 0 for result in results),
+            total_r=total_r,
+            expectancy_r=(total_r / len(results) if results else 0.0),
+        )
+    return summaries
 
 
 def _resolved_results(probes: list[BlockedOpportunityProbe]) -> list[float]:

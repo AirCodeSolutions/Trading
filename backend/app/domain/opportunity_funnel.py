@@ -29,6 +29,16 @@ class ResearchProbeCandidateProgress(BaseModel):
     qualification: ResearchProbeQualification
 
 
+class BlockedProbeOutcomeSummary(BaseModel):
+    tracked: int = Field(ge=0)
+    resolved: int = Field(ge=0)
+    open: int = Field(ge=0)
+    wins: int = Field(ge=0)
+    losses: int = Field(ge=0)
+    total_r: float = 0.0
+    expectancy_r: float = 0.0
+
+
 class OpportunityFunnelStrategy(BaseModel):
     strategy_id: str
     symbol: str
@@ -63,6 +73,9 @@ class OpportunityFunnelStrategy(BaseModel):
     min_required_capital_base_risk_eur: float | None = Field(default=None, ge=0)
     max_required_capital_base_risk_eur: float | None = Field(default=None, ge=0)
     block_reasons: dict[str, int] = Field(default_factory=dict)
+    blocked_probe_outcomes_by_reason: dict[str, BlockedProbeOutcomeSummary] = Field(
+        default_factory=dict
+    )
 
 
 class OpportunityFunnel(BaseModel):
@@ -104,4 +117,7 @@ class OpportunityFunnel(BaseModel):
     capital_base_feasible_total_r: float = 0.0
     capital_base_feasible_expectancy_r: float = 0.0
     block_reasons: dict[str, int] = Field(default_factory=dict)
+    blocked_probe_outcomes_by_reason: dict[str, BlockedProbeOutcomeSummary] = Field(
+        default_factory=dict
+    )
     strategies: list[OpportunityFunnelStrategy] = Field(default_factory=list)

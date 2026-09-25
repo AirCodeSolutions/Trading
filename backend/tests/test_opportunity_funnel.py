@@ -82,6 +82,7 @@ def blocked_probe(
     min_lot_loss_eur: float = 3.0,
     required_capital_eur: float = 300.0,
     feasible_under_max: bool = True,
+    block_reason: str = "minimum broker lot exceeds the risk budget",
 ) -> BlockedOpportunityProbe:
     return BlockedOpportunityProbe(
         probe_id=probe_id,
@@ -97,7 +98,7 @@ def blocked_probe(
         risk_distance=1.0,
         target_r=1.8,
         max_holding_bars=18,
-        block_reason="minimum broker lot exceeds the risk budget",
+        block_reason=block_reason,
         max_risk_approved=feasible_under_max,
         max_risk_reason="test",
         min_lot_loss_eur=min_lot_loss_eur,
@@ -372,6 +373,76 @@ def test_funnel_aggregates_closed_and_open_blocked_probes(tmp_path: Path) -> Non
     strategy = funnel.strategies[0]
     assert strategy.min_required_capital_base_risk_eur == 210.0
     assert strategy.max_required_capital_base_risk_eur == 300.0
+    by_reason = strategy.blocked_probe_outcomes_by_reason
+    capital = by_reason["minimum broker lot exceeds the risk budget"]
+    assert capital.tracked == 3
+    assert capital.resolved == 2
+    assert capital.open == 1
+    assert capital.wins == 1
+    assert capital.losses == 1
+    assert capital.total_r == 0.8
+    assert capital.expectancy_r == 0.4
+
+
+def test_funnel_splits_blocked_probe_outcomes_by_reason(tmp_path: Path) -> None:
+    probes = [
+        blocked_probe(
+            probe_id="spread-win",
+            signal_at=NOW - timedelta(hours=3),
+            result_r=1.5,
+            status=PaperTradeStatus.TARGET,
+            block_reason="spread consumes too much of the stop distance",
+        ),
+        blocked_probe(
+            probe_id="spread-loss",
+            signal_at=NOW - timedelta(hours=2),
+            result_r=-1.0,
+            status=PaperTradeStatus.STOP,
+            block_reason="spread consumes too much of the stop distance",
+        ),
+        blocked_probe(
+            probe_id="capital-loss",
+            signal_at=NOW - timedelta(hours=1),
+            result_r=-1.0,
+            status=PaperTradeStatus.STOP,
+        ),
+    ]
+    (tmp_path / "BTCUSD_directional_transition_blocked_probes.jsonl").write_text(
+        "".join(row.model_dump_json() + "\n" for row in probes),
+        encoding="utf-8",
+    )
+
+    funnel = build_opportunity_funnel(
+        tmp_path,
+        now=NOW,
+        window_hours=24,
+        symbols=("BTCUSD",),
+    )
+
+    spread = funnel.blocked_probe_outcomes_by_reason[
+        "spread consumes too much of the stop distance"
+    ]
+    assert spread.tracked == 2
+    assert spread.resolved == 2
+    assert spread.wins == 1
+    assert spread.losses == 1
+    assert spread.total_r == 0.5
+    assert spread.expectancy_r == 0.25
+
+    capital = funnel.blocked_probe_outcomes_by_reason[
+        "minimum broker lot exceeds the risk budget"
+    ]
+    assert capital.tracked == 1
+    assert capital.resolved == 1
+    assert capital.wins == 0
+    assert capital.losses == 1
+    assert capital.total_r == -1.0
+    assert capital.expectancy_r == -1.0
+
+    strategy = funnel.strategies[0]
+    assert strategy.blocked_probe_outcomes_by_reason == (
+        funnel.blocked_probe_outcomes_by_reason
+    )
 
 
 def test_opportunity_funnel_api_is_read_only_and_uses_runtime_dir(

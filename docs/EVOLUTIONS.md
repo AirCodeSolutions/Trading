@@ -1941,3 +1941,8 @@ Extended the existing `probe_review` workflow so a strategy entering `SUPPORTS_R
 The review pack now includes probe M1 context, Value of Waiting, optional waiting early-context, admitted-trade follow-through and blocked-probe economics over a frozen 168 h evidence window, in addition to the dedicated historical replay.
 
 The review remains decision-support only: `requires_human_decision=true` is unchanged and no admission mutation is introduced.
+
+
+### Probe review API
+
+Added `POST /api/v1/research/probe-review` so review-ready candidate evidence can be consumed explicitly by UI or operator tooling. The request carries the research split instead of relying on hidden dates. The response remains read-only decision support.

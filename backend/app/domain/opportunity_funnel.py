@@ -12,6 +12,24 @@ class ResearchProbeQualificationState(StrEnum):
     SUPPORTS_REVIEW = "supports_review"
 
 
+class CandidateResearchState(StrEnum):
+    """Descriptive next research question for a prospective candidate.
+
+    These states never participate in admission or execution decisions.
+    """
+
+    COLLECT_MORE = "collect_more"
+    TIMING_RESEARCH = "timing_research"
+    SELECTION_RESEARCH = "selection_research"
+    COST_GRANULARITY_RESEARCH = "cost_granularity_research"
+    REVIEW_READY = "review_ready"
+
+
+class CandidateResearchReadiness(BaseModel):
+    state: CandidateResearchState
+    reason: str
+
+
 class ResearchProbeQualification(BaseModel):
     state: ResearchProbeQualificationState
     closed_trades: int = Field(ge=0)
@@ -27,6 +45,7 @@ class ResearchProbeCandidateProgress(BaseModel):
     symbol: str
     mechanism: OpportunityMechanism
     qualification: ResearchProbeQualification
+    research_readiness: CandidateResearchReadiness
     wins: int = Field(default=0, ge=0)
     losses: int = Field(default=0, ge=0)
     total_r: float = 0.0

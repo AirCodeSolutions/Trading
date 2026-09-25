@@ -1785,3 +1785,14 @@ Each reason now reports:
 This prevents spread rejects and minimum-lot/risk-granularity rejects from being conflated in research analysis.
 
 Current evidence supports keeping the spread guard unchanged: 150 resolved spread-blocked probes are -49.55R in aggregate with -0.33R expectancy; even the marginal 0.15-0.20 spread/stop band is negative.
+
+
+## 2026-09-25 — deployment backlog checkpoint
+
+Confirmed there is no pending software deployment:
+- `main == origin/main == 5ddbe2c`;
+- PR #139 through #142 are merged;
+- no open PR remains;
+- runtime is READY 5/5 with drain OFF and auto-collection armed.
+
+Current waiting time is prospective-evidence collection, not an undeployed release. The project deliberately keeps the 20-observation research-review floor, the 15% spread/stop guard and the 5-lot ceiling unchanged while new evidence accumulates.

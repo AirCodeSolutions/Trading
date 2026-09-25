@@ -3015,3 +3015,25 @@ Current resolved sample:
 The global 15% spread/stop guard is therefore retained. There is no evidence for relaxing it to create more trades.
 
 The opportunity funnel is extended with `blocked_probe_outcomes_by_reason`, exposing tracked/resolved/open probes, wins, losses, total R and expectancy R for each exact guard reason at both portfolio and strategy level. This is observability only and does not change any execution decision.
+
+
+## 2026-09-25 — deployment lag check: software current, evidence still maturing
+
+Deployment backlog is currently zero.
+
+Verified state:
+- local `main` and `origin/main` are identical at `5ddbe2c`;
+- PR #139, #140, #141 and #142 are merged and present on the host;
+- no pull request is currently open;
+- backend, shadow worker and multi-asset M1 worker are healthy;
+- session preflight is READY for BTCUSD, EURUSD, GBPUSD, XAUUSD and XAGUSD;
+- drain is OFF and DEMO auto-collection is armed;
+- Trading-New bridge has zero open positions and there is no pending open/close command;
+- hard 5-lot ceiling, broker-equity sizing and 15% spread/stop guard remain active.
+
+The remaining delay is evidence maturity, not deployment:
+- BTC directional transition remains 5/20 prospective executable probes despite strong early results (+5.02R, +1.00R expectancy);
+- XAU failed-auction remains the largest executable-probe sample at 8/20 but is slightly negative (-0.50R);
+- the new post-PR #139 tick-pressure summary remains at 0 eligible episodes because no genuinely new unseen episode has yet been captured with non-zero directional tick samples.
+
+No promotion threshold is reduced to compensate for elapsed time or low trade frequency.

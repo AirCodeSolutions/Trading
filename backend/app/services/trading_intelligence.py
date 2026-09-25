@@ -1185,6 +1185,20 @@ def _build_admitted_trade_early_context_report(
                     imbalance_5m,
                     imbalance_15m,
                 ),
+                side_aligned_move_5m_r=_side_aligned_move_r(
+                    trade.side,
+                    geometry_5m.signed_move,
+                    source.risk_distance,
+                ),
+                side_aligned_move_15m_r=(
+                    _side_aligned_move_r(
+                        trade.side,
+                        geometry_15m.signed_move,
+                        source.risk_distance,
+                    )
+                    if geometry_15m is not None
+                    else None
+                ),
                 path_efficiency_5m=geometry_5m.path_efficiency,
                 precursor_pattern=(
                     precursor.pattern if precursor is not None else None
@@ -1238,6 +1252,18 @@ def _build_admitted_trade_early_context_report(
                 ),
                 winner_pressure_agreement_rate=_bool_rate_or_none(win_agreement),
                 loser_pressure_agreement_rate=_bool_rate_or_none(loss_agreement),
+                winner_median_side_aligned_move_5m_r=_median_or_none(
+                    row.side_aligned_move_5m_r for row in wins
+                ),
+                loser_median_side_aligned_move_5m_r=_median_or_none(
+                    row.side_aligned_move_5m_r for row in losses
+                ),
+                winner_median_side_aligned_move_15m_r=_median_or_none(
+                    row.side_aligned_move_15m_r for row in wins
+                ),
+                loser_median_side_aligned_move_15m_r=_median_or_none(
+                    row.side_aligned_move_15m_r for row in losses
+                ),
                 winner_median_spread_to_risk=_median_or_none(
                     row.spread_to_risk for row in wins
                 ),
@@ -1612,6 +1638,20 @@ def _build_probe_early_context_report(
                         else None
                     ),
                 ),
+                side_aligned_move_5m_r=_side_aligned_move_r(
+                    probe.side,
+                    geometry_5m.signed_move,
+                    probe.risk_distance,
+                ),
+                side_aligned_move_15m_r=(
+                    _side_aligned_move_r(
+                        probe.side,
+                        geometry_15m.signed_move,
+                        probe.risk_distance,
+                    )
+                    if geometry_15m is not None
+                    else None
+                ),
                 spread_to_risk=(
                     probe.spread_at_entry / probe.risk_distance
                     if probe.risk_distance > 0
@@ -1704,6 +1744,18 @@ def _build_probe_early_context_report(
                     sum(loser_agreement) / len(loser_agreement)
                     if loser_agreement
                     else None
+                ),
+                winner_median_side_aligned_move_5m_r=_median_or_none(
+                    row.side_aligned_move_5m_r for row in wins
+                ),
+                loser_median_side_aligned_move_5m_r=_median_or_none(
+                    row.side_aligned_move_5m_r for row in losses
+                ),
+                winner_median_side_aligned_move_15m_r=_median_or_none(
+                    row.side_aligned_move_15m_r for row in wins
+                ),
+                loser_median_side_aligned_move_15m_r=_median_or_none(
+                    row.side_aligned_move_15m_r for row in losses
                 ),
                 winner_median_spread_to_risk=(
                     median(row.spread_to_risk for row in wins)
@@ -2095,6 +2147,17 @@ def _latest_matching_precursor_before_signal(
         if row.side == side and start_at <= row.first_seen_at <= signal_at
     ]
     return max(matches, key=lambda row: row.first_seen_at) if matches else None
+
+
+def _side_aligned_move_r(
+    side: Side,
+    signed_move: float,
+    risk_distance: float,
+) -> float:
+    if risk_distance <= 0:
+        return 0.0
+    direction = 1.0 if side == Side.BUY else -1.0
+    return direction * signed_move / risk_distance
 
 
 def _pressure_agreement(

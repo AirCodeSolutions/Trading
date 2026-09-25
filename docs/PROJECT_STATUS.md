@@ -3295,3 +3295,18 @@ Current 168 h checkpoint:
 Interpretation: the latest XAU loss looks primarily like absent follow-through / direction conflict rather than excessive spread or execution delay. This is a frozen research hypothesis only; there is still no admitted winner with comparable tick-pressure coverage, so no new veto or threshold is justified.
 
 Validation: 23 focused intelligence tests, 327 full backend tests, Ruff clean, frontend production build clean and diff check clean.
+
+
+## 2026-09-25 — pre-signal M1 displacement / exhaustion context
+
+The admitted-trade and executable-probe early-context reports now freeze side-aligned pre-signal price displacement over 5m and 15m, normalized by each trade/probe structural risk distance. Positive values mean price already moved in the eventual trade direction before the signal; negative values mean pre-signal movement opposed it.
+
+This feature complements quote-direction imbalance and path efficiency. It is designed to measure whether continuation-style opportunities arrive after a large fraction of their risk budget has already been consumed before entry, without defining a threshold.
+
+Current post-cutover executable-probe sample: 12 genuine tick-pressure probes, 2W/10L. Across all mechanisms the median 15m pre-signal displacement is about 0.39R for winners versus 0.50R for losses, which is not enough to support a global rule. Mechanism-level observations are more suggestive but still tiny: BTC post_shock_continuation has one winner around 0.54R pre-signal 15m displacement versus one loss around 2.19R; several XAU post-shock losses are around 1.8-2.46R.
+
+External research checkpoint: Kitron & Wengrowicz (Aug 2026) report pervasive 15-minute crypto mean reversion concentrated after aggressive-flow-driven moves, while also finding the gross effect too small to clear benchmark spot trading costs. We use this only to motivate measuring exhaustion context; MT4 quote-direction pressure is not taker-flow OFI and no contrarian strategy or threshold is introduced.
+
+Recent 2026 FOMC high-frequency studies also reinforce that price discovery and volatility can change within seconds/minutes around announcements. Existing macro protections remain unchanged.
+
+No signal, admission, spread, risk, sizing, stop, target, macro or 5-lot rule changes.

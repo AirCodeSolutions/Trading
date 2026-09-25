@@ -30,6 +30,7 @@ from app.services.trading_intelligence import (
     _build_waiting_early_context_report,
     _market_opportunity_episodes,
     _side_aligned_imbalance,
+    _side_aligned_move_r,
     _trade_metrics,
     _unseen_pattern_summaries,
     _waiting_cost_summaries,
@@ -1275,3 +1276,10 @@ def test_admitted_trade_early_context_compares_follow_through(
     assert summary.loser_precursor_rate == 0.0
     assert summary.winner_precursor_patterns == {"directional_displacement": 1}
     assert summary.loser_precursor_patterns == {}
+
+
+def test_side_aligned_move_r_flips_sell_direction() -> None:
+    assert _side_aligned_move_r(Side.BUY, 0.2, 0.1) == 2.0
+    assert _side_aligned_move_r(Side.SELL, 0.2, 0.1) == -2.0
+    assert _side_aligned_move_r(Side.SELL, -0.2, 0.1) == 2.0
+    assert _side_aligned_move_r(Side.BUY, 1.0, 0.0) == 0.0

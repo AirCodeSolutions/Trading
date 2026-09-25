@@ -1838,3 +1838,12 @@ The Research dashboard now shows how much of each later market move was already 
 Pre-birth signals are treated as early reactions and count as 0 ATR consumed. The future move remains retrospective research metadata only and cannot authorize an order.
 
 Validation: 18 focused tests, 320 full backend tests, Ruff clean and frontend production build clean.
+
+
+## 2026-09-25 — isolate 168 h Value of Waiting refresh
+
+The Research dashboard now refreshes Value of Waiting on its own 168 h / five-minute cadence while retaining the existing 24 h core intelligence refresh.
+
+This keeps the operational dashboard responsive and gives the waiting-cost analysis enough observations to be meaningful. Failed 168 h refreshes retain the last valid snapshot.
+
+No execution, admission or risk behavior changes. Frontend production build passes.

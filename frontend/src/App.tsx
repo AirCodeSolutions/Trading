@@ -1040,6 +1040,7 @@ export default function App() {
   const [blockedProbes, setBlockedProbes] = useState<BlockedProbeRuntime[]>([]);
   const [opportunityFunnel, setOpportunityFunnel] = useState<OpportunityFunnel | null>(null);
   const [intelligence, setIntelligence] = useState<TradingIntelligence | null>(null);
+  const [waitingCosts, setWaitingCosts] = useState<TradingIntelligence["waiting_costs"]>([]);
   const [trailingShadow, setTrailingShadow] = useState<TrailingShadowSummary | null>(null);
   const [xauFeasiblePullback, setXauFeasiblePullback] =
     useState<XauFeasiblePullbackSummary | null>(null);
@@ -1260,6 +1261,33 @@ export default function App() {
 
     void refreshQuotes();
     const timer = window.setInterval(refreshQuotes, 5_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    let refreshing = false;
+
+    const refreshWaitingCosts = async () => {
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        const response = await fetch("/api/v1/intelligence/overview?hours=168");
+        if (!response.ok) throw new Error("waiting-cost research unavailable");
+        const payload = (await response.json()) as TradingIntelligence;
+        if (active) setWaitingCosts(payload.waiting_costs ?? []);
+      } catch {
+        // Keep the last valid research snapshot; do not block the 24 h dashboard refresh.
+      } finally {
+        refreshing = false;
+      }
+    };
+
+    void refreshWaitingCosts();
+    const timer = window.setInterval(refreshWaitingCosts, 300_000);
     return () => {
       active = false;
       window.clearInterval(timer);
@@ -2722,14 +2750,14 @@ export default function App() {
         </div>
 
         <div className="intelligence-subsection">
-          <h3>Value of Waiting · première réaction système</h3>
+          <h3>Value of Waiting · première réaction système · 168 h</h3>
           <p className="intelligence-note">
             Compare la naissance market-first à la première réaction SHADOW du même sens.
             Un délai négatif signifie que le signal précédait déjà la naissance rétrospective.
             ATR consommé / restant utilise le mouvement futur uniquement comme mesure de recherche
             et ne donne aucune autorité d’exécution.
           </p>
-          {(intelligence?.waiting_costs ?? []).length ? (
+          {waitingCosts.length ? (
             <div className="intelligence-table">
               <div className="intelligence-row waiting-cost-row intelligence-head">
                 <span>Stratégie</span>
@@ -2742,7 +2770,7 @@ export default function App() {
                 <span>% consommé</span>
                 <span>Precursor → signal</span>
               </div>
-              {(intelligence?.waiting_costs ?? []).map((row) => (
+              {waitingCosts.map((row) => (
                 <div className="intelligence-row waiting-cost-row" key={row.strategy_id}>
                   <strong>{row.strategy_id.replaceAll("_", " ")}</strong>
                   <span>{row.episodes_with_signal}</span>

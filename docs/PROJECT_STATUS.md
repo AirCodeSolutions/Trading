@@ -2967,3 +2967,22 @@ Research instrumentation is extended with a causal quote-direction proxy on ever
 This is not true order-flow imbalance because MT4 does not provide L2 queue sizes. It is research-only and does not alter scanners, admission, PAPER/DEMO orders, sizing, stops, targets, macro gates or the 5-lot ceiling.
 
 Validation: 15 focused tests, then 314 full backend tests, Ruff clean and diff check clean.
+
+
+## 2026-09-25 — PR #139 deployment checkpoint
+
+PR #139 is merged and deployed on `main` at `26d9591`.
+
+Deployment was performed under runtime drain with Trading-New flat. Only the backend and prospective M1 worker were restarted; the shadow worker remained running. Postflight confirms:
+- drain OFF;
+- DEMO auto-collection armed;
+- READY 5/5;
+- 0 Trading-New PAPER positions and 0 bridge positions;
+- no pending open/close command;
+- hard 5-lot ceiling unchanged;
+- broker-equity sizing unchanged;
+- four PAPER-entry-allowed SHADOW collectors still waiting for an executable trade.
+
+The new M1 quote-direction counters are live on all five assets. Immediately after restart, current bars already contained non-zero up/down tick counts. Five-minute imbalance remains null until post-deployment M1 bars close, which is the intended causal behavior; no historical tick imbalance is backfilled.
+
+Current no-trade conclusion remains unchanged: runtime is healthy, but the current admitted set has not generated a signal since the 2026-09-24 XAU trade. Continue collecting unqualified probes and the new M1 pressure features rather than relaxing admission.

@@ -122,6 +122,35 @@ class UnseenTransitionResearchSummary(BaseModel):
     median_aligned_move_consumed_atr: float | None = None
 
 
+class UnseenTickPressureResearchSummary(BaseModel):
+    symbol: str
+    episodes_with_tick_pressure: int = Field(ge=0)
+    resolved_with_tick_pressure: int = Field(ge=0)
+    aligned_with_tick_pressure: int = Field(ge=0)
+    opposed_with_tick_pressure: int = Field(ge=0)
+    unresolved_with_tick_pressure: int = Field(ge=0)
+    median_directional_tick_samples_5m: float | None = Field(default=None, ge=0)
+    median_side_aligned_tick_imbalance_5m: float | None = Field(
+        default=None, ge=-1, le=1
+    )
+    median_aligned_side_tick_imbalance_5m: float | None = Field(
+        default=None, ge=-1, le=1
+    )
+    median_opposed_side_tick_imbalance_5m: float | None = Field(
+        default=None, ge=-1, le=1
+    )
+    median_directional_tick_samples_15m: float | None = Field(default=None, ge=0)
+    median_side_aligned_tick_imbalance_15m: float | None = Field(
+        default=None, ge=-1, le=1
+    )
+    median_aligned_side_tick_imbalance_15m: float | None = Field(
+        default=None, ge=-1, le=1
+    )
+    median_opposed_side_tick_imbalance_15m: float | None = Field(
+        default=None, ge=-1, le=1
+    )
+
+
 class XauMicrobarSummary(BaseModel):
     symbol: str = "XAUUSD"
     timeframe: str = "M1"

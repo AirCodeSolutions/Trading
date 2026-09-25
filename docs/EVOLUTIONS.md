@@ -1757,3 +1757,16 @@ Runtime postflight:
 - 5-lot ceiling and broker-equity sizing unchanged.
 
 New up/down tick counts are being populated prospectively on BTCUSD, EURUSD, GBPUSD, XAUUSD and XAGUSD. Geometry-level imbalance intentionally waits for newly closed M1 bars; there is no synthetic backfill.
+
+
+## 2026-09-25 — unseen tick-pressure research summary
+
+Added a prospective-only aggregation layer over unseen M1 opportunity births:
+- exclude legacy episodes that have no real directional tick samples;
+- convert M1 tick imbalance to opportunity-side-aligned pressure;
+- separate resolved aligned vs opposed transitions;
+- expose median 5m/15m pressure and directional tick sample counts.
+
+Also refreshed the shadow worker under drain after detecting it had remained on the pre-PR #139 in-memory code. This ensures future unseen snapshots carry the newly collected M1 microstructure fields.
+
+No execution logic consumes these metrics.

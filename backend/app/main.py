@@ -49,6 +49,7 @@ from app.domain.trading_intelligence import TradingIntelligenceOverview
 from app.domain.trailing_shadow import TrailingShadowSummary
 from app.domain.xau_feasible_pullback_shadow import XauFeasiblePullbackSummary
 from app.domain.xau_microbar import (
+    UnseenTickPressureResearchSummary,
     UnseenTransitionResearchSummary,
     XauMicrobarSummary,
 )
@@ -132,6 +133,7 @@ from app.services.xau_microbar import (
     load_xau_microbar_summary,
 )
 from app.services.xau_unseen_transition_capture import (
+    load_all_unseen_tick_pressure_summaries,
     load_all_unseen_transition_summaries,
 )
 
@@ -573,6 +575,14 @@ def research_market_microbars() -> list[XauMicrobarSummary]:
 )
 def research_unseen_transitions() -> list[UnseenTransitionResearchSummary]:
     return load_all_unseen_transition_summaries(settings.shadow_ledger_dir)
+
+
+@app.get(
+    f"{settings.api_prefix}/research/unseen-tick-pressure",
+    response_model=list[UnseenTickPressureResearchSummary],
+)
+def research_unseen_tick_pressure() -> list[UnseenTickPressureResearchSummary]:
+    return load_all_unseen_tick_pressure_summaries(settings.shadow_ledger_dir)
 
 
 @app.get(

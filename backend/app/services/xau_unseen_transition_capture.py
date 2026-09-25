@@ -13,7 +13,9 @@ from app.domain.trading_intelligence import (
     TradingIntelligenceOverview,
 )
 from app.domain.xau_microbar import (
+    UnseenTickPressureResearchSummary,
     UnseenTransitionResearchSummary,
+    XauMicrobarGeometry,
     XauMicrobarM1,
     XauUnseenTransitionSnapshot,
 )
@@ -106,6 +108,109 @@ def load_all_unseen_transition_summaries(
 ) -> list[UnseenTransitionResearchSummary]:
     return [
         summarize_unseen_transition_snapshots(
+            symbol,
+            load_unseen_transition_snapshots(
+                runtime_dir / unseen_transition_file(symbol)
+            ),
+        )
+        for symbol in SUPPORTED_SYMBOLS
+    ]
+
+
+def _side_aligned_tick_imbalance(
+    snapshot: XauUnseenTransitionSnapshot,
+    geometry: XauMicrobarGeometry | None,
+) -> float | None:
+    if (
+        geometry is None
+        or geometry.directional_tick_samples <= 0
+        or geometry.mid_tick_imbalance is None
+    ):
+        return None
+    if snapshot.episode_side.value == "buy":
+        return geometry.mid_tick_imbalance
+    return -geometry.mid_tick_imbalance
+
+
+def summarize_unseen_tick_pressure_snapshots(
+    symbol: str,
+    snapshots: list[XauUnseenTransitionSnapshot],
+) -> UnseenTickPressureResearchSummary:
+    eligible = [
+        row
+        for row in snapshots
+        if _side_aligned_tick_imbalance(row, row.geometry_5m) is not None
+    ]
+    resolved = [row for row in eligible if row.transition_aligned is not None]
+    aligned = [row for row in resolved if row.transition_aligned is True]
+    opposed = [row for row in resolved if row.transition_aligned is False]
+
+    def imbalances(
+        rows: list[XauUnseenTransitionSnapshot],
+        attribute: str,
+    ) -> list[float]:
+        values: list[float] = []
+        for row in rows:
+            geometry = getattr(row, attribute)
+            value = _side_aligned_tick_imbalance(row, geometry)
+            if value is not None:
+                values.append(value)
+        return values
+
+    five_all = imbalances(eligible, "geometry_5m")
+    five_aligned = imbalances(aligned, "geometry_5m")
+    five_opposed = imbalances(opposed, "geometry_5m")
+    fifteen_all = imbalances(eligible, "geometry_15m")
+    fifteen_aligned = imbalances(aligned, "geometry_15m")
+    fifteen_opposed = imbalances(opposed, "geometry_15m")
+    five_samples = [row.geometry_5m.directional_tick_samples for row in eligible]
+    fifteen_samples = [
+        row.geometry_15m.directional_tick_samples
+        for row in eligible
+        if row.geometry_15m is not None
+        and row.geometry_15m.directional_tick_samples > 0
+        and row.geometry_15m.mid_tick_imbalance is not None
+    ]
+
+    return UnseenTickPressureResearchSummary(
+        symbol=symbol.upper(),
+        episodes_with_tick_pressure=len(eligible),
+        resolved_with_tick_pressure=len(resolved),
+        aligned_with_tick_pressure=len(aligned),
+        opposed_with_tick_pressure=len(opposed),
+        unresolved_with_tick_pressure=len(eligible) - len(resolved),
+        median_directional_tick_samples_5m=(
+            median(five_samples) if five_samples else None
+        ),
+        median_side_aligned_tick_imbalance_5m=(
+            median(five_all) if five_all else None
+        ),
+        median_aligned_side_tick_imbalance_5m=(
+            median(five_aligned) if five_aligned else None
+        ),
+        median_opposed_side_tick_imbalance_5m=(
+            median(five_opposed) if five_opposed else None
+        ),
+        median_directional_tick_samples_15m=(
+            median(fifteen_samples) if fifteen_samples else None
+        ),
+        median_side_aligned_tick_imbalance_15m=(
+            median(fifteen_all) if fifteen_all else None
+        ),
+        median_aligned_side_tick_imbalance_15m=(
+            median(fifteen_aligned) if fifteen_aligned else None
+        ),
+        median_opposed_side_tick_imbalance_15m=(
+            median(fifteen_opposed) if fifteen_opposed else None
+        ),
+    )
+
+
+def load_all_unseen_tick_pressure_summaries(
+    runtime_dir: Path,
+) -> list[UnseenTickPressureResearchSummary]:
+    return [
+        summarize_unseen_tick_pressure_snapshots(
             symbol,
             load_unseen_transition_snapshots(
                 runtime_dir / unseen_transition_file(symbol)

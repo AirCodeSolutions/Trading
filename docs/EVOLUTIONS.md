@@ -1884,3 +1884,14 @@ The current four tick-pressure probes are all losses and all four have same-sign
 No trading, admission, risk, spread guard or 5-lot behavior changes.
 
 Validation: 21 focused tests, 323 full backend tests, Ruff clean and frontend build clean.
+
+
+## 2026-09-25 — blocked probe M1 economics
+
+Added a research-only blocked-probe early-context surface grouped by exact strategy and exact runtime block reason. It joins resolved counterfactual blocked-probe outcomes to causal pre-signal M1 pressure, spread/risk, 5m/15m agreement, path efficiency and precursor type.
+
+Current post-collector blocked-probe evidence is strongly negative: 10 genuine tick-pressure observations across all assets produce 1W/9L and -8.21R. EUR/XAG contribute 6 of those observations for 1W/5L and about -4.21R.
+
+The single XAG failed-auction winner (+0.79R) occurred with spread/risk around 50% and M1 pressure opposing the trade; it does not justify relaxing the spread guard. No execution/admission/risk behavior changes.
+
+Validation: 22 focused tests, 324 full backend tests, Ruff clean and frontend production build clean.

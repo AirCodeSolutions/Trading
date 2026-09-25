@@ -14,6 +14,9 @@ from app.domain.shadow_paper import PaperTradeStatus, ShadowPaperTrade
 from app.domain.trading import Side
 from app.domain.trading_intelligence import (
     AssetIntelligence,
+    BlockedProbeEarlyContextEpisode,
+    BlockedProbeEarlyContextReport,
+    BlockedProbeEarlyContextSummary,
     MarketOpportunityEpisode,
     OpportunityCaptureState,
     OpportunityCausalContext,
@@ -228,6 +231,21 @@ def build_trading_intelligence(
         if include_waiting_early_context
         else None
     )
+    blocked_probe_early_context = (
+        _build_blocked_probe_early_context_report(
+            probes=[
+                probe
+                for probe in probes
+                if probe.result_r is not None
+            ],
+            precursors=precursor_rows,
+            runtime_dir=runtime_dir,
+            now=now,
+            window_hours=window_hours,
+        )
+        if include_waiting_early_context
+        else None
+    )
     probe_early_context = (
         _build_probe_early_context_report(
             probes=_load_unqualified_probe_trades(
@@ -280,6 +298,7 @@ def build_trading_intelligence(
         waiting_costs=waiting_costs,
         waiting_early_context=waiting_early_context,
         probe_early_context=probe_early_context,
+        blocked_probe_early_context=blocked_probe_early_context,
         limitations=[
             (
                 "Market opportunities are a retrospective research denominator: "
@@ -1070,6 +1089,207 @@ def _waiting_cost_summaries(
             -row.average_move_consumed_fraction,
             row.strategy_id,
         ),
+    )
+
+
+def _build_blocked_probe_early_context_report(
+    *,
+    probes: list[BlockedOpportunityProbe],
+    precursors: list[CausalPrecursorObservation],
+    runtime_dir: Path,
+    now: datetime,
+    window_hours: int,
+) -> BlockedProbeEarlyContextReport:
+    symbols = sorted({row.symbol.upper() for row in probes})
+    microbars_by_symbol = {
+        symbol: load_xau_microbars(runtime_dir / microbar_ledger_file(symbol))
+        for symbol in symbols
+    }
+    precursors_by_symbol: dict[str, list[CausalPrecursorObservation]] = defaultdict(list)
+    for row in precursors:
+        precursors_by_symbol[row.symbol.upper()].append(row)
+    for rows in precursors_by_symbol.values():
+        rows.sort(key=lambda item: item.first_seen_at)
+
+    episodes: list[BlockedProbeEarlyContextEpisode] = []
+    for probe in probes:
+        if probe.result_r is None:
+            continue
+        microbars = _microbars_closed_before(
+            microbars_by_symbol.get(probe.symbol.upper(), []),
+            probe.signal_at,
+            minutes=15,
+        )
+        geometry_5m = _geometry_window(microbars, 5) if microbars else None
+        geometry_15m = _geometry_window(microbars, 15) if microbars else None
+        if geometry_5m is None:
+            continue
+        imbalance_5m = _side_aligned_imbalance(
+            probe.side,
+            geometry_5m.mid_tick_imbalance,
+        )
+        imbalance_15m = (
+            _side_aligned_imbalance(
+                probe.side,
+                geometry_15m.mid_tick_imbalance,
+            )
+            if geometry_15m is not None
+            else None
+        )
+        precursor = _latest_matching_precursor_before_signal(
+            precursors_by_symbol.get(probe.symbol.upper(), []),
+            side=probe.side,
+            signal_at=probe.signal_at,
+        )
+        episodes.append(
+            BlockedProbeEarlyContextEpisode(
+                probe_id=probe.probe_id,
+                strategy_id=f"{probe.symbol}:{probe.mechanism.value}",
+                symbol=probe.symbol,
+                mechanism=probe.mechanism,
+                side=probe.side,
+                signal_at=probe.signal_at,
+                block_reason=probe.block_reason,
+                result_r=probe.result_r,
+                spread_to_risk=probe.spread_at_entry / probe.risk_distance,
+                directional_tick_samples_5m=geometry_5m.directional_tick_samples,
+                side_aligned_tick_imbalance_5m=imbalance_5m,
+                side_aligned_tick_imbalance_15m=imbalance_15m,
+                pressure_agreement_5m_15m=_pressure_agreement(
+                    imbalance_5m,
+                    imbalance_15m,
+                ),
+                path_efficiency_5m=geometry_5m.path_efficiency,
+                precursor_pattern=(
+                    precursor.pattern if precursor is not None else None
+                ),
+            )
+        )
+
+    resolved_counts = Counter(
+        (
+            f"{probe.symbol}:{probe.mechanism.value}",
+            probe.block_reason,
+        )
+        for probe in probes
+        if probe.result_r is not None
+    )
+    grouped: dict[
+        tuple[str, str], list[BlockedProbeEarlyContextEpisode]
+    ] = defaultdict(list)
+    for row in episodes:
+        grouped[(row.strategy_id, row.block_reason)].append(row)
+
+    summaries: list[BlockedProbeEarlyContextSummary] = []
+    for (strategy_id, block_reason), eligible in grouped.items():
+        tick = [
+            row
+            for row in eligible
+            if row.side_aligned_tick_imbalance_5m is not None
+        ]
+        imbalances_5m = _nonnull(
+            row.side_aligned_tick_imbalance_5m for row in tick
+        )
+        agreements = [
+            row.pressure_agreement_5m_15m
+            for row in tick
+            if row.pressure_agreement_5m_15m is not None
+        ]
+        first = eligible[0]
+        summaries.append(
+            BlockedProbeEarlyContextSummary(
+                strategy_id=strategy_id,
+                symbol=first.symbol,
+                mechanism=first.mechanism,
+                block_reason=block_reason,
+                resolved_blocked_probes=resolved_counts[
+                    (strategy_id, block_reason)
+                ],
+                m1_eligible_probes=len(eligible),
+                tick_pressure_eligible_probes=len(tick),
+                wins=sum(row.result_r > 0 for row in tick),
+                losses=sum(row.result_r < 0 for row in tick),
+                total_r=sum(row.result_r for row in tick),
+                expectancy_r=(
+                    fmean(row.result_r for row in tick)
+                    if tick
+                    else 0.0
+                ),
+                median_spread_to_risk=(
+                    median(row.spread_to_risk for row in tick)
+                    if tick
+                    else median(row.spread_to_risk for row in eligible)
+                ),
+                median_side_aligned_tick_imbalance_5m=(
+                    median(imbalances_5m) if imbalances_5m else None
+                ),
+                pressure_against_trade_rate=(
+                    sum(value < 0 for value in imbalances_5m)
+                    / len(imbalances_5m)
+                    if imbalances_5m
+                    else None
+                ),
+                pressure_agreement_rate=(
+                    sum(agreements) / len(agreements)
+                    if agreements
+                    else None
+                ),
+                median_path_efficiency_5m=median(
+                    row.path_efficiency_5m for row in eligible
+                ),
+                precursor_patterns=dict(
+                    Counter(
+                        row.precursor_pattern.value
+                        for row in eligible
+                        if row.precursor_pattern is not None
+                    )
+                ),
+            )
+        )
+
+    tick_all = [
+        row for row in episodes if row.side_aligned_tick_imbalance_5m is not None
+    ]
+    return BlockedProbeEarlyContextReport(
+        generated_at=now,
+        window_hours=window_hours,
+        resolved_blocked_probes=sum(
+            probe.result_r is not None for probe in probes
+        ),
+        m1_eligible_probes=len(episodes),
+        tick_pressure_eligible_probes=len(tick_all),
+        tick_pressure_wins=sum(row.result_r > 0 for row in tick_all),
+        tick_pressure_losses=sum(row.result_r < 0 for row in tick_all),
+        tick_pressure_total_r=sum(row.result_r for row in tick_all),
+        summaries=sorted(
+            summaries,
+            key=lambda row: (
+                -row.tick_pressure_eligible_probes,
+                -row.m1_eligible_probes,
+                row.symbol,
+                row.strategy_id,
+                row.block_reason,
+            ),
+        ),
+        recent_tick_pressure_probes=sorted(
+            tick_all,
+            key=lambda row: row.signal_at,
+            reverse=True,
+        )[:100],
+        limitations=[
+            (
+                "Blocked-probe outcomes are counterfactual research replays and are "
+                "grouped by the exact runtime block reason."
+            ),
+            (
+                "M1 geometry uses only microbars fully closed before signal_at and "
+                "is never backfilled before directional tick collection existed."
+            ),
+            (
+                "A blocked-probe winner does not imply the guard should be relaxed; "
+                "guard changes require robust reason-specific economic evidence."
+            ),
+        ],
     )
 
 

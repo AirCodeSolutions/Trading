@@ -3196,3 +3196,26 @@ Current evidence remains only four genuine tick-pressure probes and all four are
 No threshold, veto or entry rule is inferred from these tiny loss-only samples. The purpose is to make the future first winning observations directly comparable on the same frozen feature set.
 
 Validation: 21 focused tests, 323 full backend tests, Ruff clean, frontend production build clean and diff check clean.
+
+
+## 2026-09-25 — blocked-signal economics with M1 context
+
+Development was prepared in an isolated worktree because a Trading-New XAUUSD asia_range_sweep_reversal SELL position was open in production; no merge, pull, restart or deployment was performed while that position was open.
+
+Trading Intelligence now has a research-only blocked_probe_early_context report, computed only when the 168 h enriched research view is requested. It groups resolved blocked probes by exact strategy and exact runtime block reason, then joins only causal M1 context available before signal_at.
+
+Per group it reports M1/tick-pressure coverage, replay W/L, total R and expectancy, median spread/risk, side-aligned 5m imbalance, fraction of pressure observations opposing the trade, 5m/15m pressure agreement, M1 path efficiency and precursor-pattern distribution.
+
+Current 168 h evidence:
+- all assets: 201 resolved blocked probes, 26 with M1 coverage, 10 with true tick-pressure, 1W/9L and -8.21R on the tick-pressure subset;
+- EUR/XAG specifically: 15 with M1 coverage, 6 with true tick-pressure, 1W/5L and about -4.21R;
+- EUR break/retest tick-pressure sample: 0W/1L, -1R, spread/risk ~24.2%, M1 pressure opposed the trade;
+- EUR directional-transition: 0W/1L, -1R, spread/risk ~45.0%, M1 pressure opposed the trade;
+- XAG break/retest: 0W/1L, -1R, spread/risk ~79.0%, M1 pressure opposed the trade;
+- XAG directional-transition: 0W/1L, -1R, spread/risk ~51.5%, M1 pressure opposed the trade;
+- XAG post-shock: 0W/1L, -1R, spread/risk ~64.3%, M1 pressure opposed the trade;
+- XAG failed-auction: 1W/0L, +0.79R, spread/risk ~50.2%, but M1 pressure also opposed the trade.
+
+This evidence supports keeping the spread guard unchanged. The isolated XAG failed-auction winner is not sufficient evidence to relax a guard when the reason-specific post-collector cohort remains strongly negative overall.
+
+Validation: 22 focused tests, 324 full backend tests, Ruff clean, frontend production build clean and diff check clean.

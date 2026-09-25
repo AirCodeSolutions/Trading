@@ -1932,3 +1932,12 @@ The metric measures how much directional move has already occurred before a sign
 Current probe evidence remains small (12 tick-pressure observations, 2W/10L). Aggregate winner/loss displacement is not sufficiently separated for a rule; continuation-specific cases will be accumulated prospectively.
 
 No trading guard or execution behavior changes.
+
+
+## 2026-09-25 — enrich review-ready candidate packs
+
+Extended the existing `probe_review` workflow so a strategy entering `SUPPORTS_REVIEW` automatically carries the economic evidence already collected elsewhere in Trading-New.
+
+The review pack now includes probe M1 context, Value of Waiting, optional waiting early-context, admitted-trade follow-through and blocked-probe economics over a frozen 168 h evidence window, in addition to the dedicated historical replay.
+
+The review remains decision-support only: `requires_human_decision=true` is unchanged and no admission mutation is introduced.

@@ -8,8 +8,10 @@ client = TestClient(app)
 
 
 def test_probe_review_endpoint_returns_decision_support_pack(
+    tmp_path,
     monkeypatch,
 ) -> None:
+    monkeypatch.setattr(main_module, "_mt4_files_dir", lambda: tmp_path)
     monkeypatch.setattr(
         main_module,
         "build_probe_review_pack",

@@ -23,6 +23,7 @@ from app.domain.trading_intelligence import (
 )
 from app.domain.xau_microbar import XauMicrobarM1
 from app.services.trading_intelligence import (
+    _build_blocked_probe_early_context_report,
     _build_probe_early_context_report,
     _build_waiting_early_context_report,
     _market_opportunity_episodes,
@@ -929,3 +930,155 @@ def test_probe_early_context_separates_winners_and_losses(
     assert summary.loser_precursor_rate == 0.0
     assert summary.winner_precursor_patterns == {"directional_displacement": 1}
     assert summary.loser_precursor_patterns == {}
+
+
+def test_blocked_probe_early_context_groups_exact_block_reason(
+    tmp_path: Path,
+) -> None:
+    signal_win = NOW.replace(hour=8, minute=30)
+    signal_loss = NOW.replace(hour=9, minute=30)
+    signal_other = NOW.replace(hour=10, minute=30)
+
+    def microbar(
+        minute_at: datetime,
+        *,
+        up: int,
+        down: int,
+    ) -> XauMicrobarM1:
+        spread = 0.0002
+        return XauMicrobarM1(
+            minute_at=minute_at,
+            first_quote_at=minute_at,
+            last_quote_at=minute_at + timedelta(seconds=50),
+            bid_open=1.0,
+            bid_high=1.001,
+            bid_low=0.999,
+            bid_close=1.0,
+            ask_open=1.0002,
+            ask_high=1.0012,
+            ask_low=0.9992,
+            ask_close=1.0002,
+            mid_open=1.0001,
+            mid_high=1.0011,
+            mid_low=0.9991,
+            mid_close=1.0001,
+            spread_open=spread,
+            spread_high=spread,
+            spread_low=spread,
+            spread_close=spread,
+            spread_sum=spread * (up + down + 1),
+            quote_count=up + down + 1,
+            mid_up_ticks=up,
+            mid_down_ticks=down,
+        )
+
+    microbars: list[XauMicrobarM1] = []
+    for signal_at, up, down in (
+        (signal_win, 4, 1),
+        (signal_loss, 2, 3),
+        (signal_other, 3, 2),
+    ):
+        for index in range(15):
+            microbars.append(
+                microbar(
+                    signal_at - timedelta(minutes=15 - index),
+                    up=up,
+                    down=down,
+                )
+            )
+    (tmp_path / "EURUSD_micro_m1.jsonl").write_text(
+        "".join(row.model_dump_json() + "\n" for row in microbars),
+        encoding="utf-8",
+    )
+
+    def blocked(
+        probe_id: str,
+        signal_at: datetime,
+        result_r: float,
+        reason: str,
+        spread: float,
+    ) -> BlockedOpportunityProbe:
+        return BlockedOpportunityProbe(
+            probe_id=probe_id,
+            symbol="EURUSD",
+            mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+            side=Side.BUY,
+            signal_at=signal_at,
+            opened_at=signal_at,
+            entry_price=1.1,
+            stop_price=1.0,
+            target_price=1.28,
+            spread_at_entry=spread,
+            risk_distance=0.1,
+            target_r=1.8,
+            max_holding_bars=12,
+            block_reason=reason,
+            max_risk_approved=True,
+            status=(
+                PaperTradeStatus.TARGET
+                if result_r > 0
+                else PaperTradeStatus.STOP
+            ),
+            exit_at=signal_at + timedelta(minutes=10),
+            exit_price=1.28 if result_r > 0 else 1.0,
+            result_r=result_r,
+            bars_held=2,
+        )
+
+    spread_reason = "spread consumes too much of the stop distance"
+    probes = [
+        blocked("spread-win", signal_win, 1.8, spread_reason, 0.03),
+        blocked("spread-loss", signal_loss, -1.0, spread_reason, 0.03),
+        blocked(
+            "lot-loss",
+            signal_other,
+            -1.0,
+            "broker minimum lot exceeds max risk",
+            0.01,
+        ),
+    ]
+    precursor = CausalPrecursorObservation(
+        symbol="EURUSD",
+        first_seen_at=signal_win - timedelta(minutes=5),
+        latest_closed_m5_at=signal_win - timedelta(minutes=5),
+        pattern=OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+        side=Side.BUY,
+        context=OpportunityCausalContext(
+            pattern=OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+            side=Side.BUY,
+        ),
+    )
+
+    report = _build_blocked_probe_early_context_report(
+        probes=probes,
+        precursors=[precursor],
+        runtime_dir=tmp_path,
+        now=NOW,
+        window_hours=168,
+    )
+
+    assert report.resolved_blocked_probes == 3
+    assert report.m1_eligible_probes == 3
+    assert report.tick_pressure_eligible_probes == 3
+    assert report.tick_pressure_wins == 1
+    assert report.tick_pressure_losses == 2
+    assert abs(report.tick_pressure_total_r + 0.2) < 1e-12
+
+    by_reason = {row.block_reason: row for row in report.summaries}
+    assert set(by_reason) == {
+        spread_reason,
+        "broker minimum lot exceeds max risk",
+    }
+    spread = by_reason[spread_reason]
+    assert spread.resolved_blocked_probes == 2
+    assert spread.m1_eligible_probes == 2
+    assert spread.tick_pressure_eligible_probes == 2
+    assert spread.wins == 1
+    assert spread.losses == 1
+    assert abs(spread.total_r - 0.8) < 1e-12
+    assert abs(spread.expectancy_r - 0.4) < 1e-12
+    assert abs(spread.median_spread_to_risk - 0.3) < 1e-12
+    assert abs(spread.median_side_aligned_tick_imbalance_5m - 0.2) < 1e-12
+    assert spread.pressure_against_trade_rate == 0.5
+    assert spread.pressure_agreement_rate == 1.0
+    assert spread.precursor_patterns == {"directional_displacement": 1}

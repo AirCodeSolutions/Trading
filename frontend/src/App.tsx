@@ -834,6 +834,36 @@ type TradingIntelligence = {
     }[];
     limitations: string[];
   } | null;
+  blocked_probe_early_context: {
+    generated_at: string;
+    window_hours: number;
+    resolved_blocked_probes: number;
+    m1_eligible_probes: number;
+    tick_pressure_eligible_probes: number;
+    tick_pressure_wins: number;
+    tick_pressure_losses: number;
+    tick_pressure_total_r: number;
+    summaries: {
+      strategy_id: string;
+      symbol: string;
+      mechanism: string;
+      block_reason: string;
+      resolved_blocked_probes: number;
+      m1_eligible_probes: number;
+      tick_pressure_eligible_probes: number;
+      wins: number;
+      losses: number;
+      total_r: number;
+      expectancy_r: number;
+      median_spread_to_risk: number;
+      median_side_aligned_tick_imbalance_5m: number | null;
+      pressure_against_trade_rate: number | null;
+      pressure_agreement_rate: number | null;
+      median_path_efficiency_5m: number;
+      precursor_patterns: Record<string, number>;
+    }[];
+    limitations: string[];
+  } | null;
   limitations: string[];
 };
 
@@ -1117,6 +1147,8 @@ export default function App() {
     useState<TradingIntelligence["waiting_early_context"]>(null);
   const [probeEarlyContext, setProbeEarlyContext] =
     useState<TradingIntelligence["probe_early_context"]>(null);
+  const [blockedProbeEarlyContext, setBlockedProbeEarlyContext] =
+    useState<TradingIntelligence["blocked_probe_early_context"]>(null);
   const [trailingShadow, setTrailingShadow] = useState<TrailingShadowSummary | null>(null);
   const [xauFeasiblePullback, setXauFeasiblePullback] =
     useState<XauFeasiblePullbackSummary | null>(null);
@@ -1360,6 +1392,7 @@ export default function App() {
           setWaitingCosts(payload.waiting_costs ?? []);
           setWaitingEarlyContext(payload.waiting_early_context ?? null);
           setProbeEarlyContext(payload.probe_early_context ?? null);
+          setBlockedProbeEarlyContext(payload.blocked_probe_early_context ?? null);
         }
       } catch {
         // Keep the last valid research snapshot; do not block the 24 h dashboard refresh.
@@ -3088,6 +3121,104 @@ export default function App() {
             </>
           ) : (
             <p className="strategy-empty">Snapshot probe early-context en cours de chargement.</p>
+          )}
+        </div>
+
+        <div className="intelligence-subsection">
+          <h3>Blocked Signal Economics · M1 + raison de blocage · 168 h</h3>
+          <p className="intelligence-note">
+            Replays contrefactuels uniquement. Chaque ligne conserve la raison exacte du blocage
+            runtime. Un replay gagnant ne suffit jamais à desserrer un garde ; on vérifie d’abord
+            l’économie du sous-ensemble réellement couvert par M1.
+          </p>
+          {blockedProbeEarlyContext ? (
+            <>
+              <div className="early-context-kpis">
+                <span><b>{blockedProbeEarlyContext.resolved_blocked_probes}</b> blocked probes résolus</span>
+                <span><b>{blockedProbeEarlyContext.m1_eligible_probes}</b> avec M1</span>
+                <span><b>{blockedProbeEarlyContext.tick_pressure_eligible_probes}</b> avec pression</span>
+                <span><b>{blockedProbeEarlyContext.tick_pressure_wins}</b> W pression</span>
+                <span><b>{blockedProbeEarlyContext.tick_pressure_losses}</b> L pression</span>
+                <span className={blockedProbeEarlyContext.tick_pressure_total_r >= 0 ? "positive-text" : "negative-text"}>
+                  <b>
+                    {blockedProbeEarlyContext.tick_pressure_total_r >= 0 ? "+" : ""}
+                    {blockedProbeEarlyContext.tick_pressure_total_r.toFixed(2)} R
+                  </b>{" "}
+                  total pression
+                </span>
+              </div>
+              {blockedProbeEarlyContext.summaries.some((row) => row.m1_eligible_probes > 0) ? (
+                <div className="intelligence-table">
+                  <div className="intelligence-row blocked-context-row intelligence-head">
+                    <span>Stratégie</span>
+                    <span>Raison</span>
+                    <span>Résolus</span>
+                    <span>M1 / pression</span>
+                    <span>W / L</span>
+                    <span>Total R</span>
+                    <span>Exp.</span>
+                    <span>Spread/R</span>
+                    <span>Imb5</span>
+                    <span>Pression opposée</span>
+                    <span>Accord 5/15</span>
+                    <span>PathEff</span>
+                    <span>Precursors</span>
+                  </div>
+                  {blockedProbeEarlyContext.summaries
+                    .filter((row) => row.m1_eligible_probes > 0)
+                    .map((row) => (
+                      <div
+                        className="intelligence-row blocked-context-row"
+                        key={`${row.strategy_id}:${row.block_reason}`}
+                      >
+                        <strong>{row.strategy_id.replaceAll("_", " ")}</strong>
+                        <span>{row.block_reason}</span>
+                        <span>{row.resolved_blocked_probes}</span>
+                        <span>{row.m1_eligible_probes} / {row.tick_pressure_eligible_probes}</span>
+                        <span>{row.wins} / {row.losses}</span>
+                        <span className={row.total_r >= 0 ? "positive-text" : "negative-text"}>
+                          {row.total_r >= 0 ? "+" : ""}
+                          {row.total_r.toFixed(2)} R
+                        </span>
+                        <span className={row.expectancy_r >= 0 ? "positive-text" : "negative-text"}>
+                          {row.expectancy_r >= 0 ? "+" : ""}
+                          {row.expectancy_r.toFixed(2)} R
+                        </span>
+                        <span>{(row.median_spread_to_risk * 100).toFixed(1)} %</span>
+                        <span>
+                          {row.median_side_aligned_tick_imbalance_5m == null
+                            ? "—"
+                            : row.median_side_aligned_tick_imbalance_5m.toFixed(2)}
+                        </span>
+                        <span>
+                          {row.pressure_against_trade_rate == null
+                            ? "—"
+                            : `${(row.pressure_against_trade_rate * 100).toFixed(0)} %`}
+                        </span>
+                        <span>
+                          {row.pressure_agreement_rate == null
+                            ? "—"
+                            : `${(row.pressure_agreement_rate * 100).toFixed(0)} %`}
+                        </span>
+                        <span>{row.median_path_efficiency_5m.toFixed(2)}</span>
+                        <span>
+                          {Object.keys(row.precursor_patterns).length
+                            ? Object.entries(row.precursor_patterns)
+                                .map(([pattern, count]) => `${pattern.replaceAll("_", " ")} ×${count}`)
+                                .join(" · ")
+                            : "—"}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <p className="strategy-empty">
+                  Aucun blocked probe avec couverture M1 dans la fenêtre.
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="strategy-empty">Snapshot blocked-probe early-context en cours de chargement.</p>
           )}
         </div>
 

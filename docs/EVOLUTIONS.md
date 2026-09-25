@@ -1873,3 +1873,14 @@ Current post-collector evidence is deliberately small but already rejects a naiv
 No scanner, admission, spread, sizing, stop, target, macro or 5-lot rule changes.
 
 Validation: 21 focused tests and 323 full backend tests pass; Ruff and frontend production build are clean.
+
+
+## 2026-09-25 — richer M1 probe interaction diagnostics
+
+Extended the probe outcome discriminator with 5m/15m pressure agreement, spread/risk, M1 path efficiency and precursor-pattern distributions.
+
+The current four tick-pressure probes are all losses and all four have same-sign 5m/15m pressure. This explicitly prevents treating multi-horizon pressure agreement as a sufficient early-entry condition. The new fields are frozen observability features for comparison against future winners, not selection rules.
+
+No trading, admission, risk, spread guard or 5-lot behavior changes.
+
+Validation: 21 focused tests, 323 full backend tests, Ruff clean and frontend build clean.

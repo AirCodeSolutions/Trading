@@ -919,5 +919,13 @@ def test_probe_early_context_separates_winners_and_losses(
     assert summary.winner_median_side_aligned_tick_imbalance_5m == 0.6
     assert summary.loser_median_side_aligned_tick_imbalance_5m == 0.2
     assert abs(summary.winner_minus_loser_tick_imbalance_5m - 0.4) < 1e-12
+    assert summary.winner_pressure_agreement_rate == 1.0
+    assert summary.loser_pressure_agreement_rate == 1.0
+    assert summary.winner_median_spread_to_risk == 0.1
+    assert summary.loser_median_spread_to_risk == 0.1
+    assert summary.winner_median_path_efficiency_5m == 0.0
+    assert summary.loser_median_path_efficiency_5m == 0.0
     assert summary.winner_precursor_rate == 1.0
     assert summary.loser_precursor_rate == 0.0
+    assert summary.winner_precursor_patterns == {"directional_displacement": 1}
+    assert summary.loser_precursor_patterns == {}

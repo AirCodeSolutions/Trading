@@ -1136,6 +1136,27 @@ def _build_probe_early_context_report(
                     if geometry_15m is not None
                     else None
                 ),
+                pressure_agreement_5m_15m=_pressure_agreement(
+                    _side_aligned_imbalance(
+                        probe.side,
+                        geometry_5m.mid_tick_imbalance,
+                    ),
+                    (
+                        _side_aligned_imbalance(
+                            probe.side,
+                            geometry_15m.mid_tick_imbalance,
+                        )
+                        if geometry_15m is not None
+                        else None
+                    ),
+                ),
+                spread_to_risk=(
+                    probe.spread_at_entry / probe.risk_distance
+                    if probe.risk_distance > 0
+                    else 0.0
+                ),
+                average_quotes_per_bar_5m=geometry_5m.average_quotes_per_bar,
+                path_efficiency_5m=geometry_5m.path_efficiency,
                 precursor_first_seen_at=(
                     precursor.first_seen_at if precursor is not None else None
                 ),
@@ -1173,6 +1194,16 @@ def _build_probe_early_context_report(
         loss_15m = _nonnull(row.side_aligned_tick_imbalance_15m for row in losses)
         winner_median_5m = median(win_5m) if win_5m else None
         loser_median_5m = median(loss_5m) if loss_5m else None
+        winner_agreement = [
+            row.pressure_agreement_5m_15m
+            for row in wins
+            if row.pressure_agreement_5m_15m is not None
+        ]
+        loser_agreement = [
+            row.pressure_agreement_5m_15m
+            for row in losses
+            if row.pressure_agreement_5m_15m is not None
+        ]
         first = eligible[0]
         summaries.append(
             ProbeEarlyContextSummary(
@@ -1202,6 +1233,36 @@ def _build_probe_early_context_report(
                 loser_median_side_aligned_tick_imbalance_15m=(
                     median(loss_15m) if loss_15m else None
                 ),
+                winner_pressure_agreement_rate=(
+                    sum(winner_agreement) / len(winner_agreement)
+                    if winner_agreement
+                    else None
+                ),
+                loser_pressure_agreement_rate=(
+                    sum(loser_agreement) / len(loser_agreement)
+                    if loser_agreement
+                    else None
+                ),
+                winner_median_spread_to_risk=(
+                    median(row.spread_to_risk for row in wins)
+                    if wins
+                    else None
+                ),
+                loser_median_spread_to_risk=(
+                    median(row.spread_to_risk for row in losses)
+                    if losses
+                    else None
+                ),
+                winner_median_path_efficiency_5m=(
+                    median(row.path_efficiency_5m for row in wins)
+                    if wins
+                    else None
+                ),
+                loser_median_path_efficiency_5m=(
+                    median(row.path_efficiency_5m for row in losses)
+                    if losses
+                    else None
+                ),
                 winner_precursor_rate=(
                     sum(row.precursor_first_seen_at is not None for row in wins)
                     / len(wins)
@@ -1213,6 +1274,20 @@ def _build_probe_early_context_report(
                     / len(losses)
                     if losses
                     else None
+                ),
+                winner_precursor_patterns=dict(
+                    Counter(
+                        row.precursor_pattern.value
+                        for row in wins
+                        if row.precursor_pattern is not None
+                    )
+                ),
+                loser_precursor_patterns=dict(
+                    Counter(
+                        row.precursor_pattern.value
+                        for row in losses
+                        if row.precursor_pattern is not None
+                    )
                 ),
             )
         )
@@ -1558,6 +1633,20 @@ def _latest_matching_precursor_before_signal(
         if row.side == side and start_at <= row.first_seen_at <= signal_at
     ]
     return max(matches, key=lambda row: row.first_seen_at) if matches else None
+
+
+def _pressure_agreement(
+    five_minute: float | None,
+    fifteen_minute: float | None,
+) -> bool | None:
+    if five_minute is None or fifteen_minute is None:
+        return None
+    if five_minute == 0 and fifteen_minute == 0:
+        return True
+    return (
+        (five_minute > 0 and fifteen_minute > 0)
+        or (five_minute < 0 and fifteen_minute < 0)
+    )
 
 
 def _side_aligned_imbalance(

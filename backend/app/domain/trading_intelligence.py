@@ -233,6 +233,10 @@ class ProbeEarlyContextEpisode(BaseModel):
     side_aligned_tick_imbalance_5m: float | None = Field(default=None, ge=-1, le=1)
     directional_tick_samples_15m: int = Field(default=0, ge=0)
     side_aligned_tick_imbalance_15m: float | None = Field(default=None, ge=-1, le=1)
+    pressure_agreement_5m_15m: bool | None = None
+    spread_to_risk: float = Field(ge=0)
+    average_quotes_per_bar_5m: float = Field(ge=0)
+    path_efficiency_5m: float = Field(ge=0, le=1)
     precursor_first_seen_at: datetime | None = None
     precursor_pattern: OpportunityCausalPattern | None = None
     precursor_lead_minutes_to_signal: float | None = Field(default=None, ge=0)
@@ -254,8 +258,16 @@ class ProbeEarlyContextSummary(BaseModel):
     winner_minus_loser_tick_imbalance_5m: float | None = Field(default=None, ge=-2, le=2)
     winner_median_side_aligned_tick_imbalance_15m: float | None = Field(default=None, ge=-1, le=1)
     loser_median_side_aligned_tick_imbalance_15m: float | None = Field(default=None, ge=-1, le=1)
+    winner_pressure_agreement_rate: float | None = Field(default=None, ge=0, le=1)
+    loser_pressure_agreement_rate: float | None = Field(default=None, ge=0, le=1)
+    winner_median_spread_to_risk: float | None = Field(default=None, ge=0)
+    loser_median_spread_to_risk: float | None = Field(default=None, ge=0)
+    winner_median_path_efficiency_5m: float | None = Field(default=None, ge=0, le=1)
+    loser_median_path_efficiency_5m: float | None = Field(default=None, ge=0, le=1)
     winner_precursor_rate: float | None = Field(default=None, ge=0, le=1)
     loser_precursor_rate: float | None = Field(default=None, ge=0, le=1)
+    winner_precursor_patterns: dict[str, int] = Field(default_factory=dict)
+    loser_precursor_patterns: dict[str, int] = Field(default_factory=dict)
 
 
 class ProbeEarlyContextReport(BaseModel):

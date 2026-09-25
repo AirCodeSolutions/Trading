@@ -17,7 +17,12 @@ from app.domain.trading_intelligence import (
     OpportunityWaitingSummary,
     ProbeEarlyContextSummary,
 )
-from app.services.probe_review import _parse_strategy_id, build_probe_review_pack
+from app.services.probe_review import (
+    _parse_strategy_id,
+    build_probe_review_pack,
+    default_probe_review_contract,
+    default_probe_review_split,
+)
 
 TZ = ZoneInfo("Europe/Athens")
 NOW = datetime(2026, 9, 23, 16, 0, tzinfo=TZ)
@@ -174,3 +179,15 @@ def test_probe_review_pack_attaches_economic_evidence_when_review_ready(
     assert pack.blocked_probe_contexts == [blocked_context]
     assert pack.historical_admission is None
     assert pack.requires_human_decision is True
+
+
+def test_default_probe_review_contract_matches_split() -> None:
+    contract = default_probe_review_contract()
+    split = default_probe_review_split()
+
+    assert contract.timezone == "Europe/Athens"
+    assert contract.evidence_window_hours == 168
+    assert contract.train_end.isoformat() == "2026-07-01T00:00:00+03:00"
+    assert contract.validation_end.isoformat() == "2026-09-01T00:00:00+03:00"
+    assert split.train_end == contract.train_end
+    assert split.validation_end == contract.validation_end

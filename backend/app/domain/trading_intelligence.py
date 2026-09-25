@@ -421,6 +421,32 @@ class AdmittedTradeEarlyContextReport(BaseModel):
     limitations: list[str] = Field(default_factory=list)
 
 
+class CandidateEvidenceCoverageSummary(BaseModel):
+    strategy_id: str
+    symbol: str
+    mechanism: OpportunityMechanism
+    probe_resolved: int = Field(default=0, ge=0)
+    probe_m1_eligible: int = Field(default=0, ge=0)
+    probe_tick_pressure_eligible: int = Field(default=0, ge=0)
+    probe_m1_coverage_rate: float | None = Field(default=None, ge=0, le=1)
+    probe_tick_pressure_coverage_rate: float | None = Field(default=None, ge=0, le=1)
+    waiting_episodes: int = Field(default=0, ge=0)
+    waiting_m1_eligible: int = Field(default=0, ge=0)
+    waiting_tick_pressure_eligible: int = Field(default=0, ge=0)
+    waiting_m1_coverage_rate: float | None = Field(default=None, ge=0, le=1)
+    waiting_tick_pressure_coverage_rate: float | None = Field(default=None, ge=0, le=1)
+    admitted_resolved: int = Field(default=0, ge=0)
+    admitted_m1_eligible: int = Field(default=0, ge=0)
+    admitted_tick_pressure_eligible: int = Field(default=0, ge=0)
+    admitted_m1_coverage_rate: float | None = Field(default=None, ge=0, le=1)
+    admitted_tick_pressure_coverage_rate: float | None = Field(default=None, ge=0, le=1)
+    blocked_resolved: int = Field(default=0, ge=0)
+    blocked_m1_eligible: int = Field(default=0, ge=0)
+    blocked_tick_pressure_eligible: int = Field(default=0, ge=0)
+    blocked_m1_coverage_rate: float | None = Field(default=None, ge=0, le=1)
+    blocked_tick_pressure_coverage_rate: float | None = Field(default=None, ge=0, le=1)
+
+
 class AssetIntelligence(BaseModel):
     symbol: str
     paper_closed_trades: int = Field(ge=0)
@@ -469,4 +495,7 @@ class TradingIntelligenceOverview(BaseModel):
     probe_early_context: ProbeEarlyContextReport | None = None
     blocked_probe_early_context: BlockedProbeEarlyContextReport | None = None
     admitted_trade_early_context: AdmittedTradeEarlyContextReport | None = None
+    candidate_evidence_coverage: list[CandidateEvidenceCoverageSummary] = Field(
+        default_factory=list
+    )
     limitations: list[str] = Field(default_factory=list)

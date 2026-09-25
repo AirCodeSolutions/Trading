@@ -20,6 +20,7 @@ from app.domain.trading_intelligence import (
     BlockedProbeEarlyContextEpisode,
     BlockedProbeEarlyContextReport,
     BlockedProbeEarlyContextSummary,
+    CandidateEvidenceCoverageSummary,
     MarketOpportunityEpisode,
     OpportunityCaptureState,
     OpportunityCausalContext,
@@ -277,6 +278,14 @@ def build_trading_intelligence(
         if include_waiting_early_context
         else None
     )
+    candidate_evidence_coverage = _candidate_evidence_coverage(
+        probe_early_context=probe_early_context,
+        waiting_early_context=waiting_early_context,
+        admitted_trade_early_context=admitted_trade_early_context,
+        blocked_probe_early_context=blocked_probe_early_context,
+        waiting_costs=waiting_costs,
+    )
+
     return TradingIntelligenceOverview(
         generated_at=now,
         window_hours=window_hours,
@@ -315,6 +324,7 @@ def build_trading_intelligence(
         probe_early_context=probe_early_context,
         blocked_probe_early_context=blocked_probe_early_context,
         admitted_trade_early_context=admitted_trade_early_context,
+        candidate_evidence_coverage=candidate_evidence_coverage,
         limitations=[
             (
                 "Market opportunities are a retrospective research denominator: "
@@ -339,6 +349,145 @@ def build_trading_intelligence(
             ),
         ],
     )
+
+
+def _coverage_rate(covered: int, total: int) -> float | None:
+    return covered / total if total > 0 else None
+
+
+def _candidate_evidence_coverage(
+    *,
+    probe_early_context: ProbeEarlyContextReport | None,
+    waiting_early_context: WaitingEarlyContextReport | None,
+    admitted_trade_early_context: AdmittedTradeEarlyContextReport | None,
+    blocked_probe_early_context: BlockedProbeEarlyContextReport | None,
+    waiting_costs: list[OpportunityWaitingSummary],
+) -> list[CandidateEvidenceCoverageSummary]:
+    probe_by = {
+        row.strategy_id: row
+        for row in (
+            probe_early_context.summaries
+            if probe_early_context is not None
+            else []
+        )
+    }
+    waiting_by = {
+        row.strategy_id: row
+        for row in (
+            waiting_early_context.summaries
+            if waiting_early_context is not None
+            else []
+        )
+    }
+    waiting_cost_by = {row.strategy_id: row for row in waiting_costs}
+    admitted_by = {
+        row.strategy_id: row
+        for row in (
+            admitted_trade_early_context.summaries
+            if admitted_trade_early_context is not None
+            else []
+        )
+    }
+    blocked_by: dict[str, list[BlockedProbeEarlyContextSummary]] = defaultdict(list)
+    if blocked_probe_early_context is not None:
+        for row in blocked_probe_early_context.summaries:
+            blocked_by[row.strategy_id].append(row)
+
+    strategy_ids = sorted(
+        set(probe_by)
+        | set(waiting_by)
+        | set(waiting_cost_by)
+        | set(admitted_by)
+        | set(blocked_by)
+    )
+    rows: list[CandidateEvidenceCoverageSummary] = []
+    for strategy_id in strategy_ids:
+        sources = [
+            probe_by.get(strategy_id),
+            waiting_by.get(strategy_id),
+            waiting_cost_by.get(strategy_id),
+            admitted_by.get(strategy_id),
+            (blocked_by.get(strategy_id) or [None])[0],
+        ]
+        source = next((item for item in sources if item is not None), None)
+        if source is None:
+            continue
+
+        probe = probe_by.get(strategy_id)
+        waiting = waiting_by.get(strategy_id)
+        waiting_cost = waiting_cost_by.get(strategy_id)
+        admitted = admitted_by.get(strategy_id)
+        blocked = blocked_by.get(strategy_id, [])
+
+        probe_resolved = probe.resolved_probes if probe is not None else 0
+        probe_m1 = probe.m1_eligible_probes if probe is not None else 0
+        probe_tick = (
+            probe.tick_pressure_eligible_probes if probe is not None else 0
+        )
+        waiting_total = (
+            waiting.waiting_episodes
+            if waiting is not None
+            else waiting_cost.episodes_with_signal
+            if waiting_cost is not None
+            else 0
+        )
+        waiting_m1 = waiting.m1_eligible_episodes if waiting is not None else 0
+        waiting_tick = (
+            waiting.tick_pressure_eligible_episodes
+            if waiting is not None
+            else 0
+        )
+        admitted_resolved = admitted.resolved_trades if admitted is not None else 0
+        admitted_m1 = admitted.m1_eligible_trades if admitted is not None else 0
+        admitted_tick = (
+            admitted.tick_pressure_eligible_trades
+            if admitted is not None
+            else 0
+        )
+        blocked_resolved = sum(row.resolved_blocked_probes for row in blocked)
+        blocked_m1 = sum(row.m1_eligible_probes for row in blocked)
+        blocked_tick = sum(row.tick_pressure_eligible_probes for row in blocked)
+
+        rows.append(
+            CandidateEvidenceCoverageSummary(
+                strategy_id=strategy_id,
+                symbol=source.symbol,
+                mechanism=source.mechanism,
+                probe_resolved=probe_resolved,
+                probe_m1_eligible=probe_m1,
+                probe_tick_pressure_eligible=probe_tick,
+                probe_m1_coverage_rate=_coverage_rate(probe_m1, probe_resolved),
+                probe_tick_pressure_coverage_rate=_coverage_rate(
+                    probe_tick, probe_resolved
+                ),
+                waiting_episodes=waiting_total,
+                waiting_m1_eligible=waiting_m1,
+                waiting_tick_pressure_eligible=waiting_tick,
+                waiting_m1_coverage_rate=_coverage_rate(waiting_m1, waiting_total),
+                waiting_tick_pressure_coverage_rate=_coverage_rate(
+                    waiting_tick, waiting_total
+                ),
+                admitted_resolved=admitted_resolved,
+                admitted_m1_eligible=admitted_m1,
+                admitted_tick_pressure_eligible=admitted_tick,
+                admitted_m1_coverage_rate=_coverage_rate(
+                    admitted_m1, admitted_resolved
+                ),
+                admitted_tick_pressure_coverage_rate=_coverage_rate(
+                    admitted_tick, admitted_resolved
+                ),
+                blocked_resolved=blocked_resolved,
+                blocked_m1_eligible=blocked_m1,
+                blocked_tick_pressure_eligible=blocked_tick,
+                blocked_m1_coverage_rate=_coverage_rate(
+                    blocked_m1, blocked_resolved
+                ),
+                blocked_tick_pressure_coverage_rate=_coverage_rate(
+                    blocked_tick, blocked_resolved
+                ),
+            )
+        )
+    return rows
 
 
 def _load_signal_rows(

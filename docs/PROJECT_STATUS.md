@@ -3348,3 +3348,18 @@ Frozen review contract:
 The CLI, API and dashboard now consume the same contract. When the `SUPPORTS_REVIEW` queue is empty, no heavy review replay is requested. When a strategy enters the queue, the dashboard automatically calls the read-only review endpoint with the centralized split and displays the evidence-complete pack: prospective M1 probes, waiting-cost context, admitted-trade context, blocked economics and historical validation/holdout.
 
 The operator surface still shows that human decision is mandatory. No strategy can be promoted, demoted or have guards changed from this dashboard path.
+
+
+## 2026-09-25 — candidate evidence coverage before causal readiness labels
+
+Positive prospective candidate cards now expose raw 168 h evidence coverage from the already existing enriched intelligence pipeline.
+
+For each strategy, the dashboard can show numerator/denominator coverage for:
+- executable unqualified probes with genuine M1 tick-pressure;
+- waiting episodes with genuine M1 tick-pressure;
+- admitted PAPER/DEMO trades with genuine M1 tick-pressure;
+- blocked probes with genuine M1 tick-pressure.
+
+The backend also exposes M1 coverage ratios separately from tick-pressure coverage ratios. No composite score, minimum coverage threshold or causal conclusion is introduced.
+
+This closes an important measurement gap before future use of TIMING_RESEARCH, SELECTION_RESEARCH or COST_GRANULARITY_RESEARCH: the system can now distinguish “no evidence yet” from “evidence exists but is economically inconclusive” without creating a trading veto.

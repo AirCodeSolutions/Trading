@@ -1955,3 +1955,12 @@ Centralized the default probe-review research split that had been duplicated as 
 The dashboard now builds review packs automatically only for strategies present in `unqualified_probe_review_queue`. This avoids repeated historical replay while the queue is empty and removes hidden split dates from UI logic.
 
 No trading authority or risk behavior changes.
+
+
+## 2026-09-25 — expose candidate causal-evidence coverage
+
+Added candidate evidence coverage to the enriched 168 h Trading Intelligence snapshot and positive-candidate dashboard cards.
+
+Coverage is descriptive only: resolved probes / M1 / tick-pressure, waiting / M1 / tick-pressure, admitted trades / M1 / tick-pressure and blocked probes / M1 / tick-pressure.
+
+No readiness threshold, ranking, admission rule or execution behavior is added.

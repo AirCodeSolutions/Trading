@@ -39,6 +39,7 @@ from app.domain.opportunity_funnel import OpportunityFunnel
 from app.domain.portfolio import MarketUniverseAsset, TradingOverview
 from app.domain.precursor_execution_shadow import PrecursorExecutionShadowSummary
 from app.domain.precursor_forward_research import PrecursorForwardResearchReport
+from app.domain.probe_review import ProbeReviewPack, ProbeReviewRequest
 from app.domain.qualification_history import QualificationHistoryEvent
 from app.domain.regime import RegimeSnapshot
 from app.domain.runtime_control import RuntimeDrainRequest, RuntimeDrainState
@@ -95,6 +96,7 @@ from app.services.opportunity_funnel import build_opportunity_funnel
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.portfolio_overview import build_trading_overview
 from app.services.precursor_forward_research import build_precursor_forward_research
+from app.services.probe_review import build_probe_review_pack
 from app.services.prospective_qualification import MIN_PROSPECTIVE_TRADES
 from app.services.qualification_history import load_qualification_history
 from app.services.regime import classify_regime
@@ -639,6 +641,25 @@ def mt4_opportunity_backtest(
     )
     try:
         return run_opportunity_backtest(bars_m5, bars_m15, config)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post(
+    f"{settings.api_prefix}/research/probe-review",
+    response_model=ProbeReviewPack,
+)
+def probe_review(request: ProbeReviewRequest) -> ProbeReviewPack:
+    try:
+        return build_probe_review_pack(
+            _mt4_files_dir(),
+            settings.shadow_ledger_dir,
+            strategy_id=request.strategy_id,
+            now=datetime.now(tz=_server_timezone()),
+            split=request.split,
+            macro_events_path=settings.macro_events_path,
+            research_execution_model_path=settings.research_execution_model_path,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

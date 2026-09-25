@@ -7,6 +7,8 @@ from pathlib import Path
 from app.domain.blocked_probe import BlockedOpportunityProbe
 from app.domain.opportunity_funnel import (
     BlockedProbeOutcomeSummary,
+    CandidateResearchReadiness,
+    CandidateResearchState,
     OpportunityFunnel,
     OpportunityFunnelStrategy,
     ResearchProbeCandidateProgress,
@@ -536,6 +538,7 @@ def _candidate_progress(
         symbol=row.symbol,
         mechanism=row.mechanism,
         qualification=qualification,
+        research_readiness=_candidate_research_readiness(qualification),
         wins=sum(result > 0 for result in results),
         losses=sum(result < 0 for result in results),
         total_r=sum(results),
@@ -543,6 +546,42 @@ def _candidate_progress(
         sample_progress=min(
             1.0,
             qualification.closed_trades / qualification.minimum_trades,
+        ),
+    )
+
+
+def _candidate_research_readiness(
+    qualification: ResearchProbeQualification,
+) -> CandidateResearchReadiness:
+    """Describe the next evidence step using only established review gates.
+
+    Timing, selection and cost-granularity states deliberately have no automatic
+    transition yet: the collected M1, waiting and blocked-economics data does
+    not have an established causal effect-size or coverage criterion. Inventing
+    one here would turn a descriptive surface into a retrospective filter.
+    """
+    if qualification.state == ResearchProbeQualificationState.SUPPORTS_REVIEW:
+        return CandidateResearchReadiness(
+            state=CandidateResearchState.REVIEW_READY,
+            reason=(
+                "existing 20-trade prospective gate and economic criteria are met; "
+                "the centralized review pack requires a human decision"
+            ),
+        )
+    if qualification.closed_trades < qualification.minimum_trades:
+        return CandidateResearchReadiness(
+            state=CandidateResearchState.COLLECT_MORE,
+            reason=(
+                f"{qualification.closed_trades}/{qualification.minimum_trades} "
+                "resolved executable probes; more prospective outcomes are required "
+                "before diagnosing timing, selection or execution-cost causes"
+            ),
+        )
+    return CandidateResearchReadiness(
+        state=CandidateResearchState.COLLECT_MORE,
+        reason=(
+            "existing prospective review criteria are not met; retain the evidence "
+            "for a future causal research question without changing authority"
         ),
     )
 

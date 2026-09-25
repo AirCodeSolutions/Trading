@@ -544,6 +544,7 @@ type OpportunityFunnel = {
       max_drawdown_r: number;
       reason: string;
     };
+    research_readiness: CandidateResearchReadiness;
   }[];
   most_observed_unqualified_candidate?: {
     strategy_id: string;
@@ -572,6 +573,7 @@ type OpportunityFunnel = {
       max_drawdown_r: number;
       reason: string;
     };
+    research_readiness: CandidateResearchReadiness;
     wins: number;
     losses: number;
     total_r: number;
@@ -596,6 +598,16 @@ type OpportunityFunnel = {
   capital_base_feasible_expectancy_r: number;
   block_reasons: Record<string, number>;
   strategies: OpportunityFunnelStrategy[];
+};
+
+type CandidateResearchReadiness = {
+  state:
+    | "collect_more"
+    | "timing_research"
+    | "selection_research"
+    | "cost_granularity_research"
+    | "review_ready";
+  reason: string;
 };
 
 
@@ -4369,6 +4381,10 @@ export default function App() {
                   <small>
                     {item.remaining_trades_to_review} observation(s) restante(s) avant revue · DD{" "}
                     {item.qualification.max_drawdown_r.toFixed(2)} R
+                  </small>
+                  <small>
+                    {item.research_readiness.state.replaceAll("_", " ").toUpperCase()} ·{" "}
+                    {item.research_readiness.reason}
                   </small>
                 </article>
               ))}

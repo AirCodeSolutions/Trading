@@ -6,7 +6,10 @@ from fastapi.testclient import TestClient
 from app.core.config import settings
 from app.domain.blocked_probe import BlockedOpportunityProbe, BlockedProbeState
 from app.domain.opportunity import OpportunityMechanism
-from app.domain.opportunity_funnel import ResearchProbeQualificationState
+from app.domain.opportunity_funnel import (
+    CandidateResearchState,
+    ResearchProbeQualificationState,
+)
 from app.domain.regime import MarketRegime
 from app.domain.shadow import (
     ShadowOpportunityDiagnostic,
@@ -253,6 +256,11 @@ def test_funnel_aggregates_unqualified_executable_probes(tmp_path: Path) -> None
     assert candidate.wins == 1
     assert candidate.losses == 1
     assert candidate.total_r == 0.5
+    assert candidate.research_readiness.state == CandidateResearchState.COLLECT_MORE
+    assert candidate.research_readiness.reason == (
+        "2/20 resolved executable probes; more prospective outcomes are required "
+        "before diagnosing timing, selection or execution-cost causes"
+    )
     assert funnel.unqualified_probe_review_ready_strategies == 0
     assert len(funnel.positive_unqualified_candidates) == 1
     positive = funnel.positive_unqualified_candidates[0]
@@ -363,6 +371,7 @@ def test_funnel_marks_positive_probe_evidence_for_review(tmp_path: Path) -> None
     assert queued.symbol == "BTCUSD"
     assert queued.mechanism == OpportunityMechanism.DIRECTIONAL_TRANSITION
     assert queued.qualification.state == ResearchProbeQualificationState.SUPPORTS_REVIEW
+    assert queued.research_readiness.state == CandidateResearchState.REVIEW_READY
 
 
 def test_funnel_marks_negative_probe_evidence_failed(tmp_path: Path) -> None:

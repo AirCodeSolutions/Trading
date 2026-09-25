@@ -21,6 +21,9 @@ from app.domain.trading_intelligence import (
     OpportunityCausalPatternSummary,
     OpportunityDetectionStage,
     OpportunityWaitingSummary,
+    ProbeEarlyContextEpisode,
+    ProbeEarlyContextReport,
+    ProbeEarlyContextSummary,
     TradeIntelligence,
     TradingIntelligenceOverview,
     UnseenOpportunityPatternSummary,
@@ -225,6 +228,22 @@ def build_trading_intelligence(
         if include_waiting_early_context
         else None
     )
+    probe_early_context = (
+        _build_probe_early_context_report(
+            probes=_load_unqualified_probe_trades(
+                runtime_dir,
+                window_start=window_start,
+                window_end=now,
+                allowed=set(allowed) if allowed else None,
+            ),
+            precursors=precursor_rows,
+            runtime_dir=runtime_dir,
+            now=now,
+            window_hours=window_hours,
+        )
+        if include_waiting_early_context
+        else None
+    )
     return TradingIntelligenceOverview(
         generated_at=now,
         window_hours=window_hours,
@@ -260,6 +279,7 @@ def build_trading_intelligence(
         unseen_patterns=unseen_patterns,
         waiting_costs=waiting_costs,
         waiting_early_context=waiting_early_context,
+        probe_early_context=probe_early_context,
         limitations=[
             (
                 "Market opportunities are a retrospective research denominator: "
@@ -363,6 +383,25 @@ def _load_blocked_probes(
             continue
         if window_start <= probe.signal_at <= window_end:
             rows.append(probe)
+    return rows
+
+
+def _load_unqualified_probe_trades(
+    runtime_dir: Path,
+    *,
+    window_start: datetime,
+    window_end: datetime,
+    allowed: set[str] | None,
+) -> list[ShadowPaperTrade]:
+    rows: list[ShadowPaperTrade] = []
+    for path in sorted(runtime_dir.glob("*_unqualified_probes.jsonl")):
+        for probe in load_closed_trades(path):
+            if probe.result_r is None:
+                continue
+            if allowed is not None and probe.symbol.upper() not in allowed:
+                continue
+            if window_start <= probe.signal_at <= window_end:
+                rows.append(probe)
     return rows
 
 
@@ -1031,6 +1070,195 @@ def _waiting_cost_summaries(
             -row.average_move_consumed_fraction,
             row.strategy_id,
         ),
+    )
+
+
+def _build_probe_early_context_report(
+    *,
+    probes: list[ShadowPaperTrade],
+    precursors: list[CausalPrecursorObservation],
+    runtime_dir: Path,
+    now: datetime,
+    window_hours: int,
+) -> ProbeEarlyContextReport:
+    symbols = sorted({row.symbol.upper() for row in probes})
+    microbars_by_symbol = {
+        symbol: load_xau_microbars(runtime_dir / microbar_ledger_file(symbol))
+        for symbol in symbols
+    }
+    precursors_by_symbol: dict[str, list[CausalPrecursorObservation]] = defaultdict(list)
+    for row in precursors:
+        precursors_by_symbol[row.symbol.upper()].append(row)
+    for rows in precursors_by_symbol.values():
+        rows.sort(key=lambda item: item.first_seen_at)
+
+    episodes: list[ProbeEarlyContextEpisode] = []
+    for probe in probes:
+        microbars = _microbars_closed_before(
+            microbars_by_symbol.get(probe.symbol.upper(), []),
+            probe.signal_at,
+            minutes=15,
+        )
+        geometry_5m = _geometry_window(microbars, 5) if microbars else None
+        geometry_15m = _geometry_window(microbars, 15) if microbars else None
+        if geometry_5m is None:
+            continue
+        precursor = _latest_matching_precursor_before_signal(
+            precursors_by_symbol.get(probe.symbol.upper(), []),
+            side=probe.side,
+            signal_at=probe.signal_at,
+        )
+        episodes.append(
+            ProbeEarlyContextEpisode(
+                trade_id=probe.trade_id,
+                strategy_id=f"{probe.symbol}:{probe.mechanism.value}",
+                symbol=probe.symbol,
+                mechanism=probe.mechanism,
+                side=probe.side,
+                signal_at=probe.signal_at,
+                status=probe.status.value,
+                result_r=probe.result_r or 0.0,
+                directional_tick_samples_5m=geometry_5m.directional_tick_samples,
+                side_aligned_tick_imbalance_5m=_side_aligned_imbalance(
+                    probe.side,
+                    geometry_5m.mid_tick_imbalance,
+                ),
+                directional_tick_samples_15m=(
+                    geometry_15m.directional_tick_samples
+                    if geometry_15m is not None
+                    else 0
+                ),
+                side_aligned_tick_imbalance_15m=(
+                    _side_aligned_imbalance(
+                        probe.side,
+                        geometry_15m.mid_tick_imbalance,
+                    )
+                    if geometry_15m is not None
+                    else None
+                ),
+                precursor_first_seen_at=(
+                    precursor.first_seen_at if precursor is not None else None
+                ),
+                precursor_pattern=(
+                    precursor.pattern if precursor is not None else None
+                ),
+                precursor_lead_minutes_to_signal=(
+                    (probe.signal_at - precursor.first_seen_at).total_seconds()
+                    / 60.0
+                    if precursor is not None
+                    else None
+                ),
+            )
+        )
+
+    grouped: dict[str, list[ProbeEarlyContextEpisode]] = defaultdict(list)
+    for row in episodes:
+        grouped[row.strategy_id].append(row)
+    resolved_counts = Counter(
+        f"{probe.symbol}:{probe.mechanism.value}" for probe in probes
+    )
+
+    summaries: list[ProbeEarlyContextSummary] = []
+    for strategy_id, eligible in grouped.items():
+        tick = [
+            row
+            for row in eligible
+            if row.side_aligned_tick_imbalance_5m is not None
+        ]
+        wins = [row for row in tick if row.result_r > 0]
+        losses = [row for row in tick if row.result_r < 0]
+        win_5m = _nonnull(row.side_aligned_tick_imbalance_5m for row in wins)
+        loss_5m = _nonnull(row.side_aligned_tick_imbalance_5m for row in losses)
+        win_15m = _nonnull(row.side_aligned_tick_imbalance_15m for row in wins)
+        loss_15m = _nonnull(row.side_aligned_tick_imbalance_15m for row in losses)
+        winner_median_5m = median(win_5m) if win_5m else None
+        loser_median_5m = median(loss_5m) if loss_5m else None
+        first = eligible[0]
+        summaries.append(
+            ProbeEarlyContextSummary(
+                strategy_id=strategy_id,
+                symbol=first.symbol,
+                mechanism=first.mechanism,
+                resolved_probes=resolved_counts[strategy_id],
+                m1_eligible_probes=len(eligible),
+                tick_pressure_eligible_probes=len(tick),
+                tick_pressure_wins=len(wins),
+                tick_pressure_losses=len(losses),
+                tick_pressure_total_r=sum(row.result_r for row in tick),
+                tick_pressure_expectancy_r=(
+                    fmean(row.result_r for row in tick) if tick else 0.0
+                ),
+                winner_median_side_aligned_tick_imbalance_5m=winner_median_5m,
+                loser_median_side_aligned_tick_imbalance_5m=loser_median_5m,
+                winner_minus_loser_tick_imbalance_5m=(
+                    winner_median_5m - loser_median_5m
+                    if winner_median_5m is not None
+                    and loser_median_5m is not None
+                    else None
+                ),
+                winner_median_side_aligned_tick_imbalance_15m=(
+                    median(win_15m) if win_15m else None
+                ),
+                loser_median_side_aligned_tick_imbalance_15m=(
+                    median(loss_15m) if loss_15m else None
+                ),
+                winner_precursor_rate=(
+                    sum(row.precursor_first_seen_at is not None for row in wins)
+                    / len(wins)
+                    if wins
+                    else None
+                ),
+                loser_precursor_rate=(
+                    sum(row.precursor_first_seen_at is not None for row in losses)
+                    / len(losses)
+                    if losses
+                    else None
+                ),
+            )
+        )
+
+    tick_all = [
+        row for row in episodes if row.side_aligned_tick_imbalance_5m is not None
+    ]
+    return ProbeEarlyContextReport(
+        generated_at=now,
+        window_hours=window_hours,
+        resolved_probes=len(probes),
+        m1_eligible_probes=len(episodes),
+        tick_pressure_eligible_probes=len(tick_all),
+        tick_pressure_wins=sum(row.result_r > 0 for row in tick_all),
+        tick_pressure_losses=sum(row.result_r < 0 for row in tick_all),
+        summaries=sorted(
+            summaries,
+            key=lambda row: (
+                -row.tick_pressure_eligible_probes,
+                -row.m1_eligible_probes,
+                row.strategy_id,
+            ),
+        ),
+        recent_tick_pressure_probes=sorted(
+            tick_all,
+            key=lambda row: row.signal_at,
+            reverse=True,
+        )[:100],
+        limitations=[
+            (
+                "This report uses resolved prospective unqualified probes only; "
+                "it does not mix them with admitted PAPER/DEMO trades."
+            ),
+            (
+                "M1 geometry is built only from microbars fully closed before probe "
+                "signal_at and is never backfilled before the collector existed."
+            ),
+            (
+                "A positive side-aligned tick imbalance is descriptive quote-direction "
+                "pressure, not a standalone edge claim and not Level-2 OFI."
+            ),
+            (
+                "Winner/loser medians remain descriptive until both classes have "
+                "enough genuinely post-deployment tick-pressure observations."
+            ),
+        ],
     )
 
 

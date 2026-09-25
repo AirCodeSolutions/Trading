@@ -3114,3 +3114,12 @@ Preliminary 168 h snapshot, not an admission decision:
 No scanner, admission, spread, sizing, stop, target, macro or 5-lot rule changes.
 
 Validation: 18 focused tests, 320 full backend tests, Ruff clean, frontend production build clean and diff check clean.
+
+
+## 2026-09-25 — Value of Waiting dashboard horizon isolation
+
+The main dashboard intelligence refresh remains a 24 h operational view. Value of Waiting needs a larger sample and is now fetched independently over 168 h every five minutes.
+
+This prevents the heavier 168 h research computation from delaying the 30-second core dashboard refresh while making the waiting-cost table immediately useful with the currently available 17 strategy summaries. On a temporary research-fetch failure, the UI preserves the last valid 168 h snapshot instead of clearing it.
+
+Frontend-only observability change; no trading or backend decision semantics changed. Production frontend build passes.

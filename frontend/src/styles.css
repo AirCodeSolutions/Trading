@@ -2132,3 +2132,30 @@ h1 {
     min-width: 1160px;
   }
 }
+
+
+.early-context-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.early-context-kpis span {
+  padding: 10px 12px;
+  border: 1px solid #1c2b3a;
+  border-radius: 10px;
+  background: rgba(8, 17, 26, 0.62);
+  color: #8fa0b2;
+  font-size: 10px;
+}
+
+.early-context-kpis b {
+  color: #e4edf4;
+  font-size: 13px;
+}
+
+.early-context-row {
+  min-width: 1240px;
+  grid-template-columns: 2.1fr 0.8fr 0.65fr 0.75fr 0.65fr 0.9fr 0.9fr 0.9fr 0.8fr;
+}

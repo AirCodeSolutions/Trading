@@ -143,6 +143,83 @@ class OpportunityWaitingSummary(BaseModel):
     average_precursor_to_signal_minutes: float = Field(ge=0)
 
 
+class WaitingEarlyContextEpisode(BaseModel):
+    episode_id: str
+    strategy_id: str
+    symbol: str
+    mechanism: OpportunityMechanism
+    side: Side
+    first_signal_at: datetime
+    signal_lead_lag_minutes: float
+    move_consumed_fraction: float = Field(ge=0, le=1)
+    move_consumed_at_signal_atr: float = Field(ge=0)
+    move_remaining_after_signal_atr: float = Field(ge=0)
+    directional_tick_samples_5m: int = Field(default=0, ge=0)
+    side_aligned_tick_imbalance_5m: float | None = Field(
+        default=None, ge=-1, le=1
+    )
+    directional_tick_samples_15m: int = Field(default=0, ge=0)
+    side_aligned_tick_imbalance_15m: float | None = Field(
+        default=None, ge=-1, le=1
+    )
+    precursor_first_seen_at: datetime | None = None
+    precursor_pattern: OpportunityCausalPattern | None = None
+    precursor_lead_minutes_to_signal: float | None = Field(default=None, ge=0)
+
+
+class WaitingEarlyContextSummary(BaseModel):
+    strategy_id: str
+    symbol: str
+    mechanism: OpportunityMechanism
+    waiting_episodes: int = Field(ge=0)
+    m1_eligible_episodes: int = Field(ge=0)
+    tick_pressure_eligible_episodes: int = Field(ge=0)
+    early_reaction_m1_episodes: int = Field(ge=0)
+    target_band_m1_episodes: int = Field(ge=0)
+    target_band_tick_pressure_episodes: int = Field(ge=0)
+    late_reaction_m1_episodes: int = Field(ge=0)
+    target_band_with_precursor: int = Field(ge=0)
+    target_band_precursor_rate: float | None = Field(default=None, ge=0, le=1)
+    median_target_directional_tick_samples_5m: float | None = Field(
+        default=None, ge=0
+    )
+    median_target_side_aligned_tick_imbalance_5m: float | None = Field(
+        default=None, ge=-1, le=1
+    )
+    median_early_side_aligned_tick_imbalance_5m: float | None = Field(
+        default=None, ge=-1, le=1
+    )
+    target_minus_early_tick_imbalance_5m: float | None = Field(
+        default=None, ge=-2, le=2
+    )
+    median_target_side_aligned_tick_imbalance_15m: float | None = Field(
+        default=None, ge=-1, le=1
+    )
+    median_early_side_aligned_tick_imbalance_15m: float | None = Field(
+        default=None, ge=-1, le=1
+    )
+
+
+class WaitingEarlyContextReport(BaseModel):
+    generated_at: datetime
+    window_hours: int = Field(gt=0)
+    target_band_min_fraction: float = Field(ge=0, le=1)
+    target_band_max_fraction: float = Field(ge=0, le=1)
+    m1_coverage_started_at: dict[str, datetime] = Field(default_factory=dict)
+    waiting_episodes: int = Field(ge=0)
+    m1_eligible_episodes: int = Field(ge=0)
+    tick_pressure_eligible_episodes: int = Field(ge=0)
+    target_band_episodes: int = Field(ge=0)
+    target_band_m1_eligible_episodes: int = Field(ge=0)
+    target_band_tick_pressure_eligible_episodes: int = Field(ge=0)
+    target_band_with_precursor: int = Field(ge=0)
+    summaries: list[WaitingEarlyContextSummary] = Field(default_factory=list)
+    recent_m1_episodes: list[WaitingEarlyContextEpisode] = Field(
+        default_factory=list
+    )
+    limitations: list[str] = Field(default_factory=list)
+
+
 class AssetIntelligence(BaseModel):
     symbol: str
     paper_closed_trades: int = Field(ge=0)
@@ -187,4 +264,5 @@ class TradingIntelligenceOverview(BaseModel):
         default_factory=list
     )
     waiting_costs: list[OpportunityWaitingSummary] = Field(default_factory=list)
+    waiting_early_context: WaitingEarlyContextReport | None = None
     limitations: list[str] = Field(default_factory=list)

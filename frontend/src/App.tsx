@@ -762,6 +762,41 @@ type TradingIntelligence = {
     average_move_consumed_fraction: number;
     average_precursor_to_signal_minutes: number;
   }[];
+  waiting_early_context: {
+    generated_at: string;
+    window_hours: number;
+    target_band_min_fraction: number;
+    target_band_max_fraction: number;
+    m1_coverage_started_at: Record<string, string>;
+    waiting_episodes: number;
+    m1_eligible_episodes: number;
+    tick_pressure_eligible_episodes: number;
+    target_band_episodes: number;
+    target_band_m1_eligible_episodes: number;
+    target_band_tick_pressure_eligible_episodes: number;
+    target_band_with_precursor: number;
+    summaries: {
+      strategy_id: string;
+      symbol: string;
+      mechanism: string;
+      waiting_episodes: number;
+      m1_eligible_episodes: number;
+      tick_pressure_eligible_episodes: number;
+      early_reaction_m1_episodes: number;
+      target_band_m1_episodes: number;
+      target_band_tick_pressure_episodes: number;
+      late_reaction_m1_episodes: number;
+      target_band_with_precursor: number;
+      target_band_precursor_rate: number | null;
+      median_target_directional_tick_samples_5m: number | null;
+      median_target_side_aligned_tick_imbalance_5m: number | null;
+      median_early_side_aligned_tick_imbalance_5m: number | null;
+      target_minus_early_tick_imbalance_5m: number | null;
+      median_target_side_aligned_tick_imbalance_15m: number | null;
+      median_early_side_aligned_tick_imbalance_15m: number | null;
+    }[];
+    limitations: string[];
+  } | null;
   limitations: string[];
 };
 
@@ -1041,6 +1076,8 @@ export default function App() {
   const [opportunityFunnel, setOpportunityFunnel] = useState<OpportunityFunnel | null>(null);
   const [intelligence, setIntelligence] = useState<TradingIntelligence | null>(null);
   const [waitingCosts, setWaitingCosts] = useState<TradingIntelligence["waiting_costs"]>([]);
+  const [waitingEarlyContext, setWaitingEarlyContext] =
+    useState<TradingIntelligence["waiting_early_context"]>(null);
   const [trailingShadow, setTrailingShadow] = useState<TrailingShadowSummary | null>(null);
   const [xauFeasiblePullback, setXauFeasiblePullback] =
     useState<XauFeasiblePullbackSummary | null>(null);
@@ -1275,10 +1312,15 @@ export default function App() {
       if (refreshing) return;
       refreshing = true;
       try {
-        const response = await fetch("/api/v1/intelligence/overview?hours=168");
+        const response = await fetch(
+          "/api/v1/intelligence/overview?hours=168&include_waiting_early_context=true"
+        );
         if (!response.ok) throw new Error("waiting-cost research unavailable");
         const payload = (await response.json()) as TradingIntelligence;
-        if (active) setWaitingCosts(payload.waiting_costs ?? []);
+        if (active) {
+          setWaitingCosts(payload.waiting_costs ?? []);
+          setWaitingEarlyContext(payload.waiting_early_context ?? null);
+        }
       } catch {
         // Keep the last valid research snapshot; do not block the 24 h dashboard refresh.
       } finally {
@@ -2805,6 +2847,80 @@ export default function App() {
             <p className="strategy-empty">
               Aucun épisode market-first avec première réaction système mesurable dans la fenêtre.
             </p>
+          )}
+        </div>
+
+        <div className="intelligence-subsection">
+          <h3>M1 Early Context · pression avant réaction · 168 h</h3>
+          <p className="intelligence-note">
+            Jointure prospective uniquement : microbars M1 fermées avant la première réaction SHADOW,
+            imbalance ajustée au sens du futur mouvement, et precursor même sens vu avant le signal.
+            La bande 25–40 % reste une cohorte de diagnostic, jamais un seuil d’entrée.
+          </p>
+          {waitingEarlyContext ? (
+            <>
+              <div className="early-context-kpis">
+                <span><b>{waitingEarlyContext.m1_eligible_episodes}</b> épisodes avec M1 / {waitingEarlyContext.waiting_episodes}</span>
+                <span><b>{waitingEarlyContext.tick_pressure_eligible_episodes}</b> avec tick-pressure</span>
+                <span><b>{waitingEarlyContext.target_band_m1_eligible_episodes}</b> / {waitingEarlyContext.target_band_episodes} dans 25–40 % avec M1</span>
+                <span><b>{waitingEarlyContext.target_band_tick_pressure_eligible_episodes}</b> dans 25–40 % avec pression</span>
+                <span><b>{waitingEarlyContext.target_band_with_precursor}</b> dans 25–40 % avec precursor</span>
+              </div>
+              {waitingEarlyContext.target_band_m1_eligible_episodes === 0 ? (
+                <p className="strategy-empty">
+                  Collecte en cours : les épisodes 25–40 % observés précèdent encore la couverture M1.
+                  Aucun backfill artificiel n’est appliqué.
+                </p>
+              ) : null}
+              {waitingEarlyContext.summaries.some((row) => row.m1_eligible_episodes > 0) ? (
+                <div className="intelligence-table">
+                  <div className="intelligence-row early-context-row intelligence-head">
+                    <span>Stratégie</span>
+                    <span>M1 / pression</span>
+                    <span>&lt;25 %</span>
+                    <span>25–40 %</span>
+                    <span>&gt;40 %</span>
+                    <span>Precursor cible</span>
+                    <span>Imb 5m cible</span>
+                    <span>Imb 5m &lt;25</span>
+                    <span>Δ cible</span>
+                  </div>
+                  {waitingEarlyContext.summaries
+                    .filter((row) => row.m1_eligible_episodes > 0)
+                    .map((row) => (
+                      <div className="intelligence-row early-context-row" key={row.strategy_id}>
+                        <strong>{row.strategy_id.replaceAll("_", " ")}</strong>
+                        <span>{row.m1_eligible_episodes} / {row.tick_pressure_eligible_episodes}</span>
+                        <span>{row.early_reaction_m1_episodes}</span>
+                        <span>{row.target_band_m1_episodes} / {row.target_band_tick_pressure_episodes}</span>
+                        <span>{row.late_reaction_m1_episodes}</span>
+                        <span>
+                          {row.target_band_precursor_rate == null
+                            ? "—"
+                            : `${(row.target_band_precursor_rate * 100).toFixed(0)} %`}
+                        </span>
+                        <span>
+                          {row.median_target_side_aligned_tick_imbalance_5m == null
+                            ? "—"
+                            : row.median_target_side_aligned_tick_imbalance_5m.toFixed(2)}
+                        </span>
+                        <span>
+                          {row.median_early_side_aligned_tick_imbalance_5m == null
+                            ? "—"
+                            : row.median_early_side_aligned_tick_imbalance_5m.toFixed(2)}
+                        </span>
+                        <span>
+                          {row.target_minus_early_tick_imbalance_5m == null
+                            ? "—"
+                            : (row.target_minus_early_tick_imbalance_5m >= 0 ? "+" : "") + row.target_minus_early_tick_imbalance_5m.toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <p className="strategy-empty">Snapshot M1 early-context en cours de chargement.</p>
           )}
         </div>
 

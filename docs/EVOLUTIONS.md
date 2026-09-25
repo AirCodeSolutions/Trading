@@ -1847,3 +1847,16 @@ The Research dashboard now refreshes Value of Waiting on its own 168 h / five-mi
 This keeps the operational dashboard responsive and gives the waiting-cost analysis enough observations to be meaningful. Failed 168 h refreshes retain the last valid snapshot.
 
 No execution, admission or risk behavior changes. Frontend production build passes.
+
+
+## 2026-09-25 — join M1 pressure and precursor context to Value of Waiting
+
+Added optional early-context enrichment to the 168 h Trading Intelligence research view.
+
+The enrichment joins each first SHADOW reaction to only the M1 microbars fully closed before that reaction, side-adjusts 5m/15m quote-direction imbalance, and detects a same-side precursor inside the existing 15-minute capture window. It separates M1 coverage from actual directional tick-pressure coverage so legacy/zero-directional-sample bars are never interpreted as neutral pressure.
+
+The dashboard now exposes collection counters and compares the requested 25-40% consumed diagnostic cohort against reactions below 25% when both samples become available. No threshold, admission, spread, sizing, stop, target, macro or 5-lot rule is changed.
+
+Current evidence is collection-only: 71 waiting episodes, 6 with M1 coverage, 5 historical episodes in the 25-40% cohort, and 0 target-cohort episodes with prospective M1 coverage so far.
+
+Validation: 20 focused tests, 322 full backend tests, Ruff clean and frontend production build clean.

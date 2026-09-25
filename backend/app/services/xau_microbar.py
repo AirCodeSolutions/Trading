@@ -182,6 +182,8 @@ def _new_bar(
         spread_close=spread,
         spread_sum=spread,
         quote_count=1,
+        mid_up_ticks=0,
+        mid_down_ticks=0,
     )
 
 
@@ -193,6 +195,12 @@ def _update_bar(
 ) -> XauMicrobarM1:
     mid = (bid + ask) / 2
     spread = ask - bid
+    mid_up_ticks = bar.mid_up_ticks
+    mid_down_ticks = bar.mid_down_ticks
+    if mid > bar.mid_close + 1e-12:
+        mid_up_ticks += 1
+    elif mid < bar.mid_close - 1e-12:
+        mid_down_ticks += 1
     return bar.model_copy(
         update={
             "last_quote_at": quote_at,
@@ -210,6 +218,8 @@ def _update_bar(
             "spread_close": spread,
             "spread_sum": bar.spread_sum + spread,
             "quote_count": bar.quote_count + 1,
+            "mid_up_ticks": mid_up_ticks,
+            "mid_down_ticks": mid_down_ticks,
         }
     )
 
@@ -292,6 +302,14 @@ def _geometry_window(
     )
     total_quotes = sum(row.quote_count for row in selected)
     total_spread = sum(row.spread_sum for row in selected)
+    total_up_ticks = sum(row.mid_up_ticks for row in selected)
+    total_down_ticks = sum(row.mid_down_ticks for row in selected)
+    directional_tick_samples = total_up_ticks + total_down_ticks
+    mid_tick_imbalance = (
+        (total_up_ticks - total_down_ticks) / directional_tick_samples
+        if directional_tick_samples > 0
+        else None
+    )
 
     return XauMicrobarGeometry(
         window_minutes=window_minutes,
@@ -309,6 +327,9 @@ def _geometry_window(
         average_spread=(total_spread / total_quotes if total_quotes else 0.0),
         max_spread=max(row.spread_high for row in selected),
         average_quotes_per_bar=total_quotes / len(selected),
+        directional_tick_samples=directional_tick_samples,
+        mid_tick_imbalance=mid_tick_imbalance,
+        spread_change=last.spread_close - first.spread_open,
         distance_to_low=max(0.0, last.mid_close - mid_low),
         distance_to_high=max(0.0, mid_high - last.mid_close),
     )

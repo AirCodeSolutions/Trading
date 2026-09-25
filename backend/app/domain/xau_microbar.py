@@ -31,10 +31,23 @@ class XauMicrobarM1(BaseModel):
     spread_close: float = Field(ge=0)
     spread_sum: float = Field(ge=0)
     quote_count: int = Field(gt=0)
+    mid_up_ticks: int = Field(default=0, ge=0)
+    mid_down_ticks: int = Field(default=0, ge=0)
 
     @property
     def average_spread(self) -> float:
         return self.spread_sum / self.quote_count
+
+    @property
+    def directional_tick_samples(self) -> int:
+        return self.mid_up_ticks + self.mid_down_ticks
+
+    @property
+    def mid_tick_imbalance(self) -> float | None:
+        total = self.directional_tick_samples
+        if total == 0:
+            return None
+        return (self.mid_up_ticks - self.mid_down_ticks) / total
 
 
 class XauMicrobarState(BaseModel):
@@ -60,6 +73,9 @@ class XauMicrobarGeometry(BaseModel):
     average_spread: float = Field(ge=0)
     max_spread: float = Field(ge=0)
     average_quotes_per_bar: float = Field(ge=0)
+    directional_tick_samples: int = Field(default=0, ge=0)
+    mid_tick_imbalance: float | None = Field(default=None, ge=-1, le=1)
+    spread_change: float = 0.0
     distance_to_low: float = Field(ge=0)
     distance_to_high: float = Field(ge=0)
 

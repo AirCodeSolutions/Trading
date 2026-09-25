@@ -2948,3 +2948,22 @@ New research-only API `/api/v1/research/unseen-transitions` summarizes the prosp
 Current prospective sample remains too small for a trading rule. XAU has 23 unseen M1 episodes, 14 aligned resolved transitions, with roughly 1.06 ATR median consumed on aligned transitions. Continue collecting without threshold tuning.
 
 Validation: 5 focused tests, then 314 full backend tests, Ruff clean and `git diff --check` clean.
+
+
+## 2026-09-25 — no-trade diagnosis + M1 directional tick imbalance
+
+No Trading-New trade has completed since XAUUSD break/retest at 2026-09-24 13:30 Europe/Athens (12:30 Europe/Paris). Runtime diagnosis shows no execution outage: drain OFF, session READY 5/5, macro gate clear, DEMO transport armed, bridge flat and no pending command.
+
+The bottleneck is coverage/admission. The four current PAPER-entry-allowed SHADOW families — BTC break/retest, BTC structural displacement sequence, GBP Asia range sweep and XAU Asia range sweep — produced zero non-`no_signal` diagnostics since the last trade across roughly 205-215 evaluations each.
+
+Over the same window, observation-only families produced 36 meaningful scanner events: 16 technically executable signals and 20 execution-blocked signals. The strongest early prospective recovery candidate is `BTCUSD:directional_transition`: 5 resolved executable probes, 4 wins / 1 loss, +5.02R, +1.00R expectancy, PF 6.02, max DD 1R. It remains 5/20 and is not promoted.
+
+Research instrumentation is extended with a causal quote-direction proxy on every prospective M1 bar:
+- count mid-price up/down quote changes;
+- expose directional tick sample count;
+- expose `mid_tick_imbalance = (up-down)/(up+down)` on 5/15 minute geometry;
+- expose spread change across the geometry window.
+
+This is not true order-flow imbalance because MT4 does not provide L2 queue sizes. It is research-only and does not alter scanners, admission, PAPER/DEMO orders, sizing, stops, targets, macro gates or the 5-lot ceiling.
+
+Validation: 15 focused tests, then 314 full backend tests, Ruff clean and diff check clean.

@@ -77,7 +77,11 @@ def advance_demo_collection(
         save_demo_collection_state(state_path, state)
         return state
 
-    close_target = _next_managed_position_to_close(overview, positions)
+    close_target = _next_managed_position_to_close(
+        overview,
+        positions,
+        state=state,
+    )
     if close_target is not None:
         position, strategy_id = close_target
         try:
@@ -190,9 +194,8 @@ def _consume_open_result(
     if result.status == DemoBridgeCommandStatus.FILLED and result.ticket > 0:
         state = _mark_completed(state, trade_id)
         state.paper_trade_id = None
-        state.strategy_id = None
         state.open_command_id = None
-        state.ticket = None
+        state.ticket = result.ticket
         state.last_error = None
         return state
 
@@ -294,6 +297,8 @@ def _next_open_candidate(
 def _next_managed_position_to_close(
     overview: TradingOverview,
     positions: list[DemoBridgePosition],
+    *,
+    state: DemoCollectionState,
 ) -> tuple[DemoBridgePosition, str] | None:
     rows_by_strategy = {
         row.strategy_id: row
@@ -303,6 +308,12 @@ def _next_managed_position_to_close(
 
     for position in positions:
         strategy_id = _strategy_id_from_position(position)
+        if (
+            strategy_id is None
+            and state.ticket == position.ticket
+            and state.strategy_id is not None
+        ):
+            strategy_id = state.strategy_id
         if strategy_id is None:
             continue
         row = rows_by_strategy.get(strategy_id)

@@ -294,3 +294,115 @@ def test_demo_collection_drain_still_allows_existing_close(
     )
     assert close_command is not None
     assert close_command.ticket == 321
+
+
+def test_demo_collection_closes_timeout_when_broker_comment_is_empty(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    enable(monkeypatch)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+
+    opened = overview(trade())
+    advance_demo_collection(tmp_path, runtime, opened, macro(), NOW)
+    open_command = read_pending_command(tmp_path / "trading_demo_command.csv")
+    assert open_command is not None
+
+    (tmp_path / "trading_demo_command.csv").unlink()
+    (tmp_path / "trading_demo_result.csv").write_text(
+        f"{open_command.command_id},FILLED,321,0,1.3400,1.3380,1.3430,2026.09.21 17:00:01\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "trading_demo_positions.csv").write_text(
+        "ticket,symbol,side,lots,open_price,stop_loss,take_profit,profit,open_time,comment\n"
+        "321,GBPUSD,BUY,0.01,1.3400,1.3380,1.3430,0,2026.09.21 17:00,\n",
+        encoding="utf-8",
+    )
+
+    # Consume the open fill first. The runtime must retain ticket/strategy
+    # identity even though MT4 did not preserve our order comment.
+    advance_demo_collection(
+        tmp_path,
+        runtime,
+        opened,
+        macro(),
+        NOW + timedelta(seconds=30),
+    )
+    state = load_demo_collection_state(runtime / "demo_collection_state.json")
+    assert state.ticket == 321
+    assert state.strategy_id == STRATEGY
+
+    closed = trade(status=PaperTradeStatus.TIMEOUT)
+    (runtime / "GBPUSD_directional_pullback_paper_trades.jsonl").write_text(
+        closed.model_dump_json() + "\n",
+        encoding="utf-8",
+    )
+
+    advance_demo_collection(
+        tmp_path,
+        runtime,
+        overview(None),
+        macro(),
+        NOW + timedelta(hours=1),
+    )
+
+    close_command = read_pending_close_command(
+        tmp_path / "trading_demo_close_command.csv"
+    )
+    assert close_command is not None
+    assert close_command.ticket == 321
+    assert close_command.strategy_id == STRATEGY
+
+
+def test_demo_collection_ticket_fallback_does_not_close_other_empty_comment_position(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    enable(monkeypatch)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+
+    opened = overview(trade())
+    advance_demo_collection(tmp_path, runtime, opened, macro(), NOW)
+    open_command = read_pending_command(tmp_path / "trading_demo_command.csv")
+    assert open_command is not None
+
+    (tmp_path / "trading_demo_command.csv").unlink()
+    (tmp_path / "trading_demo_result.csv").write_text(
+        f"{open_command.command_id},FILLED,321,0,1.3400,1.3380,1.3430,2026.09.21 17:00:01\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "trading_demo_positions.csv").write_text(
+        "ticket,symbol,side,lots,open_price,stop_loss,take_profit,profit,open_time,comment\n"
+        "321,GBPUSD,BUY,0.01,1.3400,1.3380,1.3430,0,2026.09.21 17:00,\n"
+        "999,EURUSD,BUY,0.01,1.1000,1.0900,1.1200,0,2026.09.21 17:00,\n",
+        encoding="utf-8",
+    )
+
+    advance_demo_collection(
+        tmp_path,
+        runtime,
+        opened,
+        macro(),
+        NOW + timedelta(seconds=30),
+    )
+
+    closed = trade(status=PaperTradeStatus.TIMEOUT)
+    (runtime / "GBPUSD_directional_pullback_paper_trades.jsonl").write_text(
+        closed.model_dump_json() + "\n",
+        encoding="utf-8",
+    )
+    advance_demo_collection(
+        tmp_path,
+        runtime,
+        overview(None),
+        macro(),
+        NOW + timedelta(hours=1),
+    )
+
+    close_command = read_pending_close_command(
+        tmp_path / "trading_demo_close_command.csv"
+    )
+    assert close_command is not None
+    assert close_command.ticket == 321

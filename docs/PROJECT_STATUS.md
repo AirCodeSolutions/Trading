@@ -3219,3 +3219,53 @@ Current 168 h evidence:
 This evidence supports keeping the spread guard unchanged. The isolated XAG failed-auction winner is not sufficient evidence to relax a guard when the reason-specific post-collector cohort remains strongly negative overall.
 
 Validation: 22 focused tests, 324 full backend tests, Ruff clean, frontend production build clean and diff check clean.
+
+
+## 2026-09-25 — P0 broker timeout-close identity fix after XAU loss
+
+The latest Trading-New XAUUSD asia_range_sweep_reversal SELL exposed two separate issues that must not be conflated.
+
+### 1. Economic outcome of the signal
+
+PAPER trade:
+- signal: 2026-09-25 11:50 Europe/Athens;
+- SELL, entry 4290.54, stop 4298.2528, target 4278.9708;
+- 5 lots under the current hard cap;
+- PAPER status TIMEOUT after 12 M5 bars;
+- PAPER result -0.3475R / about -1340 EUR;
+- MFE only +0.0765R;
+- MAE about 0.9802R;
+- time to MFE 39 minutes;
+- entry delay 29.1 seconds and only ~0.087R lost between signal and PAPER entry.
+
+The signal was therefore not mainly damaged by late entry. It produced almost no favorable follow-through and spent most of the horizon near the stop.
+
+Causal early context at the signal was conflicted with the SELL:
+- the immediate causal pattern at 11:50 was a sell auction_failure_reclaim after an upper sweep;
+- however the preceding 15 minutes included repeated bullish directional-displacement / structural-extreme context;
+- sell-adjusted M1 mid-tick imbalance was about -0.088 over 5 minutes and -0.143 over 15 minutes, meaning quote-direction pressure remained against the SELL on both horizons.
+
+This is a research feature, not a new veto. XAU Asia sweep historical evidence was already thin/mixed: train 8 trades at -0.375R expectancy, validation 2 trades at +1.50R, holdout 2 trades at +0.25R. The mechanism remains a prospective collector; one live loss is insufficient to retune admission.
+
+### 2. P0 PAPER-to-broker close synchronization defect
+
+The broker result was materially worse than PAPER:
+- broker ticket 185418955;
+- broker SELL fill 4290.91;
+- broker stop 4298.25;
+- MT4 realized result -3220.99 EUR.
+
+Root cause: after the broker OPEN fill, DemoCollectionState marked the PAPER trade completed and cleared the local ticket/strategy mapping. Normal close ownership then relied on the MT4 position comment `TradingNew:<strategy_id>`. The real MT4 position export had an empty comment, so when PAPER timed out the collector could not identify the broker ticket as managed and no close command was submitted. The broker position remained open until its stop.
+
+P0 correction:
+- keep broker ticket + strategy_id in DemoCollectionState after a filled OPEN;
+- preserve existing TradingNew comment identification when available;
+- if the broker comment is empty, use only the exact remembered ticket as ownership fallback;
+- unrelated/manual empty-comment tickets remain untouched;
+- close-result handling still clears the remembered mapping after successful broker closure.
+
+Regression coverage reproduces the production failure: filled OPEN -> empty broker comment -> PAPER timeout -> required broker close. A second regression proves another empty-comment ticket cannot be closed by the fallback.
+
+Validation: 7 demo-collection tests pass, 326 full backend tests pass, Ruff clean and diff check clean.
+
+Operational safety: the book was confirmed flat before development. Drain was temporarily enabled only to prevent a new DEMO entry while this P0 execution defect was being validated; it must return OFF after deployment verification.

@@ -1,4 +1,5 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from app.domain.opportunity import (
@@ -6,13 +7,38 @@ from app.domain.opportunity import (
     PortfolioResearchRequest,
     ResearchSplit,
 )
-from app.domain.probe_review import ProbeReviewPack
+from app.domain.probe_review import ProbeReviewContract, ProbeReviewPack
 from app.domain.trading_intelligence import TradingIntelligenceOverview
 from app.services.opportunity_funnel import build_opportunity_funnel
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.trading_intelligence import build_trading_intelligence
 
 REVIEW_EVIDENCE_WINDOW_HOURS = 168
+REVIEW_TIMEZONE = "Europe/Athens"
+REVIEW_TRAIN_END_LOCAL = "2026-07-01T00:00:00"
+REVIEW_VALIDATION_END_LOCAL = "2026-09-01T00:00:00"
+
+
+def default_probe_review_contract() -> ProbeReviewContract:
+    timezone = ZoneInfo(REVIEW_TIMEZONE)
+    return ProbeReviewContract(
+        train_end=datetime.fromisoformat(REVIEW_TRAIN_END_LOCAL).replace(
+            tzinfo=timezone
+        ),
+        validation_end=datetime.fromisoformat(REVIEW_VALIDATION_END_LOCAL).replace(
+            tzinfo=timezone
+        ),
+        timezone=REVIEW_TIMEZONE,
+        evidence_window_hours=REVIEW_EVIDENCE_WINDOW_HOURS,
+    )
+
+
+def default_probe_review_split() -> ResearchSplit:
+    contract = default_probe_review_contract()
+    return ResearchSplit(
+        train_end=contract.train_end,
+        validation_end=contract.validation_end,
+    )
 
 
 def build_probe_review_pack(

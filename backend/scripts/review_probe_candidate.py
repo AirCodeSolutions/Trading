@@ -5,10 +5,14 @@ from zoneinfo import ZoneInfo
 
 from app.core.config import settings
 from app.domain.opportunity import ResearchSplit
-from app.services.probe_review import build_probe_review_pack
+from app.services.probe_review import (
+    build_probe_review_pack,
+    default_probe_review_contract,
+)
 
 
 def parse_args() -> argparse.Namespace:
+    contract = default_probe_review_contract()
     parser = argparse.ArgumentParser(
         description="Build a read-only dedicated review pack for a SUPPORTS_REVIEW probe family."
     )
@@ -21,9 +25,15 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=settings.research_execution_model_path,
     )
-    parser.add_argument("--train-end", default="2026-07-01T00:00:00")
-    parser.add_argument("--validation-end", default="2026-09-01T00:00:00")
-    parser.add_argument("--timezone", default="Europe/Athens")
+    parser.add_argument(
+        "--train-end",
+        default=contract.train_end.replace(tzinfo=None).isoformat(),
+    )
+    parser.add_argument(
+        "--validation-end",
+        default=contract.validation_end.replace(tzinfo=None).isoformat(),
+    )
+    parser.add_argument("--timezone", default=contract.timezone)
     return parser.parse_args()
 
 

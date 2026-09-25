@@ -1727,3 +1727,17 @@ This turns the PR #131/#132 prospective M1 evidence into a stable comparison sur
 PR #137 postflight was also rechecked: the negative-holdout GBP directional-pullback family is no longer PAPER/DEMO eligible. Existing PR #48 positive-independent-window semantics remain unchanged.
 
 Validation: 314 full backend tests pass, Ruff clean, diff check clean.
+
+
+## 2026-09-25 — prospective M1 directional quote-pressure features
+
+Extended the existing multi-asset prospective M1 collector with backward-compatible microstructure fields:
+- `mid_up_ticks` and `mid_down_ticks` on each M1 bar;
+- `directional_tick_samples` and `mid_tick_imbalance` on 5/15 minute geometry;
+- `spread_change` over the same causal window.
+
+The imbalance is deliberately named as a mid-price tick proxy, not OFI. The current MT4 feed has quote prices but no Level-2 size/depth, so the system must not claim order-book imbalance.
+
+The change is motivated by the current frequency bottleneck: eligible strategies produced no signals after the 2026-09-24 XAU trade while several observation-only mechanisms remained active. New microstructure fields are collected only for future evidence and are not wired into execution.
+
+Validation: 314 backend tests pass, Ruff clean, diff check clean.

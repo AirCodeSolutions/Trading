@@ -118,6 +118,10 @@ def test_microbar_aggregates_quotes_and_closes_on_next_minute(
     assert second.current_bar.bid_low == 4279.50
     assert second.current_bar.ask_low == 4279.80
     assert second.current_bar.quote_count == 2
+    assert second.current_bar.mid_up_ticks == 0
+    assert second.current_bar.mid_down_ticks == 1
+    assert second.current_bar.directional_tick_samples == 1
+    assert second.current_bar.mid_tick_imbalance == pytest.approx(-1.0)
 
     write_quote(
         files_dir,
@@ -295,6 +299,8 @@ def test_microbar_summary_exposes_causal_geometry_windows(tmp_path: Path) -> Non
                 spread_close=0.28,
                 spread_sum=16.8,
                 quote_count=60,
+                mid_up_ticks=39,
+                mid_down_ticks=20,
             ),
         )
 
@@ -316,6 +322,9 @@ def test_microbar_summary_exposes_causal_geometry_windows(tmp_path: Path) -> Non
     assert summary.geometry_5m.average_spread == pytest.approx(0.28)
     assert summary.geometry_5m.max_spread == pytest.approx(0.30)
     assert summary.geometry_5m.average_quotes_per_bar == pytest.approx(60.0)
+    assert summary.geometry_5m.directional_tick_samples == 295
+    assert summary.geometry_5m.mid_tick_imbalance == pytest.approx(95 / 295)
+    assert summary.geometry_5m.spread_change == pytest.approx(0.0)
     assert summary.geometry_5m.distance_to_low == pytest.approx(2.75)
     assert summary.geometry_5m.distance_to_high == pytest.approx(0.75)
 

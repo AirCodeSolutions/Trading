@@ -20,9 +20,11 @@ from app.domain.trading_intelligence import (
     OpportunityCausalContext,
     OpportunityCausalPattern,
     OpportunityDetectionStage,
+    TradeIntelligence,
 )
 from app.domain.xau_microbar import XauMicrobarM1
 from app.services.trading_intelligence import (
+    _build_admitted_trade_early_context_report,
     _build_blocked_probe_early_context_report,
     _build_probe_early_context_report,
     _build_waiting_early_context_report,
@@ -1082,3 +1084,194 @@ def test_blocked_probe_early_context_groups_exact_block_reason(
     assert spread.pressure_against_trade_rate == 0.5
     assert spread.pressure_agreement_rate == 1.0
     assert spread.precursor_patterns == {"directional_displacement": 1}
+
+
+def test_admitted_trade_early_context_compares_follow_through(
+    tmp_path: Path,
+) -> None:
+    signal_win = NOW.replace(hour=9, minute=0)
+    signal_loss = NOW.replace(hour=10, minute=0)
+
+    def microbar(
+        minute_at: datetime,
+        *,
+        up: int,
+        down: int,
+    ) -> XauMicrobarM1:
+        spread = 0.0002
+        return XauMicrobarM1(
+            minute_at=minute_at,
+            first_quote_at=minute_at,
+            last_quote_at=minute_at + timedelta(seconds=50),
+            bid_open=1.0,
+            bid_high=1.001,
+            bid_low=0.999,
+            bid_close=1.0,
+            ask_open=1.0002,
+            ask_high=1.0012,
+            ask_low=0.9992,
+            ask_close=1.0002,
+            mid_open=1.0001,
+            mid_high=1.0011,
+            mid_low=0.9991,
+            mid_close=1.0001,
+            spread_open=spread,
+            spread_high=spread,
+            spread_low=spread,
+            spread_close=spread,
+            spread_sum=spread * (up + down + 1),
+            quote_count=up + down + 1,
+            mid_up_ticks=up,
+            mid_down_ticks=down,
+        )
+
+    rows: list[XauMicrobarM1] = []
+    for signal_at, up, down in (
+        (signal_win, 4, 1),
+        (signal_loss, 2, 3),
+    ):
+        for index in range(15):
+            rows.append(
+                microbar(
+                    signal_at - timedelta(minutes=15 - index),
+                    up=up,
+                    down=down,
+                )
+            )
+    (tmp_path / "BTCUSD_micro_m1.jsonl").write_text(
+        "".join(row.model_dump_json() + "\n" for row in rows),
+        encoding="utf-8",
+    )
+
+    def paper(
+        trade_id: str,
+        signal_at: datetime,
+        result_r: float,
+        spread: float,
+    ) -> ShadowPaperTrade:
+        return ShadowPaperTrade(
+            trade_id=trade_id,
+            symbol="BTCUSD",
+            mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+            side=Side.BUY,
+            signal_at=signal_at,
+            entry_bar_at=signal_at,
+            opened_at=signal_at,
+            entry_price=100.0,
+            stop_price=99.0,
+            target_price=101.8,
+            spread_at_entry=spread,
+            lots=0.01,
+            risk_eur=10.0,
+            risk_distance=1.0,
+            target_r=1.8,
+            max_holding_bars=12,
+            status=(
+                PaperTradeStatus.TARGET
+                if result_r > 0
+                else PaperTradeStatus.STOP
+            ),
+            exit_at=signal_at + timedelta(minutes=10),
+            exit_price=101.8 if result_r > 0 else 99.0,
+            result_r=result_r,
+            pnl_eur=result_r * 10.0,
+            bars_held=2,
+        )
+
+    def intelligence(
+        trade_id: str,
+        signal_at: datetime,
+        result_r: float,
+        *,
+        mfe_r: float,
+        mae_r: float,
+        r_wait: float,
+    ) -> TradeIntelligence:
+        return TradeIntelligence(
+            trade_id=trade_id,
+            source="paper",
+            symbol="BTCUSD",
+            mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+            side=Side.BUY,
+            signal_at=signal_at,
+            opened_at=signal_at,
+            exit_at=signal_at + timedelta(minutes=10),
+            status="target" if result_r > 0 else "stop",
+            entry_price=100.0,
+            stop_price=99.0,
+            target_price=101.8,
+            risk_distance=1.0,
+            result_r=result_r,
+            pnl_eur=result_r * 10.0,
+            mfe_r=mfe_r,
+            mae_r=mae_r,
+            r_lost_while_waiting=r_wait,
+        )
+
+    papers = [
+        paper("win", signal_win, 1.8, 0.08),
+        paper("loss", signal_loss, -1.0, 0.12),
+    ]
+    trades = [
+        intelligence(
+            "win",
+            signal_win,
+            1.8,
+            mfe_r=1.8,
+            mae_r=0.2,
+            r_wait=0.05,
+        ),
+        intelligence(
+            "loss",
+            signal_loss,
+            -1.0,
+            mfe_r=0.1,
+            mae_r=1.0,
+            r_wait=0.2,
+        ),
+    ]
+    precursor = CausalPrecursorObservation(
+        symbol="BTCUSD",
+        first_seen_at=signal_win - timedelta(minutes=5),
+        latest_closed_m5_at=signal_win - timedelta(minutes=5),
+        pattern=OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+        side=Side.BUY,
+        context=OpportunityCausalContext(
+            pattern=OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT,
+            side=Side.BUY,
+        ),
+    )
+
+    report = _build_admitted_trade_early_context_report(
+        trades=trades,
+        paper_trades=papers,
+        precursors=[precursor],
+        runtime_dir=tmp_path,
+        now=NOW,
+        window_hours=168,
+    )
+
+    assert report.resolved_trades == 2
+    assert report.m1_eligible_trades == 2
+    assert report.tick_pressure_eligible_trades == 2
+    assert report.tick_pressure_wins == 1
+    assert report.tick_pressure_losses == 1
+    assert abs(report.tick_pressure_total_r - 0.8) < 1e-12
+
+    summary = report.summaries[0]
+    assert summary.tick_pressure_wins == 1
+    assert summary.tick_pressure_losses == 1
+    assert summary.winner_median_side_aligned_tick_imbalance_5m == 0.6
+    assert summary.loser_median_side_aligned_tick_imbalance_5m == -0.2
+    assert summary.winner_median_spread_to_risk == 0.08
+    assert summary.loser_median_spread_to_risk == 0.12
+    assert summary.winner_median_mfe_r == 1.8
+    assert summary.loser_median_mfe_r == 0.1
+    assert summary.winner_median_mae_r == 0.2
+    assert summary.loser_median_mae_r == 1.0
+    assert summary.winner_median_r_lost_while_waiting == 0.05
+    assert summary.loser_median_r_lost_while_waiting == 0.2
+    assert summary.winner_precursor_rate == 1.0
+    assert summary.loser_precursor_rate == 0.0
+    assert summary.winner_precursor_patterns == {"directional_displacement": 1}
+    assert summary.loser_precursor_patterns == {}

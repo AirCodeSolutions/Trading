@@ -3269,3 +3269,29 @@ Regression coverage reproduces the production failure: filled OPEN -> empty brok
 Validation: 7 demo-collection tests pass, 326 full backend tests pass, Ruff clean and diff check clean.
 
 Operational safety: the book was confirmed flat before development. Drain was temporarily enabled only to prevent a new DEMO entry while this P0 execution defect was being validated; it must return OFF after deployment verification.
+
+
+## 2026-09-25 — admitted trade early-context / follow-through learning
+
+Trading Intelligence now has an admitted-trade early-context report for resolved PAPER/DEMO-authorized trades. This report stays separate from unqualified probes and blocked-probe counterfactual replays.
+
+For each admitted trade with prospective M1 coverage, it freezes only context available before signal_at and compares it with the realized economic outcome:
+- side-aligned 5m/15m quote-direction pressure and multi-horizon agreement;
+- spread/risk at entry;
+- causal precursor type;
+- realized R;
+- MFE and MAE;
+- R lost between signal and entry.
+
+Winner/loss summaries are strategy-specific and expose the same frozen features so future admitted winners can be compared directly with current admitted losses without selecting a threshold retrospectively.
+
+Current 168 h checkpoint:
+- 11 resolved admitted PAPER trades in the full window;
+- 2 occur after M1 coverage began;
+- only 1 currently has genuine directional tick-pressure samples;
+- that tick-pressure observation is the XAUUSD asia_range_sweep_reversal loss: -0.3475R, sell-adjusted 5m imbalance about -0.088, 5m/15m pressure agreement against the SELL, spread/risk ~3.6%, MFE ~0.076R, MAE ~0.980R, and ~0.087R lost between signal and entry;
+- XAUUSD break_retest_reaccel also overlaps M1 coverage but predates usable directional tick-pressure counters.
+
+Interpretation: the latest XAU loss looks primarily like absent follow-through / direction conflict rather than excessive spread or execution delay. This is a frozen research hypothesis only; there is still no admitted winner with comparable tick-pressure coverage, so no new veto or threshold is justified.
+
+Validation: 23 focused intelligence tests, 327 full backend tests, Ruff clean, frontend production build clean and diff check clean.

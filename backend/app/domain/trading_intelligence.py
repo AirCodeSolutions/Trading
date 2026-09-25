@@ -339,6 +339,76 @@ class BlockedProbeEarlyContextReport(BaseModel):
     limitations: list[str] = Field(default_factory=list)
 
 
+class AdmittedTradeEarlyContextEpisode(BaseModel):
+    trade_id: str
+    strategy_id: str
+    symbol: str
+    mechanism: OpportunityMechanism
+    side: Side
+    signal_at: datetime
+    status: str
+    result_r: float
+    mfe_r: float = Field(ge=0)
+    mae_r: float = Field(ge=0)
+    r_lost_while_waiting: float
+    spread_to_risk: float = Field(ge=0)
+    directional_tick_samples_5m: int = Field(default=0, ge=0)
+    side_aligned_tick_imbalance_5m: float | None = Field(default=None, ge=-1, le=1)
+    side_aligned_tick_imbalance_15m: float | None = Field(default=None, ge=-1, le=1)
+    pressure_agreement_5m_15m: bool | None = None
+    path_efficiency_5m: float = Field(ge=0, le=1)
+    precursor_pattern: OpportunityCausalPattern | None = None
+
+
+class AdmittedTradeEarlyContextSummary(BaseModel):
+    strategy_id: str
+    symbol: str
+    mechanism: OpportunityMechanism
+    resolved_trades: int = Field(ge=0)
+    m1_eligible_trades: int = Field(ge=0)
+    tick_pressure_eligible_trades: int = Field(ge=0)
+    tick_pressure_wins: int = Field(ge=0)
+    tick_pressure_losses: int = Field(ge=0)
+    tick_pressure_total_r: float
+    tick_pressure_expectancy_r: float
+    winner_median_side_aligned_tick_imbalance_5m: float | None = Field(
+        default=None, ge=-1, le=1
+    )
+    loser_median_side_aligned_tick_imbalance_5m: float | None = Field(
+        default=None, ge=-1, le=1
+    )
+    winner_pressure_agreement_rate: float | None = Field(default=None, ge=0, le=1)
+    loser_pressure_agreement_rate: float | None = Field(default=None, ge=0, le=1)
+    winner_median_spread_to_risk: float | None = Field(default=None, ge=0)
+    loser_median_spread_to_risk: float | None = Field(default=None, ge=0)
+    winner_median_mfe_r: float | None = Field(default=None, ge=0)
+    loser_median_mfe_r: float | None = Field(default=None, ge=0)
+    winner_median_mae_r: float | None = Field(default=None, ge=0)
+    loser_median_mae_r: float | None = Field(default=None, ge=0)
+    winner_median_r_lost_while_waiting: float | None = None
+    loser_median_r_lost_while_waiting: float | None = None
+    winner_precursor_rate: float | None = Field(default=None, ge=0, le=1)
+    loser_precursor_rate: float | None = Field(default=None, ge=0, le=1)
+    winner_precursor_patterns: dict[str, int] = Field(default_factory=dict)
+    loser_precursor_patterns: dict[str, int] = Field(default_factory=dict)
+
+
+class AdmittedTradeEarlyContextReport(BaseModel):
+    generated_at: datetime
+    window_hours: int = Field(gt=0)
+    resolved_trades: int = Field(ge=0)
+    m1_eligible_trades: int = Field(ge=0)
+    tick_pressure_eligible_trades: int = Field(ge=0)
+    tick_pressure_wins: int = Field(ge=0)
+    tick_pressure_losses: int = Field(ge=0)
+    tick_pressure_total_r: float
+    summaries: list[AdmittedTradeEarlyContextSummary] = Field(default_factory=list)
+    recent_tick_pressure_trades: list[AdmittedTradeEarlyContextEpisode] = Field(
+        default_factory=list
+    )
+    limitations: list[str] = Field(default_factory=list)
+
+
 class AssetIntelligence(BaseModel):
     symbol: str
     paper_closed_trades: int = Field(ge=0)
@@ -386,4 +456,5 @@ class TradingIntelligenceOverview(BaseModel):
     waiting_early_context: WaitingEarlyContextReport | None = None
     probe_early_context: ProbeEarlyContextReport | None = None
     blocked_probe_early_context: BlockedProbeEarlyContextReport | None = None
+    admitted_trade_early_context: AdmittedTradeEarlyContextReport | None = None
     limitations: list[str] = Field(default_factory=list)

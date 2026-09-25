@@ -2171,3 +2171,9 @@ h1 {
   min-width: 1780px;
   grid-template-columns: 2.1fr 2.2fr 0.65fr 0.9fr 0.75fr 0.8fr 0.8fr 0.85fr 0.75fr 1fr 0.9fr 0.75fr 1.8fr;
 }
+
+
+.admitted-context-row {
+  min-width: 1760px;
+  grid-template-columns: 2.1fr 0.65fr 0.9fr 0.75fr 0.8fr 0.8fr 1fr 1fr 1.05fr 0.9fr 0.9fr 1.1fr 1.1fr;
+}

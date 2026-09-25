@@ -13,6 +13,9 @@ from app.domain.shadow import ShadowOpportunityDiagnostic, ShadowSignalState
 from app.domain.shadow_paper import PaperTradeStatus, ShadowPaperTrade
 from app.domain.trading import Side
 from app.domain.trading_intelligence import (
+    AdmittedTradeEarlyContextEpisode,
+    AdmittedTradeEarlyContextReport,
+    AdmittedTradeEarlyContextSummary,
     AssetIntelligence,
     BlockedProbeEarlyContextEpisode,
     BlockedProbeEarlyContextReport,
@@ -246,6 +249,18 @@ def build_trading_intelligence(
         if include_waiting_early_context
         else None
     )
+    admitted_trade_early_context = (
+        _build_admitted_trade_early_context_report(
+            trades=[row for row in trade_rows if row.source == "paper"],
+            paper_trades=paper_trades,
+            precursors=precursor_rows,
+            runtime_dir=runtime_dir,
+            now=now,
+            window_hours=window_hours,
+        )
+        if include_waiting_early_context
+        else None
+    )
     probe_early_context = (
         _build_probe_early_context_report(
             probes=_load_unqualified_probe_trades(
@@ -299,6 +314,7 @@ def build_trading_intelligence(
         waiting_early_context=waiting_early_context,
         probe_early_context=probe_early_context,
         blocked_probe_early_context=blocked_probe_early_context,
+        admitted_trade_early_context=admitted_trade_early_context,
         limitations=[
             (
                 "Market opportunities are a retrospective research denominator: "
@@ -1089,6 +1105,232 @@ def _waiting_cost_summaries(
             -row.average_move_consumed_fraction,
             row.strategy_id,
         ),
+    )
+
+
+def _build_admitted_trade_early_context_report(
+    *,
+    trades: list[TradeIntelligence],
+    paper_trades: list[ShadowPaperTrade],
+    precursors: list[CausalPrecursorObservation],
+    runtime_dir: Path,
+    now: datetime,
+    window_hours: int,
+) -> AdmittedTradeEarlyContextReport:
+    resolved = [
+        row for row in trades
+        if row.result_r is not None
+    ]
+    paper_by_id = {row.trade_id: row for row in paper_trades}
+    symbols = sorted({row.symbol.upper() for row in resolved})
+    microbars_by_symbol = {
+        symbol: load_xau_microbars(runtime_dir / microbar_ledger_file(symbol))
+        for symbol in symbols
+    }
+    precursors_by_symbol: dict[str, list[CausalPrecursorObservation]] = defaultdict(list)
+    for row in precursors:
+        precursors_by_symbol[row.symbol.upper()].append(row)
+    for rows in precursors_by_symbol.values():
+        rows.sort(key=lambda item: item.first_seen_at)
+
+    episodes: list[AdmittedTradeEarlyContextEpisode] = []
+    for trade in resolved:
+        source = paper_by_id.get(trade.trade_id)
+        if source is None:
+            continue
+        microbars = _microbars_closed_before(
+            microbars_by_symbol.get(trade.symbol.upper(), []),
+            trade.signal_at,
+            minutes=15,
+        )
+        geometry_5m = _geometry_window(microbars, 5) if microbars else None
+        geometry_15m = _geometry_window(microbars, 15) if microbars else None
+        if geometry_5m is None:
+            continue
+        imbalance_5m = _side_aligned_imbalance(
+            trade.side,
+            geometry_5m.mid_tick_imbalance,
+        )
+        imbalance_15m = (
+            _side_aligned_imbalance(
+                trade.side,
+                geometry_15m.mid_tick_imbalance,
+            )
+            if geometry_15m is not None
+            else None
+        )
+        precursor = _latest_matching_precursor_before_signal(
+            precursors_by_symbol.get(trade.symbol.upper(), []),
+            side=trade.side,
+            signal_at=trade.signal_at,
+        )
+        episodes.append(
+            AdmittedTradeEarlyContextEpisode(
+                trade_id=trade.trade_id,
+                strategy_id=f"{trade.symbol}:{trade.mechanism.value}",
+                symbol=trade.symbol,
+                mechanism=trade.mechanism,
+                side=trade.side,
+                signal_at=trade.signal_at,
+                status=trade.status,
+                result_r=trade.result_r,
+                mfe_r=trade.mfe_r,
+                mae_r=trade.mae_r,
+                r_lost_while_waiting=trade.r_lost_while_waiting,
+                spread_to_risk=source.spread_at_entry / source.risk_distance,
+                directional_tick_samples_5m=geometry_5m.directional_tick_samples,
+                side_aligned_tick_imbalance_5m=imbalance_5m,
+                side_aligned_tick_imbalance_15m=imbalance_15m,
+                pressure_agreement_5m_15m=_pressure_agreement(
+                    imbalance_5m,
+                    imbalance_15m,
+                ),
+                path_efficiency_5m=geometry_5m.path_efficiency,
+                precursor_pattern=(
+                    precursor.pattern if precursor is not None else None
+                ),
+            )
+        )
+
+    resolved_counts = Counter(
+        f"{row.symbol}:{row.mechanism.value}" for row in resolved
+    )
+    grouped: dict[str, list[AdmittedTradeEarlyContextEpisode]] = defaultdict(list)
+    for row in episodes:
+        grouped[row.strategy_id].append(row)
+
+    summaries: list[AdmittedTradeEarlyContextSummary] = []
+    for strategy_id, eligible in grouped.items():
+        tick = [
+            row for row in eligible
+            if row.side_aligned_tick_imbalance_5m is not None
+        ]
+        wins = [row for row in tick if row.result_r > 0]
+        losses = [row for row in tick if row.result_r < 0]
+        win_agreement = [
+            row.pressure_agreement_5m_15m for row in wins
+            if row.pressure_agreement_5m_15m is not None
+        ]
+        loss_agreement = [
+            row.pressure_agreement_5m_15m for row in losses
+            if row.pressure_agreement_5m_15m is not None
+        ]
+        first = eligible[0]
+        summaries.append(
+            AdmittedTradeEarlyContextSummary(
+                strategy_id=strategy_id,
+                symbol=first.symbol,
+                mechanism=first.mechanism,
+                resolved_trades=resolved_counts[strategy_id],
+                m1_eligible_trades=len(eligible),
+                tick_pressure_eligible_trades=len(tick),
+                tick_pressure_wins=len(wins),
+                tick_pressure_losses=len(losses),
+                tick_pressure_total_r=sum(row.result_r for row in tick),
+                tick_pressure_expectancy_r=(
+                    fmean(row.result_r for row in tick) if tick else 0.0
+                ),
+                winner_median_side_aligned_tick_imbalance_5m=_median_or_none(
+                    row.side_aligned_tick_imbalance_5m for row in wins
+                ),
+                loser_median_side_aligned_tick_imbalance_5m=_median_or_none(
+                    row.side_aligned_tick_imbalance_5m for row in losses
+                ),
+                winner_pressure_agreement_rate=_bool_rate_or_none(win_agreement),
+                loser_pressure_agreement_rate=_bool_rate_or_none(loss_agreement),
+                winner_median_spread_to_risk=_median_or_none(
+                    row.spread_to_risk for row in wins
+                ),
+                loser_median_spread_to_risk=_median_or_none(
+                    row.spread_to_risk for row in losses
+                ),
+                winner_median_mfe_r=_median_or_none(row.mfe_r for row in wins),
+                loser_median_mfe_r=_median_or_none(row.mfe_r for row in losses),
+                winner_median_mae_r=_median_or_none(row.mae_r for row in wins),
+                loser_median_mae_r=_median_or_none(row.mae_r for row in losses),
+                winner_median_r_lost_while_waiting=_median_or_none(
+                    row.r_lost_while_waiting for row in wins
+                ),
+                loser_median_r_lost_while_waiting=_median_or_none(
+                    row.r_lost_while_waiting for row in losses
+                ),
+                winner_precursor_rate=_precursor_rate(wins),
+                loser_precursor_rate=_precursor_rate(losses),
+                winner_precursor_patterns=_precursor_pattern_counts(wins),
+                loser_precursor_patterns=_precursor_pattern_counts(losses),
+            )
+        )
+
+    tick_all = [
+        row for row in episodes
+        if row.side_aligned_tick_imbalance_5m is not None
+    ]
+    return AdmittedTradeEarlyContextReport(
+        generated_at=now,
+        window_hours=window_hours,
+        resolved_trades=len(resolved),
+        m1_eligible_trades=len(episodes),
+        tick_pressure_eligible_trades=len(tick_all),
+        tick_pressure_wins=sum(row.result_r > 0 for row in tick_all),
+        tick_pressure_losses=sum(row.result_r < 0 for row in tick_all),
+        tick_pressure_total_r=sum(row.result_r for row in tick_all),
+        summaries=sorted(
+            summaries,
+            key=lambda row: (
+                -row.tick_pressure_eligible_trades,
+                -row.m1_eligible_trades,
+                row.strategy_id,
+            ),
+        ),
+        recent_tick_pressure_trades=sorted(
+            tick_all,
+            key=lambda row: row.signal_at,
+            reverse=True,
+        )[:100],
+        limitations=[
+            (
+                "This report contains admitted PAPER outcomes only; probes and "
+                "blocked replays remain separate."
+            ),
+            (
+                "M1 geometry uses only microbars fully closed before signal_at "
+                "and is never backfilled before directional tick collection."
+            ),
+            (
+                "Winner/loser differences are descriptive until both classes "
+                "contain enough genuinely post-deployment observations."
+            ),
+        ],
+    )
+
+
+def _median_or_none(values: Iterable[float | None]) -> float | None:
+    rows = [value for value in values if value is not None]
+    return median(rows) if rows else None
+
+
+def _bool_rate_or_none(values: Iterable[bool]) -> float | None:
+    rows = list(values)
+    return sum(rows) / len(rows) if rows else None
+
+
+def _precursor_rate(
+    rows: list[AdmittedTradeEarlyContextEpisode],
+) -> float | None:
+    if not rows:
+        return None
+    return sum(row.precursor_pattern is not None for row in rows) / len(rows)
+
+
+def _precursor_pattern_counts(
+    rows: list[AdmittedTradeEarlyContextEpisode],
+) -> dict[str, int]:
+    return dict(
+        Counter(
+            row.precursor_pattern.value
+            for row in rows
+            if row.precursor_pattern is not None
+        )
     )
 
 

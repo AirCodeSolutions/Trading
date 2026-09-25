@@ -1908,3 +1908,16 @@ The DEMO collector now retains the filled broker ticket and strategy_id until br
 Regression tests cover the exact empty-comment timeout scenario and isolation from unrelated tickets. Validation: 7 demo-collection tests and 326 full backend tests pass; Ruff clean.
 
 No signal, admission, spread, risk, sizing, stop, target, macro or 5-lot rule changes.
+
+
+## 2026-09-25 — admitted trade M1 follow-through discriminator
+
+Added an admitted-trade early-context research surface. It joins resolved PAPER/DEMO-authorized trades to causal pre-signal M1 pressure, precursor, spread/risk and post-trade MFE/MAE / waiting-cost metrics.
+
+This keeps admitted trades as the primary economic reference while leaving unqualified probes and blocked replays in separate reports.
+
+Current post-M1 sample is intentionally immature: 2 admitted trades overlap M1 coverage and only the latest XAU Asia sweep loss has true tick-pressure. That loss combined opposing 5m/15m pressure with only +0.076R MFE versus ~0.980R MAE; spread/risk was only ~3.6%, so cost was not the dominant failure mode.
+
+No signal, admission, spread, risk, sizing, stop, target, macro or 5-lot rule changes.
+
+Validation: 327 backend tests pass, Ruff clean and frontend production build clean.

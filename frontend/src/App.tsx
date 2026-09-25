@@ -864,6 +864,45 @@ type TradingIntelligence = {
     }[];
     limitations: string[];
   } | null;
+  admitted_trade_early_context: {
+    generated_at: string;
+    window_hours: number;
+    resolved_trades: number;
+    m1_eligible_trades: number;
+    tick_pressure_eligible_trades: number;
+    tick_pressure_wins: number;
+    tick_pressure_losses: number;
+    tick_pressure_total_r: number;
+    summaries: {
+      strategy_id: string;
+      symbol: string;
+      mechanism: string;
+      resolved_trades: number;
+      m1_eligible_trades: number;
+      tick_pressure_eligible_trades: number;
+      tick_pressure_wins: number;
+      tick_pressure_losses: number;
+      tick_pressure_total_r: number;
+      tick_pressure_expectancy_r: number;
+      winner_median_side_aligned_tick_imbalance_5m: number | null;
+      loser_median_side_aligned_tick_imbalance_5m: number | null;
+      winner_pressure_agreement_rate: number | null;
+      loser_pressure_agreement_rate: number | null;
+      winner_median_spread_to_risk: number | null;
+      loser_median_spread_to_risk: number | null;
+      winner_median_mfe_r: number | null;
+      loser_median_mfe_r: number | null;
+      winner_median_mae_r: number | null;
+      loser_median_mae_r: number | null;
+      winner_median_r_lost_while_waiting: number | null;
+      loser_median_r_lost_while_waiting: number | null;
+      winner_precursor_rate: number | null;
+      loser_precursor_rate: number | null;
+      winner_precursor_patterns: Record<string, number>;
+      loser_precursor_patterns: Record<string, number>;
+    }[];
+    limitations: string[];
+  } | null;
   limitations: string[];
 };
 
@@ -1149,6 +1188,8 @@ export default function App() {
     useState<TradingIntelligence["probe_early_context"]>(null);
   const [blockedProbeEarlyContext, setBlockedProbeEarlyContext] =
     useState<TradingIntelligence["blocked_probe_early_context"]>(null);
+  const [admittedTradeEarlyContext, setAdmittedTradeEarlyContext] =
+    useState<TradingIntelligence["admitted_trade_early_context"]>(null);
   const [trailingShadow, setTrailingShadow] = useState<TrailingShadowSummary | null>(null);
   const [xauFeasiblePullback, setXauFeasiblePullback] =
     useState<XauFeasiblePullbackSummary | null>(null);
@@ -1393,6 +1434,7 @@ export default function App() {
           setWaitingEarlyContext(payload.waiting_early_context ?? null);
           setProbeEarlyContext(payload.probe_early_context ?? null);
           setBlockedProbeEarlyContext(payload.blocked_probe_early_context ?? null);
+          setAdmittedTradeEarlyContext(payload.admitted_trade_early_context ?? null);
         }
       } catch {
         // Keep the last valid research snapshot; do not block the 24 h dashboard refresh.
@@ -2994,6 +3036,78 @@ export default function App() {
             </>
           ) : (
             <p className="strategy-empty">Snapshot M1 early-context en cours de chargement.</p>
+          )}
+        </div>
+
+        <div className="intelligence-subsection">
+          <h3>Admitted Trade Context · follow-through réel · 168 h</h3>
+          <p className="intelligence-note">
+            Trades PAPER/DEMO admis uniquement. Le contexte M1 et precursor est figé avant signal,
+            puis comparé au résultat, MFE/MAE et coût d’attente. Les probes restent séparés.
+          </p>
+          {admittedTradeEarlyContext ? (
+            <>
+              <div className="early-context-kpis">
+                <span><b>{admittedTradeEarlyContext.resolved_trades}</b> trades résolus</span>
+                <span><b>{admittedTradeEarlyContext.m1_eligible_trades}</b> avec M1</span>
+                <span><b>{admittedTradeEarlyContext.tick_pressure_eligible_trades}</b> avec pression</span>
+                <span><b>{admittedTradeEarlyContext.tick_pressure_wins}</b> W pression</span>
+                <span><b>{admittedTradeEarlyContext.tick_pressure_losses}</b> L pression</span>
+                <span className={admittedTradeEarlyContext.tick_pressure_total_r >= 0 ? "positive-text" : "negative-text"}>
+                  <b>{admittedTradeEarlyContext.tick_pressure_total_r >= 0 ? "+" : ""}{admittedTradeEarlyContext.tick_pressure_total_r.toFixed(2)} R</b>
+                  {" "}total pression
+                </span>
+              </div>
+              {admittedTradeEarlyContext.tick_pressure_eligible_trades > 0 &&
+              admittedTradeEarlyContext.tick_pressure_wins === 0 ? (
+                <p className="strategy-empty">
+                  Aucun gagnant admis avec tick-pressure exploitable pour l’instant :
+                  collecte en cours, aucune règle de filtrage dérivée.
+                </p>
+              ) : null}
+              {admittedTradeEarlyContext.summaries.some((row) => row.m1_eligible_trades > 0) ? (
+                <div className="intelligence-table">
+                  <div className="intelligence-row admitted-context-row intelligence-head">
+                    <span>Stratégie</span>
+                    <span>Résolus</span>
+                    <span>M1 / pression</span>
+                    <span>W / L</span>
+                    <span>Total R</span>
+                    <span>Exp.</span>
+                    <span>Imb5 W / L</span>
+                    <span>Accord W / L</span>
+                    <span>Spread/R W / L</span>
+                    <span>MFE W / L</span>
+                    <span>MAE W / L</span>
+                    <span>R attente W / L</span>
+                    <span>Precursor W / L</span>
+                  </div>
+                  {admittedTradeEarlyContext.summaries
+                    .filter((row) => row.m1_eligible_trades > 0)
+                    .map((row) => (
+                      <div className="intelligence-row admitted-context-row" key={row.strategy_id}>
+                        <strong>{row.strategy_id.replaceAll("_", " ")}</strong>
+                        <span>{row.resolved_trades}</span>
+                        <span>{row.m1_eligible_trades} / {row.tick_pressure_eligible_trades}</span>
+                        <span>{row.tick_pressure_wins} / {row.tick_pressure_losses}</span>
+                        <span className={row.tick_pressure_total_r >= 0 ? "positive-text" : "negative-text"}>
+                          {row.tick_pressure_total_r >= 0 ? "+" : ""}{row.tick_pressure_total_r.toFixed(2)} R
+                        </span>
+                        <span>{row.tick_pressure_expectancy_r >= 0 ? "+" : ""}{row.tick_pressure_expectancy_r.toFixed(2)} R</span>
+                        <span>{row.winner_median_side_aligned_tick_imbalance_5m == null ? "—" : row.winner_median_side_aligned_tick_imbalance_5m.toFixed(2)} / {row.loser_median_side_aligned_tick_imbalance_5m == null ? "—" : row.loser_median_side_aligned_tick_imbalance_5m.toFixed(2)}</span>
+                        <span>{row.winner_pressure_agreement_rate == null ? "—" : `${(row.winner_pressure_agreement_rate * 100).toFixed(0)} %`} / {row.loser_pressure_agreement_rate == null ? "—" : `${(row.loser_pressure_agreement_rate * 100).toFixed(0)} %`}</span>
+                        <span>{row.winner_median_spread_to_risk == null ? "—" : `${(row.winner_median_spread_to_risk * 100).toFixed(1)} %`} / {row.loser_median_spread_to_risk == null ? "—" : `${(row.loser_median_spread_to_risk * 100).toFixed(1)} %`}</span>
+                        <span>{row.winner_median_mfe_r == null ? "—" : row.winner_median_mfe_r.toFixed(2)} / {row.loser_median_mfe_r == null ? "—" : row.loser_median_mfe_r.toFixed(2)}</span>
+                        <span>{row.winner_median_mae_r == null ? "—" : row.winner_median_mae_r.toFixed(2)} / {row.loser_median_mae_r == null ? "—" : row.loser_median_mae_r.toFixed(2)}</span>
+                        <span>{row.winner_median_r_lost_while_waiting == null ? "—" : row.winner_median_r_lost_while_waiting.toFixed(2)} / {row.loser_median_r_lost_while_waiting == null ? "—" : row.loser_median_r_lost_while_waiting.toFixed(2)}</span>
+                        <span>{row.winner_precursor_rate == null ? "—" : `${(row.winner_precursor_rate * 100).toFixed(0)} %`} / {row.loser_precursor_rate == null ? "—" : `${(row.loser_precursor_rate * 100).toFixed(0)} %`}</span>
+                      </div>
+                    ))}
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <p className="strategy-empty">Snapshot admitted-trade early-context en cours de chargement.</p>
           )}
         </div>
 

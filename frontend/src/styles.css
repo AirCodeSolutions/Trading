@@ -2218,3 +2218,23 @@ h1 {
   color: #d8e4ed;
   font-size: 11px;
 }
+
+
+.candidate-evidence-coverage {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 10px;
+}
+
+.candidate-evidence-coverage span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #718297;
+  font-size: 10px;
+}
+
+.candidate-evidence-coverage b {
+  color: #d8e4ed;
+}

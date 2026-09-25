@@ -3037,3 +3037,18 @@ The remaining delay is evidence maturity, not deployment:
 - the new post-PR #139 tick-pressure summary remains at 0 eligible episodes because no genuinely new unseen episode has yet been captured with non-zero directional tick samples.
 
 No promotion threshold is reduced to compensate for elapsed time or low trade frequency.
+
+
+## 2026-09-25 — positive prospective candidate progress
+
+The opportunity funnel now exposes a separate positive_unqualified_candidates list so the most-observed candidate does not hide smaller but currently positive prospective samples.
+
+This is descriptive research progress only. Candidates are included when current executable-probe expectancy is positive and are ordered by resolved sample count first, then expectancy. Each row exposes:
+- wins / losses and total R;
+- existing qualification metrics (expectancy, PF, max DD);
+- remaining trades to the existing 20-observation review floor;
+- sample progress fraction.
+
+No candidate receives admission or execution authority from appearing in this list. The 20-observation review floor remains unchanged.
+
+Current runtime evidence remains led by BTCUSD directional transition at 5/20, 4 wins / 1 loss, +5.02R and +1.00R expectancy. GBPUSD failed-auction and BTCUSD post-shock are also currently positive but remain substantially under-sampled.

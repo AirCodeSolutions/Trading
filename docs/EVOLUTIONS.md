@@ -1796,3 +1796,14 @@ Confirmed there is no pending software deployment:
 - runtime is READY 5/5 with drain OFF and auto-collection armed.
 
 Current waiting time is prospective-evidence collection, not an undeployed release. The project deliberately keeps the 20-observation research-review floor, the 15% spread/stop guard and the 5-lot ceiling unchanged while new evidence accumulates.
+
+
+## 2026-09-25 — positive prospective candidate progress surface
+
+Extended the opportunity funnel with positive_unqualified_candidates.
+
+The new read-only surface reports current positive executable-probe candidates with wins/losses, total R, expectancy/PF/DD, remaining observations to the fixed 20-trade review floor and sample progress.
+
+This avoids conflating “most observed” with “most promising” while preserving the existing prospective qualification contract. No auto-promotion or trading rule is added.
+
+Validation: 9 focused tests and 318 full backend tests pass; Ruff and diff checks clean.

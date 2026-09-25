@@ -248,7 +248,84 @@ def test_funnel_aggregates_unqualified_executable_probes(tmp_path: Path) -> None
     assert candidate.symbol == "BTCUSD"
     assert candidate.mechanism == OpportunityMechanism.DIRECTIONAL_TRANSITION
     assert candidate.qualification.closed_trades == 2
+    assert candidate.remaining_trades_to_review == 18
+    assert candidate.sample_progress == 0.1
+    assert candidate.wins == 1
+    assert candidate.losses == 1
+    assert candidate.total_r == 0.5
     assert funnel.unqualified_probe_review_ready_strategies == 0
+    assert len(funnel.positive_unqualified_candidates) == 1
+    positive = funnel.positive_unqualified_candidates[0]
+    assert positive.strategy_id == "BTCUSD:directional_transition"
+    assert positive.remaining_trades_to_review == 18
+
+
+def test_funnel_surfaces_positive_candidates_by_sample_then_expectancy(
+    tmp_path: Path,
+) -> None:
+    btc = [
+        unqualified_probe(
+            f"btc-{index}",
+            NOW - timedelta(minutes=20 - index),
+            1.0 if index < 4 else -1.0,
+            PaperTradeStatus.TARGET if index < 4 else PaperTradeStatus.STOP,
+        )
+        for index in range(5)
+    ]
+    gbp = [
+        unqualified_probe(
+            f"gbp-{index}",
+            NOW - timedelta(minutes=40 - index),
+            1.5 if index < 2 else -1.0,
+            PaperTradeStatus.TARGET if index < 2 else PaperTradeStatus.STOP,
+        ).model_copy(
+            update={
+                "symbol": "GBPUSD",
+                "mechanism": OpportunityMechanism.FAILED_AUCTION_REVERSAL,
+            }
+        )
+        for index in range(4)
+    ]
+    eur = [
+        unqualified_probe(
+            "eur-loss",
+            NOW - timedelta(minutes=5),
+            -1.0,
+            PaperTradeStatus.STOP,
+        ).model_copy(
+            update={
+                "symbol": "EURUSD",
+                "mechanism": OpportunityMechanism.DIRECTIONAL_TRANSITION,
+            }
+        )
+    ]
+    for name, rows in (
+        ("BTCUSD_directional_transition_unqualified_probes.jsonl", btc),
+        ("GBPUSD_failed_auction_unqualified_probes.jsonl", gbp),
+        ("EURUSD_directional_transition_unqualified_probes.jsonl", eur),
+    ):
+        (tmp_path / name).write_text(
+            "".join(row.model_dump_json() + "\n" for row in rows),
+            encoding="utf-8",
+        )
+
+    funnel = build_opportunity_funnel(
+        tmp_path,
+        now=NOW,
+        window_hours=24,
+        symbols=("BTCUSD", "GBPUSD", "EURUSD"),
+    )
+
+    assert [
+        row.strategy_id for row in funnel.positive_unqualified_candidates
+    ] == [
+        "BTCUSD:directional_transition",
+        "GBPUSD:failed_auction_reversal",
+    ]
+    assert funnel.positive_unqualified_candidates[0].sample_progress == 0.25
+    assert funnel.positive_unqualified_candidates[0].remaining_trades_to_review == 15
+    assert funnel.positive_unqualified_candidates[1].sample_progress == 0.2
+    assert funnel.positive_unqualified_candidates[1].remaining_trades_to_review == 16
 
 
 def test_funnel_marks_positive_probe_evidence_for_review(tmp_path: Path) -> None:

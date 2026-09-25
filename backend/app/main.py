@@ -39,7 +39,7 @@ from app.domain.opportunity_funnel import OpportunityFunnel
 from app.domain.portfolio import MarketUniverseAsset, TradingOverview
 from app.domain.precursor_execution_shadow import PrecursorExecutionShadowSummary
 from app.domain.precursor_forward_research import PrecursorForwardResearchReport
-from app.domain.probe_review import ProbeReviewPack, ProbeReviewRequest
+from app.domain.probe_review import ProbeReviewContract, ProbeReviewPack, ProbeReviewRequest
 from app.domain.qualification_history import QualificationHistoryEvent
 from app.domain.regime import RegimeSnapshot
 from app.domain.runtime_control import RuntimeDrainRequest, RuntimeDrainState
@@ -96,7 +96,10 @@ from app.services.opportunity_funnel import build_opportunity_funnel
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.portfolio_overview import build_trading_overview
 from app.services.precursor_forward_research import build_precursor_forward_research
-from app.services.probe_review import build_probe_review_pack
+from app.services.probe_review import (
+    build_probe_review_pack,
+    default_probe_review_contract,
+)
 from app.services.prospective_qualification import MIN_PROSPECTIVE_TRADES
 from app.services.qualification_history import load_qualification_history
 from app.services.regime import classify_regime
@@ -643,6 +646,14 @@ def mt4_opportunity_backtest(
         return run_opportunity_backtest(bars_m5, bars_m15, config)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get(
+    f"{settings.api_prefix}/research/probe-review/contract",
+    response_model=ProbeReviewContract,
+)
+def probe_review_contract() -> ProbeReviewContract:
+    return default_probe_review_contract()
 
 
 @app.post(

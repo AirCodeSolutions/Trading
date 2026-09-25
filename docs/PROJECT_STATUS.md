@@ -3326,3 +3326,10 @@ For the reviewed strategy, the 168 h evidence bundle now attaches:
 The dedicated historical train/validation/holdout replay remains attached separately. If historical replay cannot be built, the prospective economic evidence is still returned so the review is not blind.
 
 This work completes the preparation layer around the current candidate pipeline without changing scanner, signal generation, spread, risk, sizing, stops, targets, macro guards or the 5-lot hard cap.
+
+
+### Probe review API surface
+
+The enriched review pack is now exposed through `POST /api/v1/research/probe-review`. The request must provide both a strategy_id and an explicit timezone-aware research split. The endpoint returns decision-support evidence only; it does not mutate strategy admission.
+
+Invalid or reversed research splits are rejected at request validation, and strategies outside `SUPPORTS_REVIEW` still return `review_ready=false` with `requires_human_decision=true`.

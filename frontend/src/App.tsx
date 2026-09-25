@@ -821,8 +821,16 @@ type TradingIntelligence = {
       winner_minus_loser_tick_imbalance_5m: number | null;
       winner_median_side_aligned_tick_imbalance_15m: number | null;
       loser_median_side_aligned_tick_imbalance_15m: number | null;
+      winner_pressure_agreement_rate: number | null;
+      loser_pressure_agreement_rate: number | null;
+      winner_median_spread_to_risk: number | null;
+      loser_median_spread_to_risk: number | null;
+      winner_median_path_efficiency_5m: number | null;
+      loser_median_path_efficiency_5m: number | null;
       winner_precursor_rate: number | null;
       loser_precursor_rate: number | null;
+      winner_precursor_patterns: Record<string, number>;
+      loser_precursor_patterns: Record<string, number>;
     }[];
     limitations: string[];
   } | null;
@@ -2992,7 +3000,11 @@ export default function App() {
                     <span>Imb5 gagnants</span>
                     <span>Imb5 perdants</span>
                     <span>Δ W-L</span>
+                    <span>Accord 5/15 W / L</span>
+                    <span>Spread/R W / L</span>
+                    <span>PathEff W / L</span>
                     <span>Precursor W / L</span>
+                    <span>Patterns L</span>
                   </div>
                   {probeEarlyContext.summaries
                     .filter((row) => row.m1_eligible_probes > 0)
@@ -3027,6 +3039,33 @@ export default function App() {
                               row.winner_minus_loser_tick_imbalance_5m.toFixed(2)}
                         </span>
                         <span>
+                          {row.winner_pressure_agreement_rate == null
+                            ? "—"
+                            : `${(row.winner_pressure_agreement_rate * 100).toFixed(0)} %`}
+                          {" / "}
+                          {row.loser_pressure_agreement_rate == null
+                            ? "—"
+                            : `${(row.loser_pressure_agreement_rate * 100).toFixed(0)} %`}
+                        </span>
+                        <span>
+                          {row.winner_median_spread_to_risk == null
+                            ? "—"
+                            : `${(row.winner_median_spread_to_risk * 100).toFixed(1)} %`}
+                          {" / "}
+                          {row.loser_median_spread_to_risk == null
+                            ? "—"
+                            : `${(row.loser_median_spread_to_risk * 100).toFixed(1)} %`}
+                        </span>
+                        <span>
+                          {row.winner_median_path_efficiency_5m == null
+                            ? "—"
+                            : row.winner_median_path_efficiency_5m.toFixed(2)}
+                          {" / "}
+                          {row.loser_median_path_efficiency_5m == null
+                            ? "—"
+                            : row.loser_median_path_efficiency_5m.toFixed(2)}
+                        </span>
+                        <span>
                           {row.winner_precursor_rate == null
                             ? "—"
                             : `${(row.winner_precursor_rate * 100).toFixed(0)} %`}
@@ -3034,6 +3073,13 @@ export default function App() {
                           {row.loser_precursor_rate == null
                             ? "—"
                             : `${(row.loser_precursor_rate * 100).toFixed(0)} %`}
+                        </span>
+                        <span>
+                          {Object.keys(row.loser_precursor_patterns).length
+                            ? Object.entries(row.loser_precursor_patterns)
+                                .map(([pattern, count]) => `${pattern.replaceAll("_", " ")} ×${count}`)
+                                .join(" · ")
+                            : "—"}
                         </span>
                       </div>
                     ))}

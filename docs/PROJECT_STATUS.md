@@ -3175,3 +3175,24 @@ Current 168 h snapshot:
 This is a critical negative result for early-entry research: mildly positive side-aligned quote pressure plus a precursor is not sufficient evidence of a profitable early entry. Sample size is still far too small to infer an inverse rule or threshold.
 
 Validation: 21 focused tests, 323 full backend tests, Ruff clean, frontend production build clean and diff check clean.
+
+
+## 2026-09-25 — probe early-context interaction features
+
+The prospective probe discriminator now retains interaction features needed to test whether future winners differ from the current false positives without introducing a threshold prematurely.
+
+For each tick-pressure-eligible probe it now records:
+- 5m/15m side-aligned pressure agreement;
+- spread at entry normalized by structural risk distance;
+- 5m M1 path efficiency and quote activity context;
+- precursor pattern, in addition to existing precursor presence and 5m/15m imbalance.
+
+Winner/loss summaries now compare agreement rate, median spread/risk, median path efficiency and precursor-pattern distributions.
+
+Current evidence remains only four genuine tick-pressure probes and all four are losses. All four also show same-sign 5m/15m pressure, so multi-horizon pressure agreement is not sufficient evidence for earlier entry either. Current loss detail:
+- XAUUSD post_shock_continuation: 3 losses, median spread/risk about 6.5%, median 5m path efficiency about 0.19; precursor mix = 2 structural_extreme_stretch + 1 directional_displacement;
+- BTCUSD failed_auction_reversal: 1 loss, spread/risk about 12.6%, 5m path efficiency about 0.23; precursor = auction_failure_reclaim.
+
+No threshold, veto or entry rule is inferred from these tiny loss-only samples. The purpose is to make the future first winning observations directly comparable on the same frozen feature set.
+
+Validation: 21 focused tests, 323 full backend tests, Ruff clean, frontend production build clean and diff check clean.

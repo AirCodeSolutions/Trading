@@ -3001,3 +3001,17 @@ For each eligible episode, raw mid-tick imbalance is side-adjusted:
 Positive values therefore mean that M1 quote pressure points in the same direction as the opportunity at birth. The summary separates aligned, opposed and unresolved transition outcomes and reports median side-adjusted pressure and directional tick sample density on 5m and 15m windows.
 
 This remains observability only. No trading threshold, scanner, admission, PAPER/DEMO order, sizing, stop, target, macro gate or lot cap consumes the new summary.
+
+
+## 2026-09-25 — blocked-probe outcome attribution
+
+A direct audit of resolved blocked probes found that aggregate blocked performance must be interpreted by exact block reason, not by the `*_blocked_probes.jsonl` filename alone.
+
+Current resolved sample:
+- spread guard: 150 probes, 43 wins / 107 losses, -49.55R total, -0.33R expectancy;
+- spread ratio 0.15-0.20 alone: 36 probes, -10.64R total, -0.296R expectancy;
+- minimum-broker-lot risk block: 41 probes, 15 wins / 26 losses, -7.74R total, -0.189R expectancy.
+
+The global 15% spread/stop guard is therefore retained. There is no evidence for relaxing it to create more trades.
+
+The opportunity funnel is extended with `blocked_probe_outcomes_by_reason`, exposing tracked/resolved/open probes, wins, losses, total R and expectancy R for each exact guard reason at both portfolio and strategy level. This is observability only and does not change any execution decision.

@@ -1895,3 +1895,16 @@ Current post-collector blocked-probe evidence is strongly negative: 10 genuine t
 The single XAG failed-auction winner (+0.79R) occurred with spread/risk around 50% and M1 pressure opposing the trade; it does not justify relaxing the spread guard. No execution/admission/risk behavior changes.
 
 Validation: 22 focused tests, 324 full backend tests, Ruff clean and frontend production build clean.
+
+
+## 2026-09-25 — P0 retain DEMO ticket identity through PAPER exit
+
+Fixed a production defect found on XAUUSD asia_range_sweep_reversal ticket 185418955.
+
+PAPER exited by timeout at -0.347R / ~-1340 EUR, but the broker position was not closed and later hit its broker stop for -3220.99 EUR. The MT4 position export had an empty comment, while DemoCollectionState had discarded ticket/strategy identity immediately after the OPEN fill.
+
+The DEMO collector now retains the filled broker ticket and strategy_id until broker closure. Position ownership still prefers the existing `TradingNew:<strategy_id>` comment; when that comment is absent, only an exact ticket match to persisted collection state can act as fallback. Other empty-comment positions remain untouched.
+
+Regression tests cover the exact empty-comment timeout scenario and isolation from unrelated tickets. Validation: 7 demo-collection tests and 326 full backend tests pass; Ruff clean.
+
+No signal, admission, spread, risk, sizing, stop, target, macro or 5-lot rule changes.

@@ -24,6 +24,7 @@ from app.services.trading_intelligence import (
     _market_opportunity_episodes,
     _trade_metrics,
     _unseen_pattern_summaries,
+    _waiting_cost_summaries,
     build_trading_intelligence,
 )
 
@@ -150,6 +151,14 @@ def test_market_opportunity_capture_states() -> None:
     assert episodes
     assert episodes[0].capture_state == OpportunityCaptureState.EXECUTABLE
     assert episodes[0].matching_strategies == ["EURUSD:break_retest_reaccel"]
+    assert episodes[0].first_signal_at == executable_signal.evaluated_at
+    assert episodes[0].first_signal_state == ShadowSignalState.SIGNAL_EXECUTABLE
+    assert episodes[0].first_signal_strategy_id == "EURUSD:break_retest_reaccel"
+    assert episodes[0].first_signal_price == bars[14].close
+    assert episodes[0].signal_lead_lag_minutes == 5.0
+    assert episodes[0].move_consumed_at_signal_atr is not None
+    assert episodes[0].move_remaining_after_signal_atr is not None
+    assert episodes[0].move_consumed_fraction is not None
 
     missed = _market_opportunity_episodes(
         symbol="EURUSD",
@@ -287,6 +296,71 @@ def test_market_opportunity_counts_prebirth_signal_as_captured() -> None:
 
     assert episodes
     assert episodes[0].capture_state == OpportunityCaptureState.EXECUTABLE
+    assert episodes[0].first_signal_at == early_signal.evaluated_at
+    assert episodes[0].signal_lead_lag_minutes == -10.0
+    assert episodes[0].move_consumed_at_signal_atr == 0.0
+
+
+def test_waiting_cost_summary_groups_first_system_reaction() -> None:
+    rows = [
+        MarketOpportunityEpisode(
+            episode_id="one",
+            symbol="BTCUSD",
+            side=Side.BUY,
+            birth_at=NOW,
+            horizon_end_at=NOW + timedelta(hours=1),
+            reference_price=100.0,
+            atr_m5=1.0,
+            move_atr=2.0,
+            capture_state=OpportunityCaptureState.EXECUTABLE,
+            first_signal_at=NOW + timedelta(minutes=5),
+            first_signal_state=ShadowSignalState.SIGNAL_EXECUTABLE,
+            first_signal_strategy_id="BTCUSD:directional_transition",
+            first_signal_mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+            first_signal_price=101.0,
+            signal_lead_lag_minutes=5.0,
+            move_consumed_at_signal_atr=1.0,
+            move_remaining_after_signal_atr=1.0,
+            move_consumed_fraction=0.5,
+            precursor_to_signal_minutes=10.0,
+        ),
+        MarketOpportunityEpisode(
+            episode_id="two",
+            symbol="BTCUSD",
+            side=Side.BUY,
+            birth_at=NOW + timedelta(hours=2),
+            horizon_end_at=NOW + timedelta(hours=3),
+            reference_price=110.0,
+            atr_m5=1.0,
+            move_atr=2.0,
+            capture_state=OpportunityCaptureState.BLOCKED,
+            first_signal_at=NOW + timedelta(hours=2, minutes=-5),
+            first_signal_state=ShadowSignalState.SIGNAL_BLOCKED,
+            first_signal_strategy_id="BTCUSD:directional_transition",
+            first_signal_mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+            first_signal_price=110.5,
+            signal_lead_lag_minutes=-5.0,
+            move_consumed_at_signal_atr=0.5,
+            move_remaining_after_signal_atr=1.5,
+            move_consumed_fraction=0.25,
+        ),
+    ]
+
+    summary = _waiting_cost_summaries(rows)
+
+    assert len(summary) == 1
+    item = summary[0]
+    assert item.strategy_id == "BTCUSD:directional_transition"
+    assert item.episodes_with_signal == 2
+    assert item.executable_signals == 1
+    assert item.blocked_signals == 1
+    assert item.precursor_then_signal_episodes == 1
+    assert item.average_signal_lead_lag_minutes == 0.0
+    assert item.average_move_atr == 2.0
+    assert item.average_move_consumed_at_signal_atr == 0.75
+    assert item.average_move_remaining_after_signal_atr == 1.25
+    assert item.average_move_consumed_fraction == 0.375
+    assert item.average_precursor_to_signal_minutes == 10.0
 
 
 def test_causal_classifier_detects_upper_auction_failure_reclaim() -> None:

@@ -654,6 +654,15 @@ type TradingIntelligence = {
       | "signal_blocked"
       | "signal_executable";
     matching_strategies: string[];
+    first_signal_at: string | null;
+    first_signal_state: "signal_blocked" | "signal_executable" | null;
+    first_signal_strategy_id: string | null;
+    first_signal_mechanism: string | null;
+    first_signal_price: number | null;
+    signal_lead_lag_minutes: number | null;
+    move_consumed_at_signal_atr: number | null;
+    move_remaining_after_signal_atr: number | null;
+    move_consumed_fraction: number | null;
     precursor_first_seen_at: string | null;
     precursor_pattern:
       | "auction_failure_reclaim"
@@ -666,6 +675,7 @@ type TradingIntelligence = {
       | null;
     precursor_lead_minutes: number | null;
     precursor_observations: number;
+    precursor_to_signal_minutes: number | null;
     causal_context: {
       pattern:
         | "auction_failure_reclaim"
@@ -736,6 +746,21 @@ type TradingIntelligence = {
     neutral_context_rate: number;
     average_abs_return_6_atr: number;
     average_compression_6_24: number;
+  }[];
+  waiting_costs: {
+    strategy_id: string;
+    symbol: string;
+    mechanism: string;
+    episodes_with_signal: number;
+    executable_signals: number;
+    blocked_signals: number;
+    precursor_then_signal_episodes: number;
+    average_signal_lead_lag_minutes: number;
+    average_move_atr: number;
+    average_move_consumed_at_signal_atr: number;
+    average_move_remaining_after_signal_atr: number;
+    average_move_consumed_fraction: number;
+    average_precursor_to_signal_minutes: number;
   }[];
   limitations: string[];
 };
@@ -2693,6 +2718,65 @@ export default function App() {
             </div>
           ) : (
             <p className="strategy-empty">Snapshot économique non généré.</p>
+          )}
+        </div>
+
+        <div className="intelligence-subsection">
+          <h3>Value of Waiting · première réaction système</h3>
+          <p className="intelligence-note">
+            Compare la naissance market-first à la première réaction SHADOW du même sens.
+            Un délai négatif signifie que le signal précédait déjà la naissance rétrospective.
+            ATR consommé / restant utilise le mouvement futur uniquement comme mesure de recherche
+            et ne donne aucune autorité d’exécution.
+          </p>
+          {(intelligence?.waiting_costs ?? []).length ? (
+            <div className="intelligence-table">
+              <div className="intelligence-row waiting-cost-row intelligence-head">
+                <span>Stratégie</span>
+                <span>Épisodes</span>
+                <span>Exec / bloqué</span>
+                <span>Lag signal</span>
+                <span>Move total</span>
+                <span>Consommé</span>
+                <span>Restant</span>
+                <span>% consommé</span>
+                <span>Precursor → signal</span>
+              </div>
+              {(intelligence?.waiting_costs ?? []).map((row) => (
+                <div className="intelligence-row waiting-cost-row" key={row.strategy_id}>
+                  <strong>{row.strategy_id.replaceAll("_", " ")}</strong>
+                  <span>{row.episodes_with_signal}</span>
+                  <span>{row.executable_signals} / {row.blocked_signals}</span>
+                  <span
+                    className={
+                      row.average_signal_lead_lag_minutes > 0
+                        ? "negative-text"
+                        : "positive-text"
+                    }
+                  >
+                    {row.average_signal_lead_lag_minutes >= 0 ? "+" : ""}
+                    {row.average_signal_lead_lag_minutes.toFixed(1)} min
+                  </span>
+                  <span>{row.average_move_atr.toFixed(2)} ATR</span>
+                  <span className={row.average_move_consumed_fraction >= 0.5 ? "negative-text" : ""}>
+                    {row.average_move_consumed_at_signal_atr.toFixed(2)} ATR
+                  </span>
+                  <span className="positive-text">
+                    {row.average_move_remaining_after_signal_atr.toFixed(2)} ATR
+                  </span>
+                  <span>{(row.average_move_consumed_fraction * 100).toFixed(0)} %</span>
+                  <span>
+                    {row.precursor_then_signal_episodes
+                      ? `${row.average_precursor_to_signal_minutes.toFixed(1)} min · ${row.precursor_then_signal_episodes} ep.`
+                      : "—"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="strategy-empty">
+              Aucun épisode market-first avec première réaction système mesurable dans la fenêtre.
+            </p>
           )}
         </div>
 

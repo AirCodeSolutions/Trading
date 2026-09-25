@@ -4,6 +4,7 @@ from enum import StrEnum
 from pydantic import BaseModel, Field
 
 from app.domain.opportunity import OpportunityMechanism
+from app.domain.shadow import ShadowSignalState
 from app.domain.trading import Side
 
 
@@ -107,13 +108,39 @@ class MarketOpportunityEpisode(BaseModel):
     capture_state: OpportunityCaptureState
     detection_stage: OpportunityDetectionStage = OpportunityDetectionStage.UNSEEN
     matching_strategies: list[str] = Field(default_factory=list)
+    first_signal_at: datetime | None = None
+    first_signal_state: ShadowSignalState | None = None
+    first_signal_strategy_id: str | None = None
+    first_signal_mechanism: OpportunityMechanism | None = None
+    first_signal_price: float | None = Field(default=None, gt=0)
+    signal_lead_lag_minutes: float | None = None
+    move_consumed_at_signal_atr: float | None = Field(default=None, ge=0)
+    move_remaining_after_signal_atr: float | None = Field(default=None, ge=0)
+    move_consumed_fraction: float | None = Field(default=None, ge=0, le=1)
     precursor_first_seen_at: datetime | None = None
     precursor_pattern: OpportunityCausalPattern | None = None
     precursor_lead_minutes: float | None = Field(default=None, ge=0)
     precursor_observations: int = Field(default=0, ge=0)
+    precursor_to_signal_minutes: float | None = Field(default=None, ge=0)
     causal_context: OpportunityCausalContext = Field(
         default_factory=OpportunityCausalContext
     )
+
+
+class OpportunityWaitingSummary(BaseModel):
+    strategy_id: str
+    symbol: str
+    mechanism: OpportunityMechanism
+    episodes_with_signal: int = Field(ge=0)
+    executable_signals: int = Field(ge=0)
+    blocked_signals: int = Field(ge=0)
+    precursor_then_signal_episodes: int = Field(ge=0)
+    average_signal_lead_lag_minutes: float
+    average_move_atr: float = Field(ge=0)
+    average_move_consumed_at_signal_atr: float = Field(ge=0)
+    average_move_remaining_after_signal_atr: float = Field(ge=0)
+    average_move_consumed_fraction: float = Field(ge=0, le=1)
+    average_precursor_to_signal_minutes: float = Field(ge=0)
 
 
 class AssetIntelligence(BaseModel):
@@ -159,4 +186,5 @@ class TradingIntelligenceOverview(BaseModel):
     unseen_patterns: list[UnseenOpportunityPatternSummary] = Field(
         default_factory=list
     )
+    waiting_costs: list[OpportunityWaitingSummary] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from app.domain.live_market import LiveMarketQuote, MarketFeedStatus
 from app.domain.market import MarketBar, Timeframe
-from app.services.mt4_bar_sources import load_freshest_closed_bars
+from app.services.mt4_bar_sources import load_recent_freshest_closed_bars
 from app.services.mt4_csv import mt4_epoch_to_server_datetime
 
 LIVE_MAX_AGE_SECONDS = 120
@@ -149,10 +149,10 @@ def _recent_m5_bars(
     symbol: str,
     now: datetime,
 ) -> list[MarketBar]:
-    bars = load_freshest_closed_bars(
+    return load_recent_freshest_closed_bars(
         files_dir,
         symbol,
         Timeframe.M5,
         now,
+        limit=SPARKLINE_BARS,
     )
-    return bars[-SPARKLINE_BARS:]

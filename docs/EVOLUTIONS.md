@@ -1711,3 +1711,19 @@ Changed the SHADOW paper-collection gate so a sparse but observed negative holdo
 Immediate runtime impact after targeted admission refresh: `GBPUSD:directional_pullback_resumption` will become observation-only. The change does not alter signals, stops, targets, sizing, the 5-lot ceiling or LIVE state.
 
 Also documented the XAU break/retest loss: pre-cap 11.22-lot trade, -1R PAPER / -7374.50 EUR broker, stopped almost immediately with <0.12R favorable excursion; trailing would not have helped.
+
+
+## 2026-09-25 — unseen-transition research summary API
+
+Added a read-only multi-asset summary over the prospective `*_unseen_m1_transitions.jsonl` ledgers. The endpoint `/api/v1/research/unseen-transitions` reports per symbol:
+- total episodes and resolved/unresolved counts;
+- aligned versus opposed first directional transitions;
+- alignment rate over resolved episodes only;
+- median M5 bars waited;
+- median ATR consumed overall and on aligned transitions.
+
+This turns the PR #131/#132 prospective M1 evidence into a stable comparison surface without introducing thresholds or a trading rule.
+
+PR #137 postflight was also rechecked: the negative-holdout GBP directional-pullback family is no longer PAPER/DEMO eligible. Existing PR #48 positive-independent-window semantics remain unchanged.
+
+Validation: 314 full backend tests pass, Ruff clean, diff check clean.

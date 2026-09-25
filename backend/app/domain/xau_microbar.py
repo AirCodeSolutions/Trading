@@ -93,6 +93,19 @@ class XauUnseenTransitionSnapshot(BaseModel):
     move_consumed_atr: float | None = None
 
 
+class UnseenTransitionResearchSummary(BaseModel):
+    symbol: str
+    episodes: int = Field(ge=0)
+    resolved: int = Field(ge=0)
+    aligned: int = Field(ge=0)
+    opposed: int = Field(ge=0)
+    unresolved: int = Field(ge=0)
+    alignment_rate: float | None = Field(default=None, ge=0, le=1)
+    median_transition_bars: float | None = Field(default=None, ge=0)
+    median_move_consumed_atr: float | None = None
+    median_aligned_move_consumed_atr: float | None = None
+
+
 class XauMicrobarSummary(BaseModel):
     symbol: str = "XAUUSD"
     timeframe: str = "M1"

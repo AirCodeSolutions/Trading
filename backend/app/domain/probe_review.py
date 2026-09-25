@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 from app.domain.admission import AdmissionDecision
-from app.domain.opportunity import PerformanceSummary
+from app.domain.opportunity import PerformanceSummary, ResearchSplit
 from app.domain.opportunity_funnel import ResearchProbeQualification
 from app.domain.trading_intelligence import (
     AdmittedTradeEarlyContextSummary,
@@ -30,3 +30,8 @@ class ProbeReviewPack(BaseModel):
         default_factory=list
     )
     requires_human_decision: bool = True
+
+
+class ProbeReviewRequest(BaseModel):
+    strategy_id: str = Field(min_length=3, max_length=96)
+    split: ResearchSplit

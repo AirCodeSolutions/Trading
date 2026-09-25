@@ -3310,3 +3310,19 @@ External research checkpoint: Kitron & Wengrowicz (Aug 2026) report pervasive 15
 Recent 2026 FOMC high-frequency studies also reinforce that price discovery and volatility can change within seconds/minutes around announcements. Existing macro protections remain unchanged.
 
 No signal, admission, spread, risk, sizing, stop, target, macro or 5-lot rule changes.
+
+
+## 2026-09-25 — automatic economic evidence bundle for SUPPORTS_REVIEW
+
+The existing `ProbeReviewPack` is now enriched only after a strategy reaches the prospective `SUPPORTS_REVIEW` queue. The review path remains human-gated and does not change admission automatically.
+
+For the reviewed strategy, the 168 h evidence bundle now attaches:
+- prospective executable-probe M1 context, including tick-pressure and pre-signal displacement;
+- Value-of-Waiting summary;
+- waiting-band M1/precursor context when available;
+- admitted PAPER/DEMO follow-through context;
+- reason-specific blocked-probe economics.
+
+The dedicated historical train/validation/holdout replay remains attached separately. If historical replay cannot be built, the prospective economic evidence is still returned so the review is not blind.
+
+This work completes the preparation layer around the current candidate pipeline without changing scanner, signal generation, spread, risk, sizing, stops, targets, macro guards or the 5-lot hard cap.

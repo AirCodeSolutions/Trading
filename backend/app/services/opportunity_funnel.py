@@ -232,6 +232,19 @@ def build_opportunity_funnel(
         ),
         key=lambda row: row.strategy_id,
     )
+    positive_candidates = sorted(
+        (
+            row
+            for row in research_candidates
+            if row.unqualified_probe_qualification is not None
+            and row.unqualified_probe_qualification.expectancy_r > 0
+        ),
+        key=lambda row: (
+            -row.unqualified_probe_qualification.closed_trades,
+            -row.unqualified_probe_qualification.expectancy_r,
+            row.strategy_id,
+        ),
+    )
 
     all_results = _resolved_results(probes)
     all_unqualified_results = _resolved_trade_results(unqualified_probes)
@@ -277,26 +290,21 @@ def build_opportunity_funnel(
         ),
         unqualified_probe_review_ready_strategies=len(review_ready),
         unqualified_probe_review_queue=[
-            ResearchProbeCandidateProgress(
-                strategy_id=row.strategy_id,
-                symbol=row.symbol,
-                mechanism=row.mechanism,
-                qualification=row.unqualified_probe_qualification,
-            )
+            _candidate_progress(row)
             for row in review_ready
             if row.unqualified_probe_qualification is not None
         ],
         most_observed_unqualified_candidate=(
-            ResearchProbeCandidateProgress(
-                strategy_id=most_observed.strategy_id,
-                symbol=most_observed.symbol,
-                mechanism=most_observed.mechanism,
-                qualification=most_observed.unqualified_probe_qualification,
-            )
+            _candidate_progress(most_observed)
             if most_observed is not None
             and most_observed.unqualified_probe_qualification is not None
             else None
         ),
+        positive_unqualified_candidates=[
+            _candidate_progress(row)
+            for row in positive_candidates
+            if row.unqualified_probe_qualification is not None
+        ],
         tracked_blocked_probes=len(probes),
         resolved_blocked_probes=len(all_results),
         open_blocked_probes=sum(
@@ -508,6 +516,29 @@ def _assess_unqualified_probe_evidence(
         profit_factor=qualification.profit_factor,
         max_drawdown_r=qualification.max_drawdown_r,
         reason=reason,
+    )
+
+
+def _candidate_progress(
+    row: OpportunityFunnelStrategy,
+) -> ResearchProbeCandidateProgress:
+    qualification = row.unqualified_probe_qualification
+    if qualification is None:
+        raise ValueError("candidate progress requires probe qualification")
+    remaining = max(0, qualification.minimum_trades - qualification.closed_trades)
+    return ResearchProbeCandidateProgress(
+        strategy_id=row.strategy_id,
+        symbol=row.symbol,
+        mechanism=row.mechanism,
+        qualification=qualification,
+        wins=row.unqualified_probe_wins,
+        losses=row.unqualified_probe_losses,
+        total_r=row.unqualified_probe_total_r,
+        remaining_trades_to_review=remaining,
+        sample_progress=min(
+            1.0,
+            qualification.closed_trades / qualification.minimum_trades,
+        ),
     )
 
 

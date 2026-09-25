@@ -27,6 +27,11 @@ class ResearchProbeCandidateProgress(BaseModel):
     symbol: str
     mechanism: OpportunityMechanism
     qualification: ResearchProbeQualification
+    wins: int = Field(default=0, ge=0)
+    losses: int = Field(default=0, ge=0)
+    total_r: float = 0.0
+    remaining_trades_to_review: int = Field(default=0, ge=0)
+    sample_progress: float = Field(default=0.0, ge=0, le=1)
 
 
 class BlockedProbeOutcomeSummary(BaseModel):
@@ -100,6 +105,9 @@ class OpportunityFunnel(BaseModel):
         default_factory=list
     )
     most_observed_unqualified_candidate: ResearchProbeCandidateProgress | None = None
+    positive_unqualified_candidates: list[ResearchProbeCandidateProgress] = Field(
+        default_factory=list
+    )
     tracked_blocked_probes: int = Field(ge=0)
     resolved_blocked_probes: int = Field(ge=0)
     open_blocked_probes: int = Field(ge=0)

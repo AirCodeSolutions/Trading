@@ -1,6 +1,6 @@
 from datetime import datetime
-from zoneinfo import ZoneInfo
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from app.domain.opportunity import (
     OpportunityMechanism,

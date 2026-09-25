@@ -53,3 +53,14 @@ def test_probe_review_endpoint_rejects_invalid_split() -> None:
     )
 
     assert response.status_code == 422
+
+
+def test_probe_review_contract_endpoint() -> None:
+    response = client.get("/api/v1/research/probe-review/contract")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["timezone"] == "Europe/Athens"
+    assert payload["evidence_window_hours"] == 168
+    assert payload["train_end"] == "2026-07-01T00:00:00+03:00"
+    assert payload["validation_end"] == "2026-09-01T00:00:00+03:00"

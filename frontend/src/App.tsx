@@ -600,6 +600,64 @@ type OpportunityFunnel = {
 
 
 
+type ProbeReviewContract = {
+  train_end: string;
+  validation_end: string;
+  timezone: string;
+  evidence_window_hours: number;
+};
+
+type ReviewPerformanceSummary = {
+  trades: number;
+  total_r: number;
+  expectancy_r: number;
+  profit_factor: number;
+  win_rate: number;
+  max_drawdown_r: number;
+  total_pnl_eur: number;
+  average_execution_cost_r: number;
+};
+
+type ProbeReviewPack = {
+  strategy_id: string;
+  review_ready: boolean;
+  reason: string;
+  evidence_window_hours: number | null;
+  prospective_probe_context: {
+    tick_pressure_eligible_probes: number;
+    tick_pressure_wins: number;
+    tick_pressure_losses: number;
+    tick_pressure_total_r: number;
+    tick_pressure_expectancy_r: number;
+    winner_median_side_aligned_move_15m_r: number | null;
+    loser_median_side_aligned_move_15m_r: number | null;
+  } | null;
+  waiting_cost_context: {
+    episodes_with_signal: number;
+    average_move_consumed_fraction: number;
+    average_move_consumed_at_signal_atr: number;
+    average_move_remaining_after_signal_atr: number;
+  } | null;
+  admitted_trade_context: {
+    resolved_trades: number;
+    tick_pressure_eligible_trades: number;
+    tick_pressure_wins: number;
+    tick_pressure_losses: number;
+    tick_pressure_total_r: number;
+  } | null;
+  blocked_probe_contexts: {
+    block_reason: string;
+    tick_pressure_eligible_probes: number;
+    wins: number;
+    losses: number;
+    total_r: number;
+    expectancy_r: number;
+  }[];
+  validation: ReviewPerformanceSummary | null;
+  holdout: ReviewPerformanceSummary | null;
+  requires_human_decision: boolean;
+};
+
 type TradeIntelligence = {
   trade_id: string;
   source: "paper" | "blocked_probe";
@@ -1188,6 +1246,10 @@ export default function App() {
   const [opportunities, setOpportunities] = useState<ShadowDiagnostic[]>([]);
   const [blockedProbes, setBlockedProbes] = useState<BlockedProbeRuntime[]>([]);
   const [opportunityFunnel, setOpportunityFunnel] = useState<OpportunityFunnel | null>(null);
+  const [probeReviewContract, setProbeReviewContract] =
+    useState<ProbeReviewContract | null>(null);
+  const [probeReviewPacks, setProbeReviewPacks] =
+    useState<Record<string, ProbeReviewPack>>({});
   const [intelligence, setIntelligence] = useState<TradingIntelligence | null>(null);
   const [waitingCosts, setWaitingCosts] = useState<TradingIntelligence["waiting_costs"]>([]);
   const [waitingEarlyContext, setWaitingEarlyContext] =
@@ -1255,6 +1317,7 @@ export default function App() {
           opportunitiesResponse,
           blockedProbesResponse,
           opportunityFunnelResponse,
+          probeReviewContractResponse,
           intelligenceResponse,
           trailingShadowResponse,
           xauFeasiblePullbackResponse,
@@ -1282,6 +1345,7 @@ export default function App() {
           fetch("/api/v1/shadow/overview"),
           fetch("/api/v1/shadow/blocked-probes"),
           fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
+          fetch("/api/v1/research/probe-review/contract"),
           fetch("/api/v1/intelligence/overview?hours=24"),
           fetch("/api/v1/research/trailing-shadow"),
           fetch("/api/v1/research/xau-feasible-pullback"),
@@ -1320,6 +1384,9 @@ export default function App() {
           : [];
         const opportunityFunnelPayload = opportunityFunnelResponse.ok
           ? await opportunityFunnelResponse.json()
+          : null;
+        const probeReviewContractPayload = probeReviewContractResponse.ok
+          ? await probeReviewContractResponse.json()
           : null;
         const intelligencePayload = intelligenceResponse.ok
           ? await intelligenceResponse.json()
@@ -1371,6 +1438,7 @@ export default function App() {
         setOpportunities(opportunitiesPayload);
         setBlockedProbes(blockedProbesPayload);
         setOpportunityFunnel(opportunityFunnelPayload);
+        setProbeReviewContract(probeReviewContractPayload);
         setIntelligence(intelligencePayload);
         setTrailingShadow(trailingShadowPayload);
         setXauFeasiblePullback(xauFeasiblePullbackPayload);
@@ -1396,6 +1464,62 @@ export default function App() {
       window.clearInterval(timer);
     };
   }, []);
+
+  const reviewQueueSignature = (
+    opportunityFunnel?.unqualified_probe_review_queue ?? []
+  )
+    .map(
+      (item) =>
+        `${item.strategy_id}:${item.qualification.closed_trades}:${item.qualification.expectancy_r}:${item.qualification.profit_factor}:${item.qualification.max_drawdown_r}`
+    )
+    .join("|");
+
+  useEffect(() => {
+    const reviewQueue = opportunityFunnel?.unqualified_probe_review_queue ?? [];
+    if (!probeReviewContract || reviewQueue.length === 0) {
+      setProbeReviewPacks({});
+      return;
+    }
+
+    let active = true;
+    const refreshReviewPacks = async () => {
+      const results = await Promise.all(
+        reviewQueue.map(async (item) => {
+          try {
+            const response = await fetch("/api/v1/research/probe-review", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                strategy_id: item.strategy_id,
+                split: {
+                  train_end: probeReviewContract.train_end,
+                  validation_end: probeReviewContract.validation_end
+                }
+              })
+            });
+            if (!response.ok) return null;
+            const pack = (await response.json()) as ProbeReviewPack;
+            return [item.strategy_id, pack] as const;
+          } catch {
+            return null;
+          }
+        })
+      );
+      if (!active) return;
+      setProbeReviewPacks(
+        Object.fromEntries(
+          results.filter(
+            (item): item is readonly [string, ProbeReviewPack] => item !== null
+          )
+        )
+      );
+    };
+
+    void refreshReviewPacks();
+    return () => {
+      active = false;
+    };
+  }, [probeReviewContract, reviewQueueSignature]);
 
   useEffect(() => {
     let active = true;
@@ -4262,8 +4386,12 @@ export default function App() {
                 </strong>
               </div>
               <p>
-                Ces familles ont atteint SUPPORTS_REVIEW. Elles exigent encore un replay
-                dédié et une décision humaine avant toute modification d’admission.
+                Ces familles ont atteint SUPPORTS_REVIEW. Le dossier économique est construit
+                automatiquement avec le contrat de revue centralisé
+                {probeReviewContract
+                  ? ` · train ≤ ${probeReviewContract.train_end.slice(0, 10)} · validation ≤ ${probeReviewContract.validation_end.slice(0, 10)} · ${probeReviewContract.timezone}`
+                  : ""}.
+                La décision humaine reste obligatoire avant toute modification d’admission.
               </p>
             </div>
             <div className="review-queue-table">
@@ -4293,9 +4421,93 @@ export default function App() {
                   </span>
                   <span>{item.qualification.profit_factor.toFixed(2)}</span>
                   <span>{item.qualification.max_drawdown_r.toFixed(2)} R</span>
-                  <span>REPLAY DÉDIÉ REQUIS</span>
+                  <span>
+                    {probeReviewPacks[item.strategy_id]
+                      ? "DOSSIER COMPLET · DÉCISION HUMAINE"
+                      : "CONSTRUCTION DU DOSSIER"}
+                  </span>
                 </div>
               ))}
+            </div>
+            <div className="review-pack-grid">
+              {opportunityFunnel?.unqualified_probe_review_queue?.map((item) => {
+                const pack = probeReviewPacks[item.strategy_id];
+                if (!pack) return null;
+                const blockedTick = pack.blocked_probe_contexts.reduce(
+                  (total, row) => total + row.tick_pressure_eligible_probes,
+                  0
+                );
+                const blockedTotalR = pack.blocked_probe_contexts.reduce(
+                  (total, row) => total + row.total_r,
+                  0
+                );
+                return (
+                  <article className="review-pack-card" key={`pack:${item.strategy_id}`}>
+                    <div className="candidate-progress-top">
+                      <div>
+                        <span>DOSSIER ÉCONOMIQUE · 168 H + REPLAY</span>
+                        <strong>{item.strategy_id}</strong>
+                      </div>
+                      <b>{pack.review_ready ? "PRÊT" : "À COMPLÉTER"}</b>
+                    </div>
+                    <div className="review-pack-metrics">
+                      <span>
+                        Probes M1
+                        <b>
+                          {pack.prospective_probe_context
+                            ? `${pack.prospective_probe_context.tick_pressure_wins}/${pack.prospective_probe_context.tick_pressure_losses} · ${pack.prospective_probe_context.tick_pressure_total_r >= 0 ? "+" : ""}${pack.prospective_probe_context.tick_pressure_total_r.toFixed(2)}R`
+                            : "—"}
+                        </b>
+                      </span>
+                      <span>
+                        Mouvement consommé
+                        <b>
+                          {pack.waiting_cost_context
+                            ? `${(pack.waiting_cost_context.average_move_consumed_fraction * 100).toFixed(0)} %`
+                            : "—"}
+                        </b>
+                      </span>
+                      <span>
+                        Trades admis M1
+                        <b>
+                          {pack.admitted_trade_context
+                            ? `${pack.admitted_trade_context.tick_pressure_wins}/${pack.admitted_trade_context.tick_pressure_losses} · ${pack.admitted_trade_context.tick_pressure_total_r >= 0 ? "+" : ""}${pack.admitted_trade_context.tick_pressure_total_r.toFixed(2)}R`
+                            : "—"}
+                        </b>
+                      </span>
+                      <span>
+                        Bloqués M1
+                        <b>
+                          {blockedTick
+                            ? `${blockedTick} · ${blockedTotalR >= 0 ? "+" : ""}${blockedTotalR.toFixed(2)}R`
+                            : "—"}
+                        </b>
+                      </span>
+                      <span>
+                        Validation historique
+                        <b>
+                          {pack.validation
+                            ? `${pack.validation.trades} · ${pack.validation.expectancy_r >= 0 ? "+" : ""}${pack.validation.expectancy_r.toFixed(2)}R`
+                            : "—"}
+                        </b>
+                      </span>
+                      <span>
+                        Holdout historique
+                        <b>
+                          {pack.holdout
+                            ? `${pack.holdout.trades} · ${pack.holdout.expectancy_r >= 0 ? "+" : ""}${pack.holdout.expectancy_r.toFixed(2)}R`
+                            : "—"}
+                        </b>
+                      </span>
+                    </div>
+                    <small>
+                      {pack.requires_human_decision
+                        ? "Aucune promotion automatique · décision humaine obligatoire."
+                        : "Contrat inattendu : vérifier la revue."}
+                    </small>
+                  </article>
+                );
+              })}
             </div>
           </div>
         ) : null}

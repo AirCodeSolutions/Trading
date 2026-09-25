@@ -1946,3 +1946,12 @@ The review remains decision-support only: `requires_human_decision=true` is unch
 ### Probe review API
 
 Added `POST /api/v1/research/probe-review` so review-ready candidate evidence can be consumed explicitly by UI or operator tooling. The request carries the research split instead of relying on hidden dates. The response remains read-only decision support.
+
+
+## 2026-09-25 — central review contract and automatic dashboard pack
+
+Centralized the default probe-review research split that had been duplicated as CLI literals. Added a read-only contract endpoint and made the CLI/dashboard use the same source.
+
+The dashboard now builds review packs automatically only for strategies present in `unqualified_probe_review_queue`. This avoids repeated historical replay while the queue is empty and removes hidden split dates from UI logic.
+
+No trading authority or risk behavior changes.

@@ -3333,3 +3333,18 @@ This work completes the preparation layer around the current candidate pipeline 
 The enriched review pack is now exposed through `POST /api/v1/research/probe-review`. The request must provide both a strategy_id and an explicit timezone-aware research split. The endpoint returns decision-support evidence only; it does not mutate strategy admission.
 
 Invalid or reversed research splits are rejected at request validation, and strategies outside `SUPPORTS_REVIEW` still return `review_ready=false` with `requires_human_decision=true`.
+
+
+## 2026-09-25 — centralized probe-review contract + dashboard automation
+
+The candidate review split that previously existed only as CLI defaults is now centralized in code and exposed explicitly through `GET /api/v1/research/probe-review/contract`.
+
+Frozen review contract:
+- timezone: Europe/Athens;
+- train end: 2026-07-01 00:00;
+- validation end: 2026-09-01 00:00;
+- prospective evidence window: 168 h.
+
+The CLI, API and dashboard now consume the same contract. When the `SUPPORTS_REVIEW` queue is empty, no heavy review replay is requested. When a strategy enters the queue, the dashboard automatically calls the read-only review endpoint with the centralized split and displays the evidence-complete pack: prospective M1 probes, waiting-cost context, admitted-trade context, blocked economics and historical validation/holdout.
+
+The operator surface still shows that human decision is mandatory. No strategy can be promoted, demoted or have guards changed from this dashboard path.

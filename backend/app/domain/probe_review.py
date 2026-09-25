@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 from app.domain.admission import AdmissionDecision
@@ -35,3 +37,10 @@ class ProbeReviewPack(BaseModel):
 class ProbeReviewRequest(BaseModel):
     strategy_id: str = Field(min_length=3, max_length=96)
     split: ResearchSplit
+
+
+class ProbeReviewContract(BaseModel):
+    train_end: datetime
+    validation_end: datetime
+    timezone: str
+    evidence_window_hours: int = Field(gt=0)

@@ -15,7 +15,16 @@ from app.domain.shadow import (
 from app.domain.shadow_paper import PaperTradeStatus, ShadowPaperTrade
 from app.domain.trading import Side
 from app.domain.trading_intelligence import (
+    AdmittedTradeEarlyContextReport,
+    AdmittedTradeEarlyContextSummary,
+    BlockedProbeEarlyContextReport,
+    BlockedProbeEarlyContextSummary,
     MarketOpportunityEpisode,
+    OpportunityWaitingSummary,
+    ProbeEarlyContextReport,
+    ProbeEarlyContextSummary,
+    WaitingEarlyContextReport,
+    WaitingEarlyContextSummary,
     OpportunityCaptureState,
     OpportunityCausalContext,
     OpportunityCausalPattern,
@@ -28,6 +37,7 @@ from app.services.trading_intelligence import (
     _build_blocked_probe_early_context_report,
     _build_probe_early_context_report,
     _build_waiting_early_context_report,
+    _candidate_evidence_coverage,
     _market_opportunity_episodes,
     _side_aligned_imbalance,
     _side_aligned_move_r,
@@ -1283,3 +1293,180 @@ def test_side_aligned_move_r_flips_sell_direction() -> None:
     assert _side_aligned_move_r(Side.SELL, 0.2, 0.1) == -2.0
     assert _side_aligned_move_r(Side.SELL, -0.2, 0.1) == 2.0
     assert _side_aligned_move_r(Side.BUY, 1.0, 0.0) == 0.0
+
+
+def test_candidate_evidence_coverage_aggregates_existing_sources() -> None:
+    mechanism = OpportunityMechanism.DIRECTIONAL_TRANSITION
+    strategy_id = "BTCUSD:directional_transition"
+
+    probe = ProbeEarlyContextReport(
+        generated_at=NOW,
+        window_hours=168,
+        resolved_probes=5,
+        m1_eligible_probes=4,
+        tick_pressure_eligible_probes=3,
+        tick_pressure_wins=2,
+        tick_pressure_losses=1,
+        summaries=[
+            ProbeEarlyContextSummary(
+                strategy_id=strategy_id,
+                symbol="BTCUSD",
+                mechanism=mechanism,
+                resolved_probes=5,
+                m1_eligible_probes=4,
+                tick_pressure_eligible_probes=3,
+                tick_pressure_wins=2,
+                tick_pressure_losses=1,
+                tick_pressure_total_r=2.0,
+                tick_pressure_expectancy_r=2.0 / 3.0,
+            )
+        ],
+    )
+    waiting = WaitingEarlyContextReport(
+        generated_at=NOW,
+        window_hours=168,
+        target_band_min_fraction=0.25,
+        target_band_max_fraction=0.40,
+        waiting_episodes=6,
+        m1_eligible_episodes=5,
+        tick_pressure_eligible_episodes=4,
+        target_band_episodes=0,
+        target_band_m1_eligible_episodes=0,
+        target_band_tick_pressure_eligible_episodes=0,
+        target_band_with_precursor=0,
+        summaries=[
+            WaitingEarlyContextSummary(
+                strategy_id=strategy_id,
+                symbol="BTCUSD",
+                mechanism=mechanism,
+                waiting_episodes=6,
+                m1_eligible_episodes=5,
+                tick_pressure_eligible_episodes=4,
+                early_reaction_m1_episodes=0,
+                target_band_m1_episodes=0,
+                target_band_tick_pressure_episodes=0,
+                late_reaction_m1_episodes=0,
+                target_band_with_precursor=0,
+            )
+        ],
+    )
+    admitted = AdmittedTradeEarlyContextReport(
+        generated_at=NOW,
+        window_hours=168,
+        resolved_trades=2,
+        m1_eligible_trades=1,
+        tick_pressure_eligible_trades=1,
+        tick_pressure_wins=1,
+        tick_pressure_losses=0,
+        tick_pressure_total_r=1.0,
+        summaries=[
+            AdmittedTradeEarlyContextSummary(
+                strategy_id=strategy_id,
+                symbol="BTCUSD",
+                mechanism=mechanism,
+                resolved_trades=2,
+                m1_eligible_trades=1,
+                tick_pressure_eligible_trades=1,
+                tick_pressure_wins=1,
+                tick_pressure_losses=0,
+                tick_pressure_total_r=1.0,
+                tick_pressure_expectancy_r=1.0,
+            )
+        ],
+    )
+    blocked = BlockedProbeEarlyContextReport(
+        generated_at=NOW,
+        window_hours=168,
+        resolved_blocked_probes=5,
+        m1_eligible_probes=3,
+        tick_pressure_eligible_probes=2,
+        tick_pressure_wins=0,
+        tick_pressure_losses=2,
+        tick_pressure_total_r=-2.0,
+        summaries=[
+            BlockedProbeEarlyContextSummary(
+                strategy_id=strategy_id,
+                symbol="BTCUSD",
+                mechanism=mechanism,
+                block_reason="spread",
+                resolved_blocked_probes=3,
+                m1_eligible_probes=2,
+                tick_pressure_eligible_probes=1,
+                wins=0,
+                losses=1,
+                total_r=-1.0,
+                expectancy_r=-1.0,
+                median_spread_to_risk=0.2,
+                median_path_efficiency_5m=0.3,
+            ),
+            BlockedProbeEarlyContextSummary(
+                strategy_id=strategy_id,
+                symbol="BTCUSD",
+                mechanism=mechanism,
+                block_reason="minimum lot",
+                resolved_blocked_probes=2,
+                m1_eligible_probes=1,
+                tick_pressure_eligible_probes=1,
+                wins=0,
+                losses=1,
+                total_r=-1.0,
+                expectancy_r=-1.0,
+                median_spread_to_risk=0.1,
+                median_path_efficiency_5m=0.4,
+            ),
+        ],
+    )
+    waiting_cost = OpportunityWaitingSummary(
+        strategy_id=strategy_id,
+        symbol="BTCUSD",
+        mechanism=mechanism,
+        episodes_with_signal=6,
+        executable_signals=5,
+        blocked_signals=1,
+        precursor_then_signal_episodes=3,
+        average_signal_lead_lag_minutes=4.0,
+        average_move_atr=1.5,
+        average_move_consumed_at_signal_atr=0.5,
+        average_move_remaining_after_signal_atr=1.0,
+        average_move_consumed_fraction=1.0 / 3.0,
+        average_precursor_to_signal_minutes=2.0,
+    )
+
+    rows = _candidate_evidence_coverage(
+        probe_early_context=probe,
+        waiting_early_context=waiting,
+        admitted_trade_early_context=admitted,
+        blocked_probe_early_context=blocked,
+        waiting_costs=[waiting_cost],
+    )
+
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.strategy_id == strategy_id
+    assert row.probe_resolved == 5
+    assert row.probe_m1_eligible == 4
+    assert row.probe_tick_pressure_eligible == 3
+    assert row.probe_m1_coverage_rate == 0.8
+    assert row.probe_tick_pressure_coverage_rate == 0.6
+    assert row.waiting_episodes == 6
+    assert row.waiting_m1_eligible == 5
+    assert row.waiting_tick_pressure_eligible == 4
+    assert row.admitted_resolved == 2
+    assert row.admitted_m1_eligible == 1
+    assert row.admitted_tick_pressure_eligible == 1
+    assert row.blocked_resolved == 5
+    assert row.blocked_m1_eligible == 3
+    assert row.blocked_tick_pressure_eligible == 2
+    assert row.blocked_m1_coverage_rate == 0.6
+    assert row.blocked_tick_pressure_coverage_rate == 0.4
+
+
+def test_candidate_evidence_coverage_uses_null_rates_without_denominator() -> None:
+    rows = _candidate_evidence_coverage(
+        probe_early_context=None,
+        waiting_early_context=None,
+        admitted_trade_early_context=None,
+        blocked_probe_early_context=None,
+        waiting_costs=[],
+    )
+    assert rows == []

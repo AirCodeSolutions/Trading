@@ -2238,3 +2238,10 @@ h1 {
 .candidate-evidence-coverage b {
   color: #d8e4ed;
 }
+
+.candidate-evidence-gap {
+  grid-column: 1 / -1;
+  color: #9eafbf;
+  font-size: 10px;
+  line-height: 1.35;
+}

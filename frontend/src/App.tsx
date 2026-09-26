@@ -1005,9 +1005,39 @@ type TradingIntelligence = {
     blocked_tick_pressure_eligible: number;
     blocked_m1_coverage_rate: number | null;
     blocked_tick_pressure_coverage_rate: number | null;
+    probe_gap_attribution: CandidateEvidenceGapAttribution | null;
+    waiting_gap_attribution: CandidateEvidenceGapAttribution | null;
+    admitted_gap_attribution: CandidateEvidenceGapAttribution | null;
+    blocked_gap_attribution: CandidateEvidenceGapAttribution | null;
   }[];
   limitations: string[];
 };
+
+type CandidateEvidenceGapAttribution = {
+  total: number;
+  m1_collector_state_unavailable: number;
+  pre_collector: number;
+  insufficient_closed_m1: number;
+  m1_no_directional_ticks: number;
+  tick_pressure_available: number;
+};
+
+function evidenceGapDescription(
+  label: string,
+  attribution: CandidateEvidenceGapAttribution | null
+): string | null {
+  if (!attribution || attribution.total === 0) return null;
+  const reasons: [string, number][] = [
+    ["pré-collecteur", attribution.pre_collector],
+    ["M1 closes insuffisantes", attribution.insufficient_closed_m1],
+    ["sans ticks directionnels", attribution.m1_no_directional_ticks],
+    ["état collecteur indisponible", attribution.m1_collector_state_unavailable],
+  ];
+  const primary = reasons.reduce((best, item) => (item[1] > best[1] ? item : best));
+  return primary[1] > 0
+    ? `${label}: ${attribution.total} · ${primary[1]} ${primary[0]} · ${attribution.tick_pressure_available} tick-ready`
+    : `${label}: ${attribution.total} · ${attribution.tick_pressure_available} tick-ready`;
+}
 
 type PrecursorForwardSummary = {
   label: string;
@@ -4436,6 +4466,14 @@ export default function App() {
                         Bloqués tick
                         <b>{coverage.blocked_tick_pressure_eligible}/{coverage.blocked_resolved}</b>
                       </span>
+                      {[
+                        evidenceGapDescription("Probe", coverage.probe_gap_attribution),
+                        evidenceGapDescription("Waiting", coverage.waiting_gap_attribution),
+                        evidenceGapDescription("Admis", coverage.admitted_gap_attribution),
+                        evidenceGapDescription("Bloqués", coverage.blocked_gap_attribution),
+                      ].filter((description): description is string => description !== null).map((description) => (
+                        <small className="candidate-evidence-gap" key={description}>{description}</small>
+                      ))}
                     </div>
                   ) : (
                     <small>Couverture causale 168 h en collecte.</small>

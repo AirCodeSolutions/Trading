@@ -21,6 +21,8 @@ from app.domain.trading_intelligence import (
     BlockedProbeEarlyContextReport,
     BlockedProbeEarlyContextSummary,
     CandidateEvidenceCoverageSummary,
+    CandidateEvidenceGapAttribution,
+    CandidateEvidenceGapState,
     MarketOpportunityEpisode,
     OpportunityCaptureState,
     OpportunityCausalContext,
@@ -48,8 +50,10 @@ from app.services.mt4_market_data import load_recent_closed_market_bars
 from app.services.shadow_paper import load_closed_trades, load_shadow_paper_state
 from app.services.xau_microbar import (
     _geometry_window,
+    load_xau_microbar_state,
     load_xau_microbars,
     microbar_ledger_file,
+    microbar_state_file,
 )
 
 DEFAULT_WINDOW_HOURS = 48
@@ -262,14 +266,15 @@ def build_trading_intelligence(
         if include_waiting_early_context
         else None
     )
+    unqualified_probes = _load_unqualified_probe_trades(
+        runtime_dir,
+        window_start=window_start,
+        window_end=now,
+        allowed=set(allowed) if allowed else None,
+    )
     probe_early_context = (
         _build_probe_early_context_report(
-            probes=_load_unqualified_probe_trades(
-                runtime_dir,
-                window_start=window_start,
-                window_end=now,
-                allowed=set(allowed) if allowed else None,
-            ),
+            probes=unqualified_probes,
             precursors=precursor_rows,
             runtime_dir=runtime_dir,
             now=now,
@@ -284,6 +289,13 @@ def build_trading_intelligence(
         admitted_trade_early_context=admitted_trade_early_context,
         blocked_probe_early_context=blocked_probe_early_context,
         waiting_costs=waiting_costs,
+        gap_attributions=_candidate_evidence_gap_attributions(
+            runtime_dir=runtime_dir,
+            probes=unqualified_probes,
+            opportunities=opportunities,
+            admitted_trades=paper_trades,
+            blocked_probes=probes,
+        ),
     )
 
     return TradingIntelligenceOverview(
@@ -355,6 +367,125 @@ def _coverage_rate(covered: int, total: int) -> float | None:
     return covered / total if total > 0 else None
 
 
+def _candidate_evidence_gap_attributions(
+    *,
+    runtime_dir: Path,
+    probes: list[ShadowPaperTrade],
+    opportunities: list[MarketOpportunityEpisode],
+    admitted_trades: list[ShadowPaperTrade],
+    blocked_probes: list[BlockedOpportunityProbe],
+) -> dict[str, dict[str, CandidateEvidenceGapAttribution]]:
+    """Attribute missing M1 evidence without changing its causal definition."""
+    microbars_by_symbol: dict[str, list[XauMicrobarM1]] = {}
+    states_by_symbol = {}
+
+    def classify(symbol: str, signal_at: datetime) -> CandidateEvidenceGapState:
+        normalized = symbol.upper()
+        if normalized not in microbars_by_symbol:
+            microbars_by_symbol[normalized] = load_xau_microbars(
+                runtime_dir / microbar_ledger_file(normalized)
+            )
+            states_by_symbol[normalized] = load_xau_microbar_state(
+                runtime_dir / microbar_state_file(normalized)
+            )
+        return _classify_m1_evidence_gap(
+            microbars=microbars_by_symbol[normalized],
+            started_at=(
+                states_by_symbol[normalized].started_at
+                if states_by_symbol[normalized] is not None
+                else None
+            ),
+            signal_at=signal_at,
+        )
+
+    grouped: dict[str, dict[str, list[CandidateEvidenceGapState]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    for probe in probes:
+        if probe.result_r is not None:
+            grouped[f"{probe.symbol}:{probe.mechanism.value}"]["probe"].append(
+                classify(probe.symbol, probe.signal_at)
+            )
+    for row in opportunities:
+        if (
+            row.first_signal_strategy_id is not None
+            and row.first_signal_at is not None
+            and row.first_signal_mechanism is not None
+            and row.signal_lead_lag_minutes is not None
+            and row.move_consumed_fraction is not None
+            and row.move_consumed_at_signal_atr is not None
+            and row.move_remaining_after_signal_atr is not None
+        ):
+            grouped[row.first_signal_strategy_id]["waiting"].append(
+                classify(row.symbol, row.first_signal_at)
+            )
+    for trade in admitted_trades:
+        if trade.status != PaperTradeStatus.OPEN and trade.result_r is not None:
+            grouped[f"{trade.symbol}:{trade.mechanism.value}"]["admitted"].append(
+                classify(trade.symbol, trade.signal_at)
+            )
+    for probe in blocked_probes:
+        if probe.result_r is not None:
+            grouped[f"{probe.symbol}:{probe.mechanism.value}"]["blocked"].append(
+                classify(probe.symbol, probe.signal_at)
+            )
+
+    return {
+        strategy_id: {
+            population: _gap_attribution(states)
+            for population, states in populations.items()
+        }
+        for strategy_id, populations in grouped.items()
+    }
+
+
+def _gap_attribution(
+    states: list[CandidateEvidenceGapState],
+) -> CandidateEvidenceGapAttribution:
+    counts = Counter(states)
+    return CandidateEvidenceGapAttribution(
+        total=len(states),
+        m1_collector_state_unavailable=counts[
+            CandidateEvidenceGapState.M1_COLLECTOR_STATE_UNAVAILABLE
+        ],
+        pre_collector=counts[CandidateEvidenceGapState.PRE_COLLECTOR],
+        insufficient_closed_m1=counts[
+            CandidateEvidenceGapState.INSUFFICIENT_CLOSED_M1
+        ],
+        m1_no_directional_ticks=counts[
+            CandidateEvidenceGapState.M1_NO_DIRECTIONAL_TICKS
+        ],
+        tick_pressure_available=counts[
+            CandidateEvidenceGapState.TICK_PRESSURE_AVAILABLE
+        ],
+    )
+
+
+def _classify_m1_evidence_gap(
+    *,
+    microbars: list[XauMicrobarM1],
+    started_at: datetime | None,
+    signal_at: datetime,
+) -> CandidateEvidenceGapState:
+    """Classify M1 evidence using the existing causal geometry inputs.
+
+    The five-minute geometry must contain five fully closed bars.  The existing
+    geometry helper deliberately accepts shorter inputs for other reports, so
+    its bar count is checked here rather than redefining that helper.
+    """
+    if started_at is None:
+        return CandidateEvidenceGapState.M1_COLLECTOR_STATE_UNAVAILABLE
+    if signal_at < started_at:
+        return CandidateEvidenceGapState.PRE_COLLECTOR
+    closed = _microbars_closed_before(microbars, signal_at, minutes=15)
+    geometry = _geometry_window(closed, 5) if closed else None
+    if geometry is None or geometry.bars < 5:
+        return CandidateEvidenceGapState.INSUFFICIENT_CLOSED_M1
+    if geometry.directional_tick_samples == 0:
+        return CandidateEvidenceGapState.M1_NO_DIRECTIONAL_TICKS
+    return CandidateEvidenceGapState.TICK_PRESSURE_AVAILABLE
+
+
 def _candidate_evidence_coverage(
     *,
     probe_early_context: ProbeEarlyContextReport | None,
@@ -362,6 +493,7 @@ def _candidate_evidence_coverage(
     admitted_trade_early_context: AdmittedTradeEarlyContextReport | None,
     blocked_probe_early_context: BlockedProbeEarlyContextReport | None,
     waiting_costs: list[OpportunityWaitingSummary],
+    gap_attributions: dict[str, dict[str, CandidateEvidenceGapAttribution]] | None = None,
 ) -> list[CandidateEvidenceCoverageSummary]:
     probe_by = {
         row.strategy_id: row
@@ -399,6 +531,7 @@ def _candidate_evidence_coverage(
         | set(waiting_cost_by)
         | set(admitted_by)
         | set(blocked_by)
+        | set(gap_attributions or {})
     )
     rows: list[CandidateEvidenceCoverageSummary] = []
     for strategy_id in strategy_ids:
@@ -447,6 +580,43 @@ def _candidate_evidence_coverage(
         blocked_resolved = sum(row.resolved_blocked_probes for row in blocked)
         blocked_m1 = sum(row.m1_eligible_probes for row in blocked)
         blocked_tick = sum(row.tick_pressure_eligible_probes for row in blocked)
+        gaps = (gap_attributions or {}).get(strategy_id, {})
+        probe_gap = gaps.get("probe")
+        waiting_gap = gaps.get("waiting")
+        admitted_gap = gaps.get("admitted")
+        blocked_gap = gaps.get("blocked")
+
+        # When raw causal attribution is available, it is the denominator of
+        # record.  This keeps the descriptive categories exhaustive even when
+        # legacy early-context reports omit pre-collector observations.
+        if probe_gap is not None:
+            probe_resolved = probe_gap.total
+            probe_m1 = (
+                probe_gap.m1_no_directional_ticks
+                + probe_gap.tick_pressure_available
+            )
+            probe_tick = probe_gap.tick_pressure_available
+        if waiting_gap is not None:
+            waiting_total = waiting_gap.total
+            waiting_m1 = (
+                waiting_gap.m1_no_directional_ticks
+                + waiting_gap.tick_pressure_available
+            )
+            waiting_tick = waiting_gap.tick_pressure_available
+        if admitted_gap is not None:
+            admitted_resolved = admitted_gap.total
+            admitted_m1 = (
+                admitted_gap.m1_no_directional_ticks
+                + admitted_gap.tick_pressure_available
+            )
+            admitted_tick = admitted_gap.tick_pressure_available
+        if blocked_gap is not None:
+            blocked_resolved = blocked_gap.total
+            blocked_m1 = (
+                blocked_gap.m1_no_directional_ticks
+                + blocked_gap.tick_pressure_available
+            )
+            blocked_tick = blocked_gap.tick_pressure_available
 
         rows.append(
             CandidateEvidenceCoverageSummary(
@@ -485,6 +655,10 @@ def _candidate_evidence_coverage(
                 blocked_tick_pressure_coverage_rate=_coverage_rate(
                     blocked_tick, blocked_resolved
                 ),
+                probe_gap_attribution=probe_gap,
+                waiting_gap_attribution=waiting_gap,
+                admitted_gap_attribution=admitted_gap,
+                blocked_gap_attribution=blocked_gap,
             )
         )
     return rows

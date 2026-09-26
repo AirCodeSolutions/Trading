@@ -421,6 +421,23 @@ class AdmittedTradeEarlyContextReport(BaseModel):
     limitations: list[str] = Field(default_factory=list)
 
 
+class CandidateEvidenceGapState(StrEnum):
+    M1_COLLECTOR_STATE_UNAVAILABLE = "m1_collector_state_unavailable"
+    PRE_COLLECTOR = "pre_collector"
+    INSUFFICIENT_CLOSED_M1 = "insufficient_closed_m1"
+    M1_NO_DIRECTIONAL_TICKS = "m1_no_directional_ticks"
+    TICK_PRESSURE_AVAILABLE = "tick_pressure_available"
+
+
+class CandidateEvidenceGapAttribution(BaseModel):
+    total: int = Field(ge=0)
+    m1_collector_state_unavailable: int = Field(ge=0)
+    pre_collector: int = Field(ge=0)
+    insufficient_closed_m1: int = Field(ge=0)
+    m1_no_directional_ticks: int = Field(ge=0)
+    tick_pressure_available: int = Field(ge=0)
+
+
 class CandidateEvidenceCoverageSummary(BaseModel):
     strategy_id: str
     symbol: str
@@ -445,6 +462,10 @@ class CandidateEvidenceCoverageSummary(BaseModel):
     blocked_tick_pressure_eligible: int = Field(default=0, ge=0)
     blocked_m1_coverage_rate: float | None = Field(default=None, ge=0, le=1)
     blocked_tick_pressure_coverage_rate: float | None = Field(default=None, ge=0, le=1)
+    probe_gap_attribution: CandidateEvidenceGapAttribution | None = None
+    waiting_gap_attribution: CandidateEvidenceGapAttribution | None = None
+    admitted_gap_attribution: CandidateEvidenceGapAttribution | None = None
+    blocked_gap_attribution: CandidateEvidenceGapAttribution | None = None
 
 
 class AssetIntelligence(BaseModel):

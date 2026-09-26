@@ -1,6 +1,6 @@
 import json
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -12,13 +12,14 @@ from app.domain.portfolio import (
     TradingOverview,
 )
 from app.domain.session import SessionRuntimeState, ShadowWorkerHeartbeat
+from app.services.market_session import MarketSessionStatus, market_session_status
 from app.services.session_preflight import (
     build_session_preflight,
     save_session_runtime_state,
 )
 
 TZ = ZoneInfo("Europe/Athens")
-NOW = datetime(2026, 9, 19, 17, 30, tzinfo=TZ)
+NOW = datetime(2026, 9, 18, 17, 30, tzinfo=TZ)
 
 
 def overview() -> TradingOverview:
@@ -58,24 +59,31 @@ def macro() -> MacroGateStatus:
     )
 
 
+def mt4_wallclock_epoch(at: datetime) -> int:
+    """MT4 epochs are parsed as server wall-clock values by the bridge."""
+    return int(at.replace(tzinfo=UTC).timestamp())
+
+
 def write_market(
     files_dir: Path,
     *,
     timestamp: int,
     include_spec: bool = True,
     m5_time: str = "17:20:00",
+    symbol: str = "EURUSD",
+    date: str = "20260918",
 ) -> None:
-    (files_dir / "EURUSD-M5.csv").write_text(
-        f"20260919,{m5_time},1.14,1.15,1.13,1.145,100\n",
+    (files_dir / f"{symbol}-M5.csv").write_text(
+        f"{date},{m5_time},1.14,1.15,1.13,1.145,100\n",
         encoding="utf-8",
     )
-    (files_dir / "EURUSD-M15.csv").write_text(
-        "20260919,17:15:00,1.14,1.15,1.13,1.145,300\n",
+    (files_dir / f"{symbol}-M15.csv").write_text(
+        f"{date},17:15:00,1.14,1.15,1.13,1.145,300\n",
         encoding="utf-8",
     )
     payload: dict[str, object] = {
         "timestamp": str(timestamp),
-        "symbol": "EURUSD",
+        "symbol": symbol,
         "bid": "1.1450",
         "ask": "1.1451",
         "digits": "5",
@@ -89,7 +97,7 @@ def write_market(
             "lot_step": "0.01",
             "margin_required": "100",
         }
-    (files_dir / "mt4_data_EURUSD.json").write_text(
+    (files_dir / f"mt4_data_{symbol}.json").write_text(
         json.dumps(payload),
         encoding="utf-8",
     )
@@ -124,7 +132,7 @@ def test_preflight_ready_when_non_btc_market_is_paper_ready(
     files_dir = tmp_path / "mt4"
     runtime_dir = tmp_path / "runtime"
     files_dir.mkdir()
-    write_market(files_dir, timestamp=1789838948)
+    write_market(files_dir, timestamp=1789752548)
     write_heartbeat(runtime_dir)
 
     result = build_session_preflight(
@@ -148,7 +156,7 @@ def test_preflight_waits_for_market_when_quote_is_stale(
     files_dir = tmp_path / "mt4"
     runtime_dir = tmp_path / "runtime"
     files_dir.mkdir()
-    write_market(files_dir, timestamp=1789775936)
+    write_market(files_dir, timestamp=1789689536)
     write_heartbeat(runtime_dir)
 
     result = build_session_preflight(
@@ -171,7 +179,7 @@ def test_preflight_blocks_on_stale_worker_heartbeat(
     files_dir = tmp_path / "mt4"
     runtime_dir = tmp_path / "runtime"
     files_dir.mkdir()
-    write_market(files_dir, timestamp=1789838948)
+    write_market(files_dir, timestamp=1789752548)
     write_heartbeat(runtime_dir, at=NOW - timedelta(minutes=4))
 
     result = build_session_preflight(
@@ -195,7 +203,7 @@ def test_preflight_degrades_live_market_missing_spec(
     files_dir = tmp_path / "mt4"
     runtime_dir = tmp_path / "runtime"
     files_dir.mkdir()
-    write_market(files_dir, timestamp=1789838948, include_spec=False)
+    write_market(files_dir, timestamp=1789752548, include_spec=False)
     write_heartbeat(runtime_dir)
 
     result = build_session_preflight(
@@ -218,7 +226,7 @@ def test_preflight_reports_market_reopen_warmup(
     files_dir = tmp_path / "mt4"
     runtime_dir = tmp_path / "runtime"
     files_dir.mkdir()
-    write_market(files_dir, timestamp=1789838948)
+    write_market(files_dir, timestamp=1789752548)
     write_heartbeat(runtime_dir, warming_up_symbols=["EURUSD"])
 
     result = build_session_preflight(
@@ -244,7 +252,7 @@ def test_preflight_waits_for_first_fresh_closed_m5_after_quote_returns(
     files_dir.mkdir()
     write_market(
         files_dir,
-        timestamp=1789838948,
+        timestamp=1789752548,
         m5_time="16:00:00",
     )
     write_heartbeat(runtime_dir)
@@ -273,7 +281,7 @@ def test_preflight_persists_quote_to_ready_timeline(
 
     write_market(
         files_dir,
-        timestamp=1789838948,
+        timestamp=1789752548,
         m5_time="16:00:00",
     )
     write_heartbeat(runtime_dir)
@@ -295,7 +303,7 @@ def test_preflight_persists_quote_to_ready_timeline(
     fresh_now = NOW + timedelta(minutes=6)
     write_market(
         files_dir,
-        timestamp=1789839308,
+        timestamp=1789752908,
         m5_time="17:25:00",
     )
     write_heartbeat(runtime_dir, at=fresh_now)
@@ -325,7 +333,7 @@ def test_preflight_degrades_when_live_quote_outlives_stalled_m5(
 
     write_market(
         files_dir,
-        timestamp=1789838948,
+        timestamp=1789752548,
         m5_time="16:00:00",
     )
     write_heartbeat(runtime_dir)
@@ -344,7 +352,7 @@ def test_preflight_degrades_when_live_quote_outlives_stalled_m5(
     stalled_now = NOW + timedelta(minutes=21)
     write_market(
         files_dir,
-        timestamp=1789840208,
+        timestamp=1789753808,
         m5_time="16:00:00",
     )
     write_heartbeat(runtime_dir, at=stalled_now)
@@ -375,3 +383,92 @@ def test_session_state_save_is_safe_under_concurrent_requests(tmp_path: Path) ->
         list(pool.map(save, range(100)))
 
     assert json.loads(path.read_text(encoding="utf-8")) == {"symbols": {}}
+
+
+def test_market_session_profiles_are_timezone_aware_at_weekend_boundary() -> None:
+    saturday = datetime(2026, 9, 26, 0, 1, tzinfo=TZ)
+    assert market_session_status("BTCUSD", saturday) == MarketSessionStatus.OPEN
+    for symbol in ("EURUSD", "GBPUSD", "XAUUSD", "XAGUSD"):
+        assert market_session_status(symbol, saturday) == MarketSessionStatus.CLOSED
+
+
+def test_market_session_keeps_weekday_open_across_dst_aware_boundary() -> None:
+    # Athens is UTC+3 before the October DST transition; Sunday/Monday is the
+    # weekly boundary, so this Monday remains an open-session instant.
+    monday = datetime(2026, 10, 26, 0, 1, tzinfo=TZ)
+    assert market_session_status("EURUSD", monday) == MarketSessionStatus.OPEN
+
+
+def test_market_session_is_explicitly_unknown_for_unprofiled_symbol() -> None:
+    assert market_session_status("UNKNOWN", NOW) == MarketSessionStatus.UNKNOWN
+
+
+def test_preflight_marks_weekend_fx_and_metals_closed_without_degrading(
+    tmp_path: Path,
+) -> None:
+    files_dir = tmp_path / "mt4"
+    runtime_dir = tmp_path / "runtime"
+    files_dir.mkdir()
+    saturday = datetime(2026, 9, 26, 10, 0, tzinfo=TZ)
+    symbols = ("BTCUSD", "EURUSD", "GBPUSD", "XAUUSD", "XAGUSD")
+    for symbol in symbols:
+        write_market(
+            files_dir,
+            timestamp=mt4_wallclock_epoch(saturday),
+            symbol=symbol,
+            date="20260926" if symbol == "BTCUSD" else "20260925",
+            m5_time="09:55:00" if symbol == "BTCUSD" else "23:50:00",
+        )
+    write_heartbeat(runtime_dir, at=saturday)
+
+    result = build_session_preflight(
+        files_dir=files_dir,
+        runtime_dir=runtime_dir,
+        now=saturday,
+        macro=macro(),
+        overview=overview(),
+        demo_execution_ready=False,
+        watch_symbols=symbols,
+    )
+
+    assert result.status == "ready"
+    assert result.ready_symbols == ["BTCUSD"]
+    assert result.closed_symbols == ["EURUSD", "GBPUSD", "XAUUSD", "XAGUSD"]
+    assert result.degraded_symbols == []
+    assert [item.state for item in result.assets[1:]] == ["market_closed"] * 4
+
+
+def test_preflight_degrades_stale_fx_during_open_weekday(tmp_path: Path) -> None:
+    files_dir = tmp_path / "mt4"
+    runtime_dir = tmp_path / "runtime"
+    files_dir.mkdir()
+    monday = datetime(2026, 9, 28, 10, 0, tzinfo=TZ)
+    write_market(
+        files_dir,
+        timestamp=mt4_wallclock_epoch(monday),
+        m5_time="09:00:00",
+        date="20260928",
+    )
+    write_heartbeat(runtime_dir, at=monday)
+
+    first = build_session_preflight(
+        files_dir=files_dir, runtime_dir=runtime_dir, now=monday,
+        macro=macro(), overview=overview(), demo_execution_ready=False,
+        watch_symbols=("EURUSD",),
+    )
+    assert first.status == "warming_up"
+    later = monday + timedelta(minutes=21)
+    write_market(
+        files_dir,
+        timestamp=mt4_wallclock_epoch(later),
+        m5_time="09:00:00",
+        date="20260928",
+    )
+    write_heartbeat(runtime_dir, at=later)
+    result = build_session_preflight(
+        files_dir=files_dir, runtime_dir=runtime_dir, now=later,
+        macro=macro(), overview=overview(), demo_execution_ready=False,
+        watch_symbols=("EURUSD",),
+    )
+    assert result.status == "degraded"
+    assert result.degraded_symbols == ["EURUSD"]

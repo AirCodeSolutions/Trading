@@ -410,10 +410,12 @@ type SessionPreflight = {
   ready_symbols: string[];
   warming_symbols: string[];
   waiting_symbols: string[];
+  closed_symbols: string[];
   degraded_symbols: string[];
   assets: {
     symbol: string;
-    state: "ready" | "warming_up" | "waiting_quote" | "m5_stalled" | "missing_spec" | "missing_history";
+    state: "ready" | "market_closed" | "unknown_session" | "warming_up" | "waiting_quote" | "m5_stalled" | "missing_spec" | "missing_history";
+    market_session: "open" | "closed" | "unknown";
     quote_live: boolean;
     paper_ready: boolean;
     broker_spec_ready: boolean;
@@ -2221,6 +2223,10 @@ export default function App() {
           <div>
             <span>EN ATTENTE MARCHÉ</span>
             <strong>{preflight?.waiting_symbols.join(", ") || "—"}</strong>
+          </div>
+          <div>
+            <span>MARCHÉ FERMÉ</span>
+            <strong>{preflight?.closed_symbols.join(", ") || "—"}</strong>
           </div>
           <div>
             <span>DÉGRADÉ</span>

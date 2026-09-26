@@ -3,6 +3,8 @@
 from datetime import datetime
 from enum import StrEnum
 
+from app.services.mt4_csv import _server_timezone
+
 
 class MarketSessionStatus(StrEnum):
     OPEN = "open"
@@ -23,13 +25,14 @@ def market_session_status(symbol: str, now: datetime) -> MarketSessionStatus:
     """Return the expected broker session status for an aware server datetime."""
     if now.tzinfo is None or now.utcoffset() is None:
         raise ValueError("market session evaluation requires a timezone-aware now")
+    local_now = now.astimezone(_server_timezone())
     normalized = symbol.upper()
     if normalized in _ALWAYS_OPEN:
         return MarketSessionStatus.OPEN
     if normalized in _WEEKDAY_SESSION:
         return (
             MarketSessionStatus.OPEN
-            if now.weekday() < 5
+            if local_now.weekday() < 5
             else MarketSessionStatus.CLOSED
         )
     return MarketSessionStatus.UNKNOWN

@@ -399,6 +399,12 @@ def test_market_session_keeps_weekday_open_across_dst_aware_boundary() -> None:
     assert market_session_status("EURUSD", monday) == MarketSessionStatus.OPEN
 
 
+def test_market_session_converts_aware_input_to_mt4_server_timezone() -> None:
+    # Sunday 22:01 UTC is already Monday 00:01 in Athens after DST ends.
+    utc_sunday = datetime(2026, 10, 25, 22, 1, tzinfo=UTC)
+    assert market_session_status("EURUSD", utc_sunday) == MarketSessionStatus.OPEN
+
+
 def test_market_session_is_explicitly_unknown_for_unprofiled_symbol() -> None:
     assert market_session_status("UNKNOWN", NOW) == MarketSessionStatus.UNKNOWN
 

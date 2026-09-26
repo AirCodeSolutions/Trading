@@ -19,6 +19,7 @@ from app.domain.trading_intelligence import (
     AdmittedTradeEarlyContextSummary,
     BlockedProbeEarlyContextReport,
     BlockedProbeEarlyContextSummary,
+    CandidateEvidenceGapState,
     MarketOpportunityEpisode,
     OpportunityCaptureState,
     OpportunityCausalContext,
@@ -31,13 +32,15 @@ from app.domain.trading_intelligence import (
     WaitingEarlyContextReport,
     WaitingEarlyContextSummary,
 )
-from app.domain.xau_microbar import XauMicrobarM1
+from app.domain.xau_microbar import XauMicrobarM1, XauMicrobarState
 from app.services.trading_intelligence import (
     _build_admitted_trade_early_context_report,
     _build_blocked_probe_early_context_report,
     _build_probe_early_context_report,
     _build_waiting_early_context_report,
     _candidate_evidence_coverage,
+    _candidate_evidence_gap_attributions,
+    _classify_m1_evidence_gap,
     _market_opportunity_episodes,
     _side_aligned_imbalance,
     _side_aligned_move_r,
@@ -46,6 +49,7 @@ from app.services.trading_intelligence import (
     _waiting_cost_summaries,
     build_trading_intelligence,
 )
+from app.services.xau_microbar import microbar_ledger_file, microbar_state_file
 
 TZ = ZoneInfo("Europe/Athens")
 NOW = datetime(2026, 9, 22, 12, 0, tzinfo=TZ)
@@ -60,6 +64,37 @@ def bar(at: datetime, o: float, h: float, l: float, c: float) -> MarketBar:
         high=h,
         low=l,
         close=c,
+    )
+
+
+def m1_bar(
+    minute_at: datetime, *, up: int = 0, down: int = 0
+) -> XauMicrobarM1:
+    spread = 0.0002
+    return XauMicrobarM1(
+        minute_at=minute_at,
+        first_quote_at=minute_at,
+        last_quote_at=minute_at + timedelta(seconds=50),
+        bid_open=1.0,
+        bid_high=1.001,
+        bid_low=0.999,
+        bid_close=1.0,
+        ask_open=1.0002,
+        ask_high=1.0012,
+        ask_low=0.9992,
+        ask_close=1.0002,
+        mid_open=1.0001,
+        mid_high=1.0011,
+        mid_low=0.9991,
+        mid_close=1.0001,
+        spread_open=spread,
+        spread_high=spread,
+        spread_low=spread,
+        spread_close=spread,
+        spread_sum=spread * 4,
+        quote_count=4,
+        mid_up_ticks=up,
+        mid_down_ticks=down,
     )
 
 
@@ -98,6 +133,133 @@ def diagnostic(
     )
 
 
+def test_m1_gap_is_pre_collector_before_real_started_at() -> None:
+    signal_at = NOW.replace(hour=10, minute=0)
+
+    assert _classify_m1_evidence_gap(
+        microbars=[],
+        started_at=signal_at + timedelta(minutes=1),
+        signal_at=signal_at,
+    ) == CandidateEvidenceGapState.PRE_COLLECTOR
+
+
+def test_m1_gap_requires_five_fully_closed_bars() -> None:
+    signal_at = NOW.replace(hour=10, minute=5)
+
+    assert _classify_m1_evidence_gap(
+        microbars=[
+            m1_bar(signal_at - timedelta(minutes=3), up=1),
+            m1_bar(signal_at - timedelta(minutes=2), up=1),
+            m1_bar(signal_at - timedelta(minutes=1), up=1),
+        ],
+        started_at=signal_at - timedelta(hours=1),
+        signal_at=signal_at,
+    ) == CandidateEvidenceGapState.INSUFFICIENT_CLOSED_M1
+
+
+def test_m1_gap_distinguishes_no_directional_ticks_from_neutral_pressure() -> None:
+    signal_at = NOW.replace(hour=10, minute=5)
+    microbars = [m1_bar(signal_at - timedelta(minutes=index)) for index in range(1, 6)]
+
+    assert _classify_m1_evidence_gap(
+        microbars=microbars,
+        started_at=signal_at - timedelta(hours=1),
+        signal_at=signal_at,
+    ) == CandidateEvidenceGapState.M1_NO_DIRECTIONAL_TICKS
+
+
+def test_m1_gap_marks_directional_tick_pressure_available() -> None:
+    signal_at = NOW.replace(hour=10, minute=5)
+    microbars = [
+        m1_bar(signal_at - timedelta(minutes=index), up=2, down=1)
+        for index in range(1, 6)
+    ]
+
+    assert _classify_m1_evidence_gap(
+        microbars=microbars,
+        started_at=signal_at - timedelta(hours=1),
+        signal_at=signal_at,
+    ) == CandidateEvidenceGapState.TICK_PRESSURE_AVAILABLE
+
+
+def test_m1_gap_excludes_a_bar_closing_after_signal() -> None:
+    signal_at = NOW.replace(hour=10, minute=5)
+    microbars = [
+        m1_bar(signal_at - timedelta(minutes=index), up=1)
+        for index in range(1, 5)
+    ]
+    # This bar would make five bars only if its 10:06 close were wrongly used.
+    microbars.append(m1_bar(signal_at, up=1))
+
+    assert _classify_m1_evidence_gap(
+        microbars=microbars,
+        started_at=signal_at - timedelta(hours=1),
+        signal_at=signal_at,
+    ) == CandidateEvidenceGapState.INSUFFICIENT_CLOSED_M1
+
+
+def test_blocked_gap_attribution_aggregates_reasons_without_double_counting(
+    tmp_path: Path,
+) -> None:
+    signal_at = NOW.replace(hour=10, minute=5)
+    microbars = [
+        m1_bar(signal_at - timedelta(minutes=index), up=2, down=1)
+        for index in range(1, 6)
+    ]
+    symbol = "BTCUSD"
+    (tmp_path / microbar_ledger_file(symbol)).write_text(
+        "".join(row.model_dump_json() + "\n" for row in microbars), encoding="utf-8"
+    )
+    (tmp_path / microbar_state_file(symbol)).write_text(
+        XauMicrobarState(started_at=signal_at - timedelta(hours=1)).model_dump_json(),
+        encoding="utf-8",
+    )
+
+    def blocked(probe_id: str, reason: str) -> BlockedOpportunityProbe:
+        return BlockedOpportunityProbe(
+            probe_id=probe_id,
+            symbol=symbol,
+            mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+            side=Side.BUY,
+            signal_at=signal_at,
+            opened_at=signal_at,
+            entry_price=100.0,
+            stop_price=99.0,
+            target_price=101.8,
+            spread_at_entry=0.1,
+            risk_distance=1.0,
+            target_r=1.8,
+            max_holding_bars=12,
+            block_reason=reason,
+            max_risk_approved=True,
+            status=PaperTradeStatus.STOP,
+            exit_at=signal_at + timedelta(minutes=5),
+            exit_price=99.0,
+            result_r=-1.0,
+            bars_held=1,
+        )
+
+    attribution = _candidate_evidence_gap_attributions(
+        runtime_dir=tmp_path,
+        probes=[],
+        opportunities=[],
+        admitted_trades=[],
+        blocked_probes=[
+            blocked("spread", "spread consumes too much of the stop distance"),
+            blocked("lot", "broker minimum lot exceeds max risk"),
+        ],
+    )["BTCUSD:directional_transition"]["blocked"]
+
+    assert attribution.total == 2
+    assert attribution.tick_pressure_available == 2
+    assert (
+        attribution.pre_collector
+        + attribution.insufficient_closed_m1
+        + attribution.m1_no_directional_ticks
+        + attribution.tick_pressure_available
+        + attribution.m1_collector_state_unavailable
+        == attribution.total
+    )
 def test_trade_metrics_measure_excursion_and_waiting() -> None:
     signal_at = NOW.replace(hour=10, minute=0)
     opened_at = signal_at + timedelta(minutes=5)

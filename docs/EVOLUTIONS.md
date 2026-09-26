@@ -1970,3 +1970,9 @@ No readiness threshold, ranking, admission rule or execution behavior is added.
 Candidate evidence coverage now explains each raw observation with an exclusive M1 provenance state: before the persisted collector start, too few fully closed M1 bars, M1 geometry without directional quote ticks, or genuine tick-pressure availability. A missing collector-state file is reported explicitly rather than guessed.
 
 The existing causal geometry functions and signal time are reused. Dashboard candidate cards surface the dominant descriptive cause for each population. No scanner, threshold, admission, sizing, risk, execution authority or automatic promotion changes.
+
+## 2026-09-26 — market-session-aware preflight readiness (PR #163)
+
+Ajout d’un contrat central de session évalué avec des datetimes timezone-aware dans `Europe/Athens`, la timezone MT4 déjà configurée. BTCUSD est traité 24/7 ; EURUSD, GBPUSD, XAUUSD et XAGUSD sont `market_closed` pendant le week-end observé du broker. Le préflight expose `closed_symbols` tout en conservant les champs existants.
+
+Les contrôles de fraîcheur de quote et M5 restent inchangés quand une session est attendue ouverte : une panne réelle demeure `degraded`. Les symboles sans profil retournent `unknown_session` et restent conservateurs. Aucun worker n’est redémarré par cette logique, et aucun comportement de trading ne change.

@@ -14,6 +14,8 @@ class SessionReadinessStatus(StrEnum):
 
 class SessionAssetState(StrEnum):
     READY = "ready"
+    MARKET_CLOSED = "market_closed"
+    UNKNOWN_SESSION = "unknown_session"
     WARMING_UP = "warming_up"
     WAITING_QUOTE = "waiting_quote"
     M5_STALLED = "m5_stalled"
@@ -44,6 +46,7 @@ class SessionRuntimeState(BaseModel):
 class SessionAssetStatus(BaseModel):
     symbol: str
     state: SessionAssetState
+    market_session: str
     quote_live: bool
     paper_ready: bool
     broker_spec_ready: bool
@@ -76,6 +79,7 @@ class SessionPreflight(BaseModel):
     ready_symbols: list[str]
     warming_symbols: list[str]
     waiting_symbols: list[str]
+    closed_symbols: list[str] = Field(default_factory=list)
     degraded_symbols: list[str]
     assets: list[SessionAssetStatus]
     timeline: list[SessionAssetTimeline] = Field(default_factory=list)

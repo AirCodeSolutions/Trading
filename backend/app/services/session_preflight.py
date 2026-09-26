@@ -14,6 +14,7 @@ from app.domain.session import (
     SessionRuntimeSymbolState,
     ShadowWorkerHeartbeat,
 )
+from app.services.market_session import MarketSessionStatus, market_session_status
 from app.services.market_universe import build_market_universe
 from app.services.mt4_live_quotes import LiveMarketQuote, read_live_market_quotes
 
@@ -98,6 +99,7 @@ def build_session_preflight(
         asset = by_symbol.get(normalized)
         if asset is None:
             continue
+        market_session = market_session_status(normalized, now)
         quote = quotes.get(normalized)
         symbol_state = runtime_state.symbols.get(
             normalized,
@@ -112,7 +114,10 @@ def build_session_preflight(
         else:
             symbol_state = SessionRuntimeSymbolState()
 
+        market_closed = market_session == MarketSessionStatus.CLOSED
         waiting_for_closed_m5 = (
+            not market_closed
+            and
             asset.quote_live
             and _waiting_for_fresh_closed_m5(quote, now)
         )
@@ -137,6 +142,7 @@ def build_session_preflight(
         )
         asset_state = _asset_state(
             asset,
+            market_session=market_session,
             warming_up=warming_up,
             m5_stalled=m5_stalled,
         )
@@ -163,7 +169,11 @@ def build_session_preflight(
             )
         )
 
-        if m5_stalled:
+        if market_closed:
+            asset_reason = "market closed for the configured broker weekly session"
+        elif market_session == MarketSessionStatus.UNKNOWN:
+            asset_reason = "market session is unknown; readiness remains conservative"
+        elif m5_stalled:
             asset_reason = (
                 "broker quote is live but closed M5 feed is stalled "
                 "for more than 20 minutes"
@@ -183,6 +193,7 @@ def build_session_preflight(
             SessionAssetStatus(
                 symbol=normalized,
                 state=asset_state,
+                market_session=market_session.value,
                 quote_live=asset.quote_live,
                 paper_ready=asset.paper_ready,
                 broker_spec_ready=asset.broker_spec_ready,
@@ -209,6 +220,11 @@ def build_session_preflight(
         for item in assets
         if item.state == SessionAssetState.WAITING_QUOTE
     ]
+    closed = [
+        item.symbol
+        for item in assets
+        if item.state == SessionAssetState.MARKET_CLOSED
+    ]
     degraded = [
         item.symbol
         for item in assets
@@ -233,6 +249,11 @@ def build_session_preflight(
             SessionAssetState.MISSING_HISTORY,
         }
     ]
+    unknown_session = [
+        item.symbol
+        for item in assets
+        if item.state == SessionAssetState.UNKNOWN_SESSION
+    ]
 
     if not worker_ok:
         status = SessionReadinessStatus.BLOCKED
@@ -249,7 +270,10 @@ def build_session_preflight(
             "market reopened; waiting for closed M5 synchronization/warmup: "
             + ", ".join(non_btc_warming)
         )
-    elif non_btc_ready:
+    elif unknown_session:
+        status = SessionReadinessStatus.DEGRADED
+        reason = "market session is unknown for: " + ", ".join(unknown_session)
+    elif ready:
         status = SessionReadinessStatus.READY
         reason = (
             "session runtime is healthy; paper-ready markets: "
@@ -278,6 +302,7 @@ def build_session_preflight(
         ready_symbols=ready,
         warming_symbols=warming,
         waiting_symbols=waiting,
+        closed_symbols=closed,
         degraded_symbols=degraded,
         assets=assets,
         timeline=timeline,
@@ -288,9 +313,14 @@ def build_session_preflight(
 def _asset_state(
     asset,
     *,
+    market_session: MarketSessionStatus,
     warming_up: bool,
     m5_stalled: bool,
 ) -> SessionAssetState:
+    if market_session == MarketSessionStatus.CLOSED:
+        return SessionAssetState.MARKET_CLOSED
+    if market_session == MarketSessionStatus.UNKNOWN:
+        return SessionAssetState.UNKNOWN_SESSION
     if not asset.has_m5 or not asset.has_m15:
         return SessionAssetState.MISSING_HISTORY
     if not asset.broker_spec_ready:

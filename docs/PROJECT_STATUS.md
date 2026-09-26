@@ -3369,3 +3369,9 @@ This closes an important measurement gap before future use of TIMING_RESEARCH, S
 Deployed HEAD `cb8e6fabac9c064c5c9edb5c551082b01985f90e` (PR #161) extends the existing 168 h candidate-evidence coverage with mutually exclusive, descriptive causes: `pre_collector`, `insufficient_closed_m1`, `m1_no_directional_ticks`, `tick_pressure_available`, and the explicit unavailable-collector-state case. It uses each symbol’s persisted microbar `started_at` and only fully closed causal M1 bars.
 
 The dashboard shows the leading explanation per probes, waiting episodes, admitted trades and blocked probes. This is research-only: it grants no trading authority, creates no score or coverage threshold, and cannot alter admission, risk or promotion.
+
+## 2026-09-26 — preflight sensible aux sessions de marché
+
+PR #163, déployée au HEAD `d96525d480b9cfecbbde07d714c3617d62dcd30b`, distingue désormais une fermeture normale de marché d’un flux réellement stale. Le profil central est évalué dans la timezone MT4 existante `Europe/Athens` : BTCUSD est 24/7 ; EURUSD, GBPUSD, XAUUSD et XAGUSD suivent la semaine broker observée.
+
+Le samedi vérifié, BTCUSD est `ready`, les quatre autres actifs sont `market_closed`, `closed_symbols` les liste et `degraded_symbols` est vide. Une M5 stale pendant une session ouverte reste `degraded`. Cette évolution est d’observabilité opérationnelle uniquement : elle ne change ni scanner, ni admission, ni risque, ni autorité de trading.

@@ -3363,3 +3363,9 @@ For each strategy, the dashboard can show numerator/denominator coverage for:
 The backend also exposes M1 coverage ratios separately from tick-pressure coverage ratios. No composite score, minimum coverage threshold or causal conclusion is introduced.
 
 This closes an important measurement gap before future use of TIMING_RESEARCH, SELECTION_RESEARCH or COST_GRANULARITY_RESEARCH: the system can now distinguish “no evidence yet” from “evidence exists but is economically inconclusive” without creating a trading veto.
+
+## 2026-09-26 — causal attribution of candidate evidence gaps
+
+Deployed HEAD `cb8e6fabac9c064c5c9edb5c551082b01985f90e` (PR #161) extends the existing 168 h candidate-evidence coverage with mutually exclusive, descriptive causes: `pre_collector`, `insufficient_closed_m1`, `m1_no_directional_ticks`, `tick_pressure_available`, and the explicit unavailable-collector-state case. It uses each symbol’s persisted microbar `started_at` and only fully closed causal M1 bars.
+
+The dashboard shows the leading explanation per probes, waiting episodes, admitted trades and blocked probes. This is research-only: it grants no trading authority, creates no score or coverage threshold, and cannot alter admission, risk or promotion.

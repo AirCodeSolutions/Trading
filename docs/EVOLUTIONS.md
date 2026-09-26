@@ -1964,3 +1964,9 @@ Added candidate evidence coverage to the enriched 168 h Trading Intelligence sna
 Coverage is descriptive only: resolved probes / M1 / tick-pressure, waiting / M1 / tick-pressure, admitted trades / M1 / tick-pressure and blocked probes / M1 / tick-pressure.
 
 No readiness threshold, ranking, admission rule or execution behavior is added.
+
+## 2026-09-26 — attribute causal-evidence gaps (PR #161)
+
+Candidate evidence coverage now explains each raw observation with an exclusive M1 provenance state: before the persisted collector start, too few fully closed M1 bars, M1 geometry without directional quote ticks, or genuine tick-pressure availability. A missing collector-state file is reported explicitly rather than guessed.
+
+The existing causal geometry functions and signal time are reused. Dashboard candidate cards surface the dominant descriptive cause for each population. No scanner, threshold, admission, sizing, risk, execution authority or automatic promotion changes.

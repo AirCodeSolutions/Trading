@@ -502,6 +502,12 @@ type SessionLandmarkResearch = {
   latest: { symbol: string; mechanism: string; context: { active_session: string | null; nearest_landmark_type: string | null; nearest_landmark_distance_atr_m5: number | null; nearest_landmark_distance_atr_m15: number | null; active_session_position: number | null } }[];
 };
 
+type PerformanceAttribution = {
+  populations: Record<string, number>;
+  summaries: { population: string; dimension: string; value: string; observations: number; wins: number; losses: number; expectancy_r: number | null; profit_factor: number | null; max_drawdown_r: number | null; best_results_r: number[]; worst_results_r: number[] }[];
+  interactions: { population: string; dimension: string; value: string; observations: number; expectancy_r: number | null; profit_factor: number | null; max_drawdown_r: number | null }[];
+};
+
 type OpportunityFunnelStrategy = {
   strategy_id: string;
   symbol: string;
@@ -1423,6 +1429,8 @@ export default function App() {
     useState<StopGeometryResearch | null>(null);
   const [sessionLandmarkResearch, setSessionLandmarkResearch] =
     useState<SessionLandmarkResearch | null>(null);
+  const [performanceAttribution, setPerformanceAttribution] =
+    useState<PerformanceAttribution | null>(null);
   const [admittedTradeEarlyContext, setAdmittedTradeEarlyContext] =
     useState<TradingIntelligence["admitted_trade_early_context"]>(null);
   const [candidateEvidenceCoverage, setCandidateEvidenceCoverage] =
@@ -1486,6 +1494,7 @@ export default function App() {
           opportunityFunnelResponse,
           stopGeometryResponse,
           sessionLandmarkResponse,
+          performanceAttributionResponse,
           probeReviewContractResponse,
           intelligenceResponse,
           trailingShadowResponse,
@@ -1516,6 +1525,7 @@ export default function App() {
           fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           fetch("/api/v1/research/stop-geometry?hours=168"),
           fetch("/api/v1/research/session-landmarks?hours=168"),
+          fetch("/api/v1/research/performance-attribution?hours=168"),
           fetch("/api/v1/research/probe-review/contract"),
           fetch("/api/v1/intelligence/overview?hours=24"),
           fetch("/api/v1/research/trailing-shadow"),
@@ -1561,6 +1571,9 @@ export default function App() {
           : null;
         const sessionLandmarkPayload = sessionLandmarkResponse.ok
           ? await sessionLandmarkResponse.json()
+          : null;
+        const performanceAttributionPayload = performanceAttributionResponse.ok
+          ? await performanceAttributionResponse.json()
           : null;
         const probeReviewContractPayload = probeReviewContractResponse.ok
           ? await probeReviewContractResponse.json()
@@ -1617,6 +1630,7 @@ export default function App() {
           setOpportunityFunnel(opportunityFunnelPayload);
           setStopGeometryResearch(stopGeometryPayload);
           setSessionLandmarkResearch(sessionLandmarkPayload);
+          setPerformanceAttribution(performanceAttributionPayload);
         setProbeReviewContract(probeReviewContractPayload);
         setIntelligence(intelligencePayload);
         setTrailingShadow(trailingShadowPayload);
@@ -3708,6 +3722,28 @@ export default function App() {
                 ))}
               </div>
             ) : <p className="strategy-empty">Aucune observation prospective instrumentée disponible.</p>}
+          </div>
+        ) : null}
+
+        {performanceAttribution ? (
+          <div className="intelligence-subsection">
+            <h3>Performance Attribution · 168 h</h3>
+            <p className="intelligence-note">Journal descriptif par population. Les cohortes ne constituent ni ranking ni filtre trading.</p>
+            <div className="early-context-kpis">
+              <span>Admitted <b>{performanceAttribution.populations.admitted ?? 0}</b></span>
+              <span>Probes <b>{performanceAttribution.populations.unqualified_probe ?? 0}</b></span>
+              <span>Blocked <b>{performanceAttribution.populations.blocked_probe ?? 0}</b></span>
+            </div>
+            {performanceAttribution.summaries.length ? (
+              <div className="intelligence-table">
+                <div className="intelligence-row blocked-context-row intelligence-head"><span>Population / dimension</span><span>Cohorte</span><span>N W/L</span><span>Exp.</span><span>PF</span><span>DD</span></div>
+                {performanceAttribution.summaries.filter((row) => row.dimension === "mechanism" || row.dimension === "session" || row.dimension === "hour").slice(0, 30).map((row) => (
+                  <div className="intelligence-row blocked-context-row" key={`${row.population}:${row.dimension}:${row.value}`}>
+                    <strong>{row.population} · {row.dimension}</strong><span>{row.value}</span><span>{row.observations} · {row.wins}/{row.losses}</span><span>{row.expectancy_r == null ? "—" : `${row.expectancy_r.toFixed(2)}R`}</span><span>{row.profit_factor == null ? "—" : row.profit_factor.toFixed(2)}</span><span>{row.max_drawdown_r == null ? "—" : `${row.max_drawdown_r.toFixed(2)}R`}</span>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="strategy-empty">Aucun résultat résolu dans cette fenêtre.</p>}
           </div>
         ) : null}
 

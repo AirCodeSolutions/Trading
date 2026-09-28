@@ -2008,3 +2008,6 @@ performed and no trading behavior changes.
 ## #171 — session landmark context (research-only)
 
 Ajout d’un `SessionLandmarkContext` causal aux diagnostics de signal, puis aux probes et PAPER trades créés depuis ces diagnostics. Le rapport `/api/v1/research/session-landmarks` expose les observations instrumentées et les derniers contextes par actif/mécanisme. Previous-day high/low, Asia high/low, London et US sont calculés avec les bougies M5 closes disponibles avant le signal ; aucune logique de sweep/reclaim n’est ajoutée tant qu’une définition gelée n’est pas nécessaire. Cette évolution ne change aucune règle de trading.
+## #172 — performance attribution matrix (research-only)
+
+Trading Intelligence expose désormais un journal analytique par population (`admitted`, `unqualified_probe`, `blocked_probe`). Chaque cohorte conserve N, W/L, expectancy, profit factor, drawdown chronologique, médianes de résultat et mesures de coût disponibles. Les dimensions univariées et les interactions sont limitées à la liste gelée de #172 ; aucune recherche combinatoire, projection de PnL, ranking ou règle horaire n’est produite.

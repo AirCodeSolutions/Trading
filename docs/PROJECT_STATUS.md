@@ -3415,3 +3415,6 @@ No stop, target, sizing, spread, admission, execution or broker behavior changes
 ## #171 — causal session landmark research
 
 La recherche #171 persiste prospectivement, au moment du signal, les niveaux de la journée précédente et les extrêmes Asia, London et US disponibles jusque-là. Les niveaux sont calculés avec `Europe/Athens` et uniquement avec des M5 complètement closes avant `signal_at`. Le contexte reste séparé des populations probes, blocked probes et PAPER ; il ne participe à aucun signal, stop, sizing, garde ou admission. Les anciennes observations restent sans contexte (`N/A`) et ne sont pas backfillées.
+## #172 — performance attribution matrix
+
+Ajout d’un journal de performance research-only, séparant strictement admitted trades, executable unqualified probes et blocked probes. Le rapport `/api/v1/research/performance-attribution` agrège les résultats par actif, mécanisme, session, heure broker, jour de semaine, régime, side, source de stop et landmark, ainsi que les sept interactions pré-enregistrées. Les métriques restent descriptives, chronologiques pour le drawdown, et ne produisent aucun filtre ni classement trading.

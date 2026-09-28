@@ -36,6 +36,7 @@ from app.domain.opportunity import (
     PortfolioResearchResult,
 )
 from app.domain.opportunity_funnel import OpportunityFunnel
+from app.domain.performance_attribution import PerformanceAttributionReport
 from app.domain.portfolio import MarketUniverseAsset, TradingOverview
 from app.domain.precursor_execution_shadow import PrecursorExecutionShadowSummary
 from app.domain.precursor_forward_research import PrecursorForwardResearchReport
@@ -96,6 +97,7 @@ from app.services.mt4_specs import get_mt4_symbol_spec, list_mt4_symbol_specs
 from app.services.opportunity_backtester import run_opportunity_backtest
 from app.services.opportunity_funnel import build_opportunity_funnel
 from app.services.opportunity_matrix import run_mt4_portfolio_research
+from app.services.performance_attribution import build_performance_attribution_report
 from app.services.portfolio_overview import build_trading_overview
 from app.services.precursor_forward_research import build_precursor_forward_research
 from app.services.probe_review import (
@@ -397,6 +399,21 @@ def session_landmark_research(hours: int = 168) -> SessionLandmarkResearchReport
     if hours < 1 or hours > 168:
         raise HTTPException(status_code=422, detail="hours must be between 1 and 168")
     return build_session_landmark_report(
+        settings.shadow_ledger_dir,
+        now=datetime.now(tz=_server_timezone()),
+        window_hours=hours,
+        symbols=settings.session_watch_symbols,
+    )
+
+
+@app.get(
+    f"{settings.api_prefix}/research/performance-attribution",
+    response_model=PerformanceAttributionReport,
+)
+def performance_attribution(hours: int = 168) -> PerformanceAttributionReport:
+    if hours not in {24, 168, 720}:
+        raise HTTPException(status_code=422, detail="hours must be one of 24, 168 or 720")
+    return build_performance_attribution_report(
         settings.shadow_ledger_dir,
         now=datetime.now(tz=_server_timezone()),
         window_hours=hours,

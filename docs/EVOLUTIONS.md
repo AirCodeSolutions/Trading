@@ -1989,3 +1989,6 @@ No trading rule or exit behavior changes.
 ## 2026-09-28 — Prospective probe post-entry M1 follow-through
 
 Extended `ProbeEarlyContextReport` with the same strictly causal 1m/3m post-entry geometry used for admitted trades. The surface is restricted to resolved prospective executable unqualified probes and exposes separate observability and winner/loss medians for close, MFE and MAE. The Research dashboard labels the population as simulated prospective probes. No execution, strategy, signal, admission, sizing, stop, target, trailing or broker authority changed.
+## 2026-09-28 — Pre-signal context × early follow-through interaction
+
+PR #169 adds a descriptive join from the existing causal `ProbeEarlyContextEpisode` fields to its existing post-entry Close1/Close3/MFE3/MAE3 fields. The report remains restricted to resolved executable unqualified probes and separates final W/L from natural Close3-positive, Close3-negative and Close3-zero cohorts. It reports medians and precursor patterns without thresholds, scores, rankings or execution authority. Missing pre-signal and post-entry observations are preserved as missing, and admitted, blocked and waiting populations remain separate.

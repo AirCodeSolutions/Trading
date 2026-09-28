@@ -307,7 +307,50 @@ class ProbeEarlyContextReport(BaseModel):
     tick_pressure_wins: int = Field(ge=0)
     tick_pressure_losses: int = Field(ge=0)
     summaries: list[ProbeEarlyContextSummary] = Field(default_factory=list)
+    recent_observable_probes: list[ProbeEarlyContextEpisode] = Field(default_factory=list)
     recent_tick_pressure_probes: list[ProbeEarlyContextEpisode] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+
+
+class PreSignalFollowThroughGroup(BaseModel):
+    observations: int = Field(ge=0)
+    winners: int = Field(ge=0)
+    losers: int = Field(ge=0)
+    median_imbalance_5m: float | None = None
+    median_imbalance_15m: float | None = None
+    pressure_agreement_rate: float | None = Field(default=None, ge=0, le=1)
+    median_move_5m_r: float | None = None
+    median_move_15m_r: float | None = None
+    median_path_efficiency_5m: float | None = Field(default=None, ge=0, le=1)
+    median_spread_to_risk: float | None = Field(default=None, ge=0)
+    precursor_rate: float | None = Field(default=None, ge=0, le=1)
+    precursor_patterns: dict[str, int] = Field(default_factory=dict)
+    median_close_1m_r: float | None = None
+    median_close_3m_r: float | None = None
+    median_mfe_3m_r: float | None = Field(default=None, ge=0)
+    median_mae_3m_r: float | None = Field(default=None, ge=0)
+
+
+class PreSignalFollowThroughInteractionSummary(BaseModel):
+    strategy_id: str
+    symbol: str
+    mechanism: OpportunityMechanism
+    final_outcome: PreSignalFollowThroughGroup
+    close3_positive: PreSignalFollowThroughGroup
+    close3_negative: PreSignalFollowThroughGroup
+    close3_zero: PreSignalFollowThroughGroup
+
+
+class PreSignalFollowThroughInteractionReport(BaseModel):
+    generated_at: datetime
+    window_hours: int = Field(gt=0)
+    observations: int = Field(ge=0)
+    winners: int = Field(ge=0)
+    losers: int = Field(ge=0)
+    close3_positive: int = Field(ge=0)
+    close3_negative: int = Field(ge=0)
+    close3_zero: int = Field(ge=0)
+    summaries: list[PreSignalFollowThroughInteractionSummary] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
 
 
@@ -554,6 +597,7 @@ class TradingIntelligenceOverview(BaseModel):
     waiting_costs: list[OpportunityWaitingSummary] = Field(default_factory=list)
     waiting_early_context: WaitingEarlyContextReport | None = None
     probe_early_context: ProbeEarlyContextReport | None = None
+    pre_signal_follow_through_interaction: PreSignalFollowThroughInteractionReport | None = None
     blocked_probe_early_context: BlockedProbeEarlyContextReport | None = None
     admitted_trade_early_context: AdmittedTradeEarlyContextReport | None = None
     candidate_evidence_coverage: list[CandidateEvidenceCoverageSummary] = Field(

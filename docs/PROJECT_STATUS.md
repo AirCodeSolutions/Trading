@@ -3391,3 +3391,12 @@ Strategy summaries compare winner/loss medians and expose how many trades have a
 ## 2026-09-28 — Probe post-entry follow-through (research-only)
 
 The research report now applies the already deployed causal post-entry M1 contract to resolved prospective executable unqualified probes, while keeping them separate from admitted PAPER/DEMO trades. It reports 1m/3m observability, winner/loss counts, close displacement, MFE and MAE medians. Partial fill minutes, non-consecutive bars and bars after exit remain excluded. These descriptive probe features define no exit, break-even, trailing, admission or risk rule.
+## 2026-09-28 — pre-signal context × post-entry follow-through
+
+Trading Intelligence now exposes a research-only interaction report for resolved executable unqualified probes. It reuses `ProbeEarlyContextEpisode` and the existing post-entry M1 geometry, keeping only observations with causal pre-signal context and an observable Close3.
+
+For each exact strategy it compares final winners/losers and natural Close3-positive, Close3-negative and Close3-zero cohorts. The report contains descriptive medians for pre-signal imbalance, pressure agreement, displacement, path efficiency, spread/risk and precursor context alongside Close1, Close3, MFE3 and MAE3. Missing values remain missing. Admitted trades, blocked probes and waiting episodes are excluded.
+
+No threshold, score, ranking, admission change, early exit, break-even, trailing, stop, sizing, execution or broker change is produced. The 5-lot sizing cap and explicit DEMO order guard remain unchanged.
+
+Validation: 27 focused intelligence tests, 351 full backend tests, Ruff clean, frontend production build clean and diff check clean.

@@ -693,6 +693,25 @@ type TradeIntelligence = {
   block_reason: string | null;
 };
 
+type InteractionGroup = {
+  observations: number;
+  winners: number;
+  losers: number;
+  median_imbalance_5m: number | null;
+  median_imbalance_15m: number | null;
+  pressure_agreement_rate: number | null;
+  median_move_5m_r: number | null;
+  median_move_15m_r: number | null;
+  median_path_efficiency_5m: number | null;
+  median_spread_to_risk: number | null;
+  precursor_rate: number | null;
+  precursor_patterns: Record<string, number>;
+  median_close_1m_r: number | null;
+  median_close_3m_r: number | null;
+  median_mfe_3m_r: number | null;
+  median_mae_3m_r: number | null;
+};
+
 type TradingIntelligence = {
   generated_at: string;
   window_hours: number;
@@ -921,6 +940,24 @@ type TradingIntelligence = {
       loser_median_early_mfe_3m_r: number | null;
       winner_median_early_mae_3m_r: number | null;
       loser_median_early_mae_3m_r: number | null;
+    }[];
+    limitations: string[];
+  } | null;
+  pre_signal_follow_through_interaction: {
+    observations: number;
+    winners: number;
+    losers: number;
+    close3_positive: number;
+    close3_negative: number;
+    close3_zero: number;
+    summaries: {
+      strategy_id: string;
+      symbol: string;
+      mechanism: string;
+      final_outcome: InteractionGroup;
+      close3_positive: InteractionGroup;
+      close3_negative: InteractionGroup;
+      close3_zero: InteractionGroup;
     }[];
     limitations: string[];
   } | null;
@@ -3265,6 +3302,40 @@ export default function App() {
                     ))}
                 </div>
               ) : null}
+              {intelligence?.pre_signal_follow_through_interaction && (
+                <div className="probe-follow-through interaction-report">
+                  <h4>Pre-signal → early follow-through</h4>
+                  <p className="intelligence-note">
+                    Même population de probes exécutables résolus. Les médianes décrivent le lien entre contexte causal avant signal et Close3/MFE3/MAE3 ; elles ne produisent aucun seuil ni classement.
+                  </p>
+                  <div className="intelligence-table">
+                    <div className="intelligence-row probe-follow-through-row intelligence-head">
+                      <span>Stratégie</span><span>N W/L</span><span>Close3 + / - / 0</span>
+                      <span>Close3 W/L</span><span>MFE3 W/L</span><span>MAE3 W/L</span>
+                      <span>Imb5 W/L</span><span>Move15 W/L</span><span>PathEff W/L</span><span>Precursor W/L</span>
+                    </div>
+                    {intelligence.pre_signal_follow_through_interaction.summaries.map((row) => {
+                      const pair = (a: number | null, b: number | null) => `${a == null ? "—" : a.toFixed(2)} / ${b == null ? "—" : b.toFixed(2)}`;
+                      const ratePair = (a: number | null, b: number | null) => `${a == null ? "—" : `${(a * 100).toFixed(0)}%`} / ${b == null ? "—" : `${(b * 100).toFixed(0)}%`}`;
+                      return (
+                        <div className="intelligence-row probe-follow-through-row" key={`interaction-${row.strategy_id}`}>
+                          <strong>{row.strategy_id.replaceAll("_", " ")}</strong>
+                          <span>{row.final_outcome.observations} {row.final_outcome.winners}/{row.final_outcome.losers}</span>
+                          <span>{row.close3_positive.observations} / {row.close3_negative.observations} / {row.close3_zero.observations}</span>
+                          <span>{pair(row.final_outcome.median_close_3m_r, row.close3_negative.median_close_3m_r)}</span>
+                          <span>{pair(row.final_outcome.median_mfe_3m_r, row.close3_negative.median_mfe_3m_r)}</span>
+                          <span>{pair(row.final_outcome.median_mae_3m_r, row.close3_negative.median_mae_3m_r)}</span>
+                          <span>{pair(row.final_outcome.median_imbalance_5m, row.close3_negative.median_imbalance_5m)}</span>
+                          <span>{pair(row.final_outcome.median_move_15m_r, row.close3_negative.median_move_15m_r)}</span>
+                          <span>{pair(row.final_outcome.median_path_efficiency_5m, row.close3_negative.median_path_efficiency_5m)}</span>
+                          <span>{ratePair(row.final_outcome.precursor_rate, row.close3_negative.precursor_rate)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="intelligence-note">La seconde cohorte compare le contexte global au sous-ensemble Close3 négatif ; Close3 = 0 reste séparé dans l’API.</p>
+                </div>
+              )}
             </>
           ) : (
             <p className="strategy-empty">Snapshot M1 early-context en cours de chargement.</p>

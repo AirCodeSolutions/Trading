@@ -137,6 +137,7 @@ def create_paper_trade(
         target_r=target_r,
         max_holding_bars=max_holding_bars,
         macro_context=diagnostic.macro_context,
+        session_landmark_context=diagnostic.session_landmark_context,
     )
 
 

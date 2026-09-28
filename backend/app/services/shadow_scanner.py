@@ -23,6 +23,7 @@ from app.services.opportunity_strategies import (
 )
 from app.services.replay import RegimeReplay
 from app.services.session_continuity import reopen_warmup_remaining
+from app.services.session_landmarks import build_session_landmark_context
 
 VOLATILITY_PERCENTILE_LOOKBACK = 500
 MAX_SNAPSHOT_AGE = timedelta(minutes=10)
@@ -168,6 +169,14 @@ def scan_shadow_opportunity(
     structural_stop_atr_m15 = structural_stop_distance / regime.atr if regime.atr > 0 else None
     spread_atr_m5 = spec.spread / atr_m5_value if atr_m5_value and atr_m5_value > 0 else None
     spread_atr_m15 = spec.spread / regime.atr if regime.atr > 0 else None
+    session_landmark_context = build_session_landmark_context(
+        bars_m5,
+        signal_close,
+        entry,
+        side,
+        atr_m5=atr_m5_value,
+        atr_m15=regime.atr,
+    )
 
     base_sizing = _sizing_snapshot(
         spec,
@@ -215,6 +224,7 @@ def scan_shadow_opportunity(
         spread_atr_m15=spread_atr_m15,
         broker_digits=spec.digits,
         broker_tick_size=spec.tick_size,
+        session_landmark_context=session_landmark_context,
         target_r=target_r,
         max_holding_bars=max_holding_bars,
         base_risk=base_sizing,

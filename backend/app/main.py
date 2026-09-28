@@ -44,6 +44,7 @@ from app.domain.qualification_history import QualificationHistoryEvent
 from app.domain.regime import RegimeSnapshot
 from app.domain.runtime_control import RuntimeDrainRequest, RuntimeDrainState
 from app.domain.session import SessionPreflight
+from app.domain.session_landmark_research import SessionLandmarkResearchReport
 from app.domain.shadow import ShadowCollectionResult, ShadowOpportunityDiagnostic
 from app.domain.shadow_paper import ShadowPaperSummary
 from app.domain.stop_geometry import StopGeometryResearchReport
@@ -115,6 +116,7 @@ from app.services.runtime_control import (
     load_runtime_drain,
     save_runtime_drain,
 )
+from app.services.session_landmark_research import build_session_landmark_report
 from app.services.session_preflight import build_session_preflight
 from app.services.shadow_collector import collect_btc_break_retest_once
 from app.services.shadow_overview import load_shadow_overview
@@ -380,6 +382,21 @@ def stop_geometry_research(hours: int = 168) -> StopGeometryResearchReport:
     if hours < 1 or hours > 168:
         raise HTTPException(status_code=422, detail="hours must be between 1 and 168")
     return build_stop_geometry_report(
+        settings.shadow_ledger_dir,
+        now=datetime.now(tz=_server_timezone()),
+        window_hours=hours,
+        symbols=settings.session_watch_symbols,
+    )
+
+
+@app.get(
+    f"{settings.api_prefix}/research/session-landmarks",
+    response_model=SessionLandmarkResearchReport,
+)
+def session_landmark_research(hours: int = 168) -> SessionLandmarkResearchReport:
+    if hours < 1 or hours > 168:
+        raise HTTPException(status_code=422, detail="hours must be between 1 and 168")
+    return build_session_landmark_report(
         settings.shadow_ledger_dir,
         now=datetime.now(tz=_server_timezone()),
         window_hours=hours,

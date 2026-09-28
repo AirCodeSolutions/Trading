@@ -2004,3 +2004,7 @@ Blocked probes copy the provenance and expose the descriptive minimum stop dista
 for the unchanged `max_spread_to_stop=0.15` guard. This value is never applied to
 the stop. Historical artifacts without the fields remain `N/A`; no backfill is
 performed and no trading behavior changes.
+
+## #171 — session landmark context (research-only)
+
+Ajout d’un `SessionLandmarkContext` causal aux diagnostics de signal, puis aux probes et PAPER trades créés depuis ces diagnostics. Le rapport `/api/v1/research/session-landmarks` expose les observations instrumentées et les derniers contextes par actif/mécanisme. Previous-day high/low, Asia high/low, London et US sont calculés avec les bougies M5 closes disponibles avant le signal ; aucune logique de sweep/reclaim n’est ajoutée tant qu’une définition gelée n’est pas nécessaire. Cette évolution ne change aucune règle de trading.

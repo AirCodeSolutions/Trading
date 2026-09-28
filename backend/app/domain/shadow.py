@@ -16,6 +16,15 @@ class ShadowSignalState(StrEnum):
     SIGNAL_EXECUTABLE = "signal_executable"
 
 
+class StopGeometrySource(StrEnum):
+    ATR_DISTANCE = "atr_distance"
+    ATR_DISTANCE_WITH_SPREAD = "atr_distance_with_spread"
+    RAW_STRUCTURE = "raw_structure"
+    RAW_STRUCTURE_WITH_SPREAD = "raw_structure_with_spread"
+    RAW_STRUCTURE_FLOOR_COMPARISON = "raw_structure_floor_comparison"
+    RAW_STRUCTURE_FLOOR_COMPARISON_WITH_SPREAD = "raw_structure_floor_comparison_with_spread"
+
+
 class ShadowSizingSnapshot(BaseModel):
     risk_fraction: float = Field(gt=0, le=1)
     approved: bool
@@ -46,6 +55,18 @@ class ShadowOpportunityDiagnostic(BaseModel):
     reclaim_atr_m5: float | None = None
     signal_close_location: float | None = Field(default=None, ge=0, le=1)
     structural_stop: float | None = None
+    raw_stop_price: float | None = None
+    stop_geometry_source: StopGeometrySource | None = None
+    stop_atr_distance: float | None = None
+    atr_m5: float | None = None
+    structural_stop_distance: float | None = None
+    structural_stop_atr_m5: float | None = None
+    structural_stop_atr_m15: float | None = None
+    spread_at_signal: float | None = None
+    spread_atr_m5: float | None = None
+    spread_atr_m15: float | None = None
+    broker_digits: int | None = None
+    broker_tick_size: float | None = None
     target_r: float | None = Field(default=None, gt=0)
     max_holding_bars: int | None = Field(default=None, gt=0)
     base_risk: ShadowSizingSnapshot | None = None

@@ -51,10 +51,7 @@ def advance_blocked_probe_book(
         and diagnostic.structural_stop is not None
         and diagnostic.base_risk is not None
         and not diagnostic.base_risk.approved
-        and (
-            state.last_started_signal_at is None
-            or signal_at > state.last_started_signal_at
-        )
+        and (state.last_started_signal_at is None or signal_at > state.last_started_signal_at)
     ):
         state.open_probe = create_blocked_probe(
             diagnostic=diagnostic,
@@ -88,20 +85,17 @@ def create_blocked_probe(
         raise ValueError("blocked probe stop geometry is invalid")
 
     target_r = diagnostic.target_r or DEFAULT_TARGET_R
-    max_holding_bars = (
-        diagnostic.max_holding_bars or DEFAULT_MAX_HOLDING_BARS
-    )
+    max_holding_bars = diagnostic.max_holding_bars or DEFAULT_MAX_HOLDING_BARS
     target = (
-        entry + target_r * risk_distance
-        if side == Side.BUY
-        else entry - target_r * risk_distance
+        entry + target_r * risk_distance if side == Side.BUY else entry - target_r * risk_distance
     )
     signal_at = diagnostic.latest_closed_m5_at + timedelta(minutes=5)
+    minimum_stop_distance = spec.spread / settings.max_spread_to_stop
+    additional_distance = max(0.0, minimum_stop_distance - risk_distance)
 
     probe = BlockedOpportunityProbe(
         probe_id=(
-            f"{diagnostic.symbol}-{diagnostic.mechanism.value}-"
-            f"blocked-{signal_at.isoformat()}"
+            f"{diagnostic.symbol}-{diagnostic.mechanism.value}-blocked-{signal_at.isoformat()}"
         ),
         symbol=diagnostic.symbol,
         mechanism=diagnostic.mechanism,
@@ -113,19 +107,38 @@ def create_blocked_probe(
         target_price=target,
         spread_at_entry=spec.spread,
         risk_distance=risk_distance,
+        raw_stop_price=diagnostic.raw_stop_price,
+        stop_geometry_source=diagnostic.stop_geometry_source,
+        stop_atr_distance=diagnostic.stop_atr_distance,
+        atr_m5=diagnostic.atr_m5,
+        atr_m15=diagnostic.atr_m15,
+        structural_stop_atr_m5=diagnostic.structural_stop_atr_m5,
+        structural_stop_atr_m15=diagnostic.structural_stop_atr_m15,
+        spread_atr_m5=diagnostic.spread_atr_m5,
+        spread_atr_m15=diagnostic.spread_atr_m15,
+        broker_digits=diagnostic.broker_digits,
+        broker_tick_size=diagnostic.broker_tick_size,
+        minimum_stop_distance_for_spread_guard=minimum_stop_distance,
+        additional_stop_distance_required=additional_distance,
+        additional_distance_atr_m5=(
+            additional_distance / diagnostic.atr_m5
+            if diagnostic.atr_m5 and diagnostic.atr_m5 > 0
+            else None
+        ),
+        additional_distance_atr_m15=(
+            additional_distance / diagnostic.atr_m15
+            if diagnostic.atr_m15 and diagnostic.atr_m15 > 0
+            else None
+        ),
+        additional_distance_current_stop=(
+            additional_distance / risk_distance if risk_distance > 0 else None
+        ),
         target_r=target_r,
         max_holding_bars=max_holding_bars,
         block_reason=diagnostic.base_risk.reason,
         capital_eur=diagnostic.base_risk.capital_eur,
-        max_risk_approved=bool(
-            diagnostic.max_risk is not None
-            and diagnostic.max_risk.approved
-        ),
-        max_risk_reason=(
-            diagnostic.max_risk.reason
-            if diagnostic.max_risk is not None
-            else None
-        ),
+        max_risk_approved=bool(diagnostic.max_risk is not None and diagnostic.max_risk.approved),
+        max_risk_reason=(diagnostic.max_risk.reason if diagnostic.max_risk is not None else None),
         macro_context=diagnostic.macro_context,
     )
     return _with_capital_feasibility(probe, spec)
@@ -135,19 +148,13 @@ def _with_capital_feasibility(
     probe: BlockedOpportunityProbe,
     spec: BrokerSymbolSpec,
 ) -> BlockedOpportunityProbe:
-    min_lot_loss = (
-        monetary_loss_per_lot(spec, probe.risk_distance) * spec.min_lot
-    )
+    min_lot_loss = monetary_loss_per_lot(spec, probe.risk_distance) * spec.min_lot
     reference_capital = (
-        probe.capital_eur
-        if probe.capital_eur > 0
-        else settings.reference_capital_eur
+        probe.capital_eur if probe.capital_eur > 0 else settings.reference_capital_eur
     )
     base_risk = settings.risk_per_trade_fraction
     max_risk = settings.absolute_max_risk_fraction
-    minimum_fraction = (
-        min_lot_loss / reference_capital if reference_capital > 0 else 0.0
-    )
+    minimum_fraction = min_lot_loss / reference_capital if reference_capital > 0 else 0.0
     required_base = min_lot_loss / base_risk if base_risk > 0 else 0.0
     required_max = min_lot_loss / max_risk if max_risk > 0 else 0.0
 
@@ -157,9 +164,7 @@ def _with_capital_feasibility(
             "required_capital_base_risk_eur": required_base,
             "required_capital_max_risk_eur": required_max,
             "minimum_feasible_risk_fraction": minimum_fraction,
-            "capital_granularity_feasible_under_max_risk": (
-                minimum_fraction <= max_risk
-            ),
+            "capital_granularity_feasible_under_max_risk": (minimum_fraction <= max_risk),
         }
     )
 
@@ -172,9 +177,9 @@ def resolve_open_probe(
         return probe
 
     first_full_bar_at = _next_full_m5_bar_start(probe.opened_at)
-    future_bars = [
-        bar for bar in bars_m5 if bar.timestamp >= first_full_bar_at
-    ][: probe.max_holding_bars]
+    future_bars = [bar for bar in bars_m5 if bar.timestamp >= first_full_bar_at][
+        : probe.max_holding_bars
+    ]
 
     for index, bar in enumerate(future_bars, start=1):
         if probe.side == Side.BUY:
@@ -259,9 +264,7 @@ def load_blocked_probe_state(path: Path) -> BlockedProbeState:
     if not path.is_file():
         return BlockedProbeState()
     try:
-        return BlockedProbeState.model_validate_json(
-            path.read_text(encoding="utf-8")
-        )
+        return BlockedProbeState.model_validate_json(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return BlockedProbeState()
 
@@ -303,9 +306,7 @@ def load_blocked_probe_summary(
 ) -> BlockedProbeSummary:
     state = load_blocked_probe_state(state_path)
     probes = load_closed_probes(probes_path)
-    results = [
-        probe.result_r for probe in probes if probe.result_r is not None
-    ]
+    results = [probe.result_r for probe in probes if probe.result_r is not None]
     gains = sum(result for result in results if result > 0)
     losses = -sum(result for result in results if result < 0)
     profit_factor = gains / losses if losses > 0 else (99.0 if gains > 0 else 0.0)

@@ -1992,3 +1992,15 @@ Extended `ProbeEarlyContextReport` with the same strictly causal 1m/3m post-entr
 ## 2026-09-28 — Pre-signal context × early follow-through interaction
 
 PR #169 adds a descriptive join from the existing causal `ProbeEarlyContextEpisode` fields to its existing post-entry Close1/Close3/MFE3/MAE3 fields. The report remains restricted to resolved executable unqualified probes and separates final W/L from natural Close3-positive, Close3-negative and Close3-zero cohorts. It reports medians and precursor patterns without thresholds, scores, rankings or execution authority. Missing pre-signal and post-entry observations are preserved as missing, and admitted, blocked and waiting populations remain separate.
+## 2026-09-28 — Stop geometry provenance for execution research
+
+PR #170 adds prospective-only stop geometry provenance to the existing shadow
+diagnostic. It records whether the existing calculation was determined by an ATR
+distance, raw structure, or the raw-structure versus ATR-floor comparison, including
+the existing SELL spread treatment. It also persists causal ATR M5/M15 ratios,
+spread ratios, raw stop and the broker digits/tick-size snapshot.
+
+Blocked probes copy the provenance and expose the descriptive minimum stop distance
+for the unchanged `max_spread_to_stop=0.15` guard. This value is never applied to
+the stop. Historical artifacts without the fields remain `N/A`; no backfill is
+performed and no trading behavior changes.

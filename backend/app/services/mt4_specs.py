@@ -18,6 +18,7 @@ def _build_spec(
     max_lot: object,
     lot_step: object,
     margin_required: object,
+    digits: object = None,
 ) -> BrokerSymbolSpec | None:
     try:
         return BrokerSymbolSpec(
@@ -30,6 +31,7 @@ def _build_spec(
             max_lot=float(max_lot),
             lot_step=float(lot_step),
             margin_required=float(margin_required),
+            digits=int(digits) if digits not in {None, ""} else None,
         )
     except (TypeError, ValueError, ValidationError):
         return None
@@ -55,6 +57,7 @@ def read_symbol_snapshot(path: Path) -> dict[str, BrokerSymbolSpec]:
                 max_lot=row.get("max_lot"),
                 lot_step=row.get("lot_step"),
                 margin_required=row.get("margin_required") or 0,
+                digits=row.get("digits"),
             )
             if spec is not None:
                 specs[symbol] = spec
@@ -77,6 +80,7 @@ def read_symbol_json(path: Path) -> BrokerSymbolSpec | None:
             max_lot=symbol_spec["max_lot"],
             lot_step=symbol_spec["lot_step"],
             margin_required=symbol_spec.get("margin_required", 0),
+            digits=payload.get("digits"),
         )
     except (KeyError, TypeError, ValueError, json.JSONDecodeError):
         return None

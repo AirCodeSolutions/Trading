@@ -11,6 +11,7 @@ from app.domain.shadow import (
     ShadowOpportunityDiagnostic,
     ShadowSignalState,
     ShadowSizingSnapshot,
+    StopGeometrySource,
 )
 from app.domain.trading import Side
 from app.services.capital_risk import size_position
@@ -81,10 +82,7 @@ def scan_shadow_opportunity(
         return ShadowOpportunityDiagnostic(
             **base_payload,
             state=ShadowSignalState.NO_SIGNAL,
-            reason=(
-                "session reopen warmup: "
-                f"{warmup_remaining} closed M5 bar(s) remaining"
-            ),
+            reason=(f"session reopen warmup: {warmup_remaining} closed M5 bar(s) remaining"),
         )
 
     snapshot_age = evaluated_at - signal_close
@@ -133,20 +131,43 @@ def scan_shadow_opportunity(
     }:
         if side == Side.BUY:
             structural_stop = entry - stop_atr
+            stop_source = StopGeometrySource.ATR_DISTANCE
         else:
             structural_stop = entry + stop_atr + spec.spread
+            stop_source = StopGeometrySource.ATR_DISTANCE_WITH_SPREAD
     elif mechanism in {
         OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
         OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL,
     }:
         if side == Side.BUY:
             structural_stop = raw_stop
+            stop_source = StopGeometrySource.RAW_STRUCTURE
         else:
             structural_stop = raw_stop + spec.spread
+            stop_source = StopGeometrySource.RAW_STRUCTURE_WITH_SPREAD
     elif side == Side.BUY:
         structural_stop = min(raw_stop, entry - stop_atr)
+        stop_source = (
+            StopGeometrySource.RAW_STRUCTURE_FLOOR_COMPARISON
+            if raw_stop <= entry - stop_atr
+            else StopGeometrySource.ATR_DISTANCE
+        )
     else:
         structural_stop = max(raw_stop + spec.spread, entry + stop_atr)
+        stop_source = (
+            StopGeometrySource.RAW_STRUCTURE_FLOOR_COMPARISON_WITH_SPREAD
+            if raw_stop + spec.spread >= entry + stop_atr
+            else StopGeometrySource.ATR_DISTANCE
+        )
+
+    atr_m5_value = atr_m5[-1] if atr_m5 else None
+    structural_stop_distance = abs(entry - structural_stop)
+    structural_stop_atr_m5 = (
+        structural_stop_distance / atr_m5_value if atr_m5_value and atr_m5_value > 0 else None
+    )
+    structural_stop_atr_m15 = structural_stop_distance / regime.atr if regime.atr > 0 else None
+    spread_atr_m5 = spec.spread / atr_m5_value if atr_m5_value and atr_m5_value > 0 else None
+    spread_atr_m15 = spec.spread / regime.atr if regime.atr > 0 else None
 
     base_sizing = _sizing_snapshot(
         spec,
@@ -182,6 +203,18 @@ def scan_shadow_opportunity(
         reclaim_atr_m5=reclaim,
         signal_close_location=close_location,
         structural_stop=structural_stop,
+        raw_stop_price=raw_stop,
+        stop_geometry_source=stop_source,
+        stop_atr_distance=stop_atr,
+        atr_m5=atr_m5_value,
+        structural_stop_distance=structural_stop_distance,
+        structural_stop_atr_m5=structural_stop_atr_m5,
+        structural_stop_atr_m15=structural_stop_atr_m15,
+        spread_at_signal=spec.spread,
+        spread_atr_m5=spread_atr_m5,
+        spread_atr_m15=spread_atr_m15,
+        broker_digits=spec.digits,
+        broker_tick_size=spec.tick_size,
         target_r=target_r,
         max_holding_bars=max_holding_bars,
         base_risk=base_sizing,
@@ -197,18 +230,21 @@ def _detect_signal(
     previous_regime: RegimeSnapshot | None,
     is_new_m15_close: bool,
     mechanism: OpportunityMechanism,
-) -> tuple[
-    Side,
-    float,
-    float,
-    int,
-    float,
-    float | None,
-    float | None,
-    float | None,
-    float | None,
-    str,
-] | None:
+) -> (
+    tuple[
+        Side,
+        float,
+        float,
+        int,
+        float,
+        float | None,
+        float | None,
+        float | None,
+        float | None,
+        str,
+    ]
+    | None
+):
     if mechanism == OpportunityMechanism.BREAK_RETEST_REACCEL:
         return _break_retest_signal(bars, atr, regime)
     if mechanism == OpportunityMechanism.FAILED_AUCTION_REVERSAL:
@@ -242,11 +278,7 @@ def _directional_pullback_resumption_signal(
     atr: Sequence[float],
     regime: RegimeSnapshot,
 ):
-    if (
-        len(bars) < 3
-        or regime.regime != MarketRegime.DIRECTIONAL
-        or regime.direction == 0
-    ):
+    if len(bars) < 3 or regime.regime != MarketRegime.DIRECTIONAL or regime.direction == 0:
         return None
 
     index = len(bars) - 1
@@ -259,11 +291,7 @@ def _directional_pullback_resumption_signal(
     confirmation = bars[index]
     side = Side.BUY if regime.direction > 0 else Side.SELL
     bar_range = confirmation.high - confirmation.low
-    close_location = (
-        (confirmation.close - confirmation.low) / bar_range
-        if bar_range > 0
-        else None
-    )
+    close_location = (confirmation.close - confirmation.low) / bar_range if bar_range > 0 else None
 
     if side == Side.BUY:
         if not (
@@ -485,14 +513,8 @@ def _post_shock_signal(
     if bar_range <= 0 or regime.atr <= 0:
         return None
     close_location = (bar.close - bar.low) / bar_range
-    aligned = (
-        regime.direction > 0
-        and bar.close > bar.open
-        and close_location >= 0.60
-    ) or (
-        regime.direction < 0
-        and bar.close < bar.open
-        and close_location <= 0.40
+    aligned = (regime.direction > 0 and bar.close > bar.open and close_location >= 0.60) or (
+        regime.direction < 0 and bar.close < bar.open and close_location <= 0.40
     )
     if not aligned or bar_range > 0.90 * regime.atr:
         return None
@@ -517,10 +539,7 @@ def _no_signal_reason(
     regime: RegimeSnapshot,
     mechanism: OpportunityMechanism,
 ) -> str:
-    return (
-        f"{mechanism.value} conditions are not complete in "
-        f"{regime.regime.value} regime"
-    )
+    return f"{mechanism.value} conditions are not complete in {regime.regime.value} regime"
 
 
 def _causal_percentile(values: Sequence[float], index: int) -> float:
@@ -550,11 +569,7 @@ def _sizing_snapshot(
     *,
     capital_eur: float | None = None,
 ) -> ShadowSizingSnapshot:
-    effective_capital = (
-        settings.reference_capital_eur
-        if capital_eur is None
-        else capital_eur
-    )
+    effective_capital = settings.reference_capital_eur if capital_eur is None else capital_eur
     stop_distance = abs(entry - stop)
     spread_to_stop = spec.spread / stop_distance if stop_distance > 0 else 0.0
     if effective_capital <= 0:

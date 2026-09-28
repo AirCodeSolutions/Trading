@@ -26,6 +26,7 @@ from app.domain.trading_intelligence import (
     OpportunityCausalPattern,
     OpportunityDetectionStage,
     OpportunityWaitingSummary,
+    ProbeEarlyContextEpisode,
     ProbeEarlyContextReport,
     ProbeEarlyContextSummary,
     TradeIntelligence,
@@ -36,6 +37,7 @@ from app.domain.xau_microbar import XauMicrobarM1, XauMicrobarState
 from app.services.trading_intelligence import (
     _build_admitted_trade_early_context_report,
     _build_blocked_probe_early_context_report,
+    _build_pre_signal_follow_through_interaction_report,
     _build_probe_early_context_report,
     _build_waiting_early_context_report,
     _candidate_evidence_coverage,
@@ -1478,6 +1480,77 @@ def test_admitted_trade_early_context_compares_follow_through(
     assert summary.loser_precursor_rate == 0.0
     assert summary.winner_precursor_patterns == {"directional_displacement": 1}
     assert summary.loser_precursor_patterns == {}
+
+
+def test_pre_signal_follow_through_interaction_keeps_zero_and_missing_separate() -> None:
+    def episode(
+        trade_id: str,
+        result_r: float,
+        close3: float | None,
+        *,
+        move15: float | None,
+        precursor: OpportunityCausalPattern | None,
+    ) -> ProbeEarlyContextEpisode:
+        return ProbeEarlyContextEpisode(
+            trade_id=trade_id,
+            strategy_id="XAUUSD:directional_transition",
+            symbol="XAUUSD",
+            mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+            side=Side.BUY,
+            signal_at=NOW,
+            status="target" if result_r > 0 else "stop",
+            result_r=result_r,
+            directional_tick_samples_5m=10,
+            side_aligned_tick_imbalance_5m=0.1,
+            directional_tick_samples_15m=10,
+            side_aligned_tick_imbalance_15m=0.2,
+            pressure_agreement_5m_15m=True,
+            side_aligned_move_5m_r=0.3,
+            side_aligned_move_15m_r=move15,
+            spread_to_risk=0.05,
+            average_quotes_per_bar_5m=20,
+            path_efficiency_5m=0.4,
+            precursor_pattern=precursor,
+            follow_through_close_1m_r=-0.1,
+            follow_through_close_3m_r=close3,
+            early_mfe_3m_r=0.2,
+            early_mae_3m_r=0.3,
+        )
+
+    report = _build_pre_signal_follow_through_interaction_report(
+        probe_report=ProbeEarlyContextReport(
+            generated_at=NOW,
+            window_hours=168,
+            resolved_probes=4,
+            m1_eligible_probes=4,
+            tick_pressure_eligible_probes=3,
+            tick_pressure_wins=1,
+            tick_pressure_losses=2,
+            recent_observable_probes=[
+                episode("winner", 1.8, 0.4, move15=0.8, precursor=OpportunityCausalPattern.STRUCTURAL_EXTREME_STRETCH),
+                episode("loser", -1.0, -0.3, move15=1.2, precursor=None),
+                episode("zero", 1.0, 0.0, move15=0.5, precursor=OpportunityCausalPattern.DIRECTIONAL_DISPLACEMENT),
+                episode("missing-pre", -1.0, None, move15=None, precursor=None),
+            ],
+        ),
+        now=NOW,
+        window_hours=168,
+    )
+
+    summary = report.summaries[0]
+    assert report.observations == 3
+    assert report.close3_positive == 1
+    assert report.close3_negative == 1
+    assert report.close3_zero == 1
+    assert summary.final_outcome.observations == 3
+    assert summary.final_outcome.winners == 2
+    assert summary.final_outcome.losers == 1
+    assert summary.close3_positive.median_move_15m_r == 0.8
+    assert summary.close3_negative.median_move_15m_r == 1.2
+    assert summary.close3_zero.observations == 1
+    assert summary.close3_positive.precursor_patterns == {
+        "structural_extreme_stretch": 1
+    }
 
 
 def test_post_entry_follow_through_uses_only_full_minutes_after_fill() -> None:

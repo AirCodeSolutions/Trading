@@ -30,6 +30,9 @@ from app.domain.trading_intelligence import (
     OpportunityCausalPatternSummary,
     OpportunityDetectionStage,
     OpportunityWaitingSummary,
+    PreSignalFollowThroughGroup,
+    PreSignalFollowThroughInteractionReport,
+    PreSignalFollowThroughInteractionSummary,
     ProbeEarlyContextEpisode,
     ProbeEarlyContextReport,
     ProbeEarlyContextSummary,
@@ -283,6 +286,15 @@ def build_trading_intelligence(
         if include_waiting_early_context
         else None
     )
+    pre_signal_follow_through_interaction = (
+        _build_pre_signal_follow_through_interaction_report(
+            probe_report=probe_early_context,
+            now=now,
+            window_hours=window_hours,
+        )
+        if probe_early_context is not None
+        else None
+    )
     candidate_evidence_coverage = _candidate_evidence_coverage(
         probe_early_context=probe_early_context,
         waiting_early_context=waiting_early_context,
@@ -334,6 +346,7 @@ def build_trading_intelligence(
         waiting_costs=waiting_costs,
         waiting_early_context=waiting_early_context,
         probe_early_context=probe_early_context,
+        pre_signal_follow_through_interaction=pre_signal_follow_through_interaction,
         blocked_probe_early_context=blocked_probe_early_context,
         admitted_trade_early_context=admitted_trade_early_context,
         candidate_evidence_coverage=candidate_evidence_coverage,
@@ -1818,6 +1831,107 @@ def _precursor_pattern_counts(
     )
 
 
+def _build_pre_signal_follow_through_interaction_report(
+    *,
+    probe_report: ProbeEarlyContextReport,
+    now: datetime,
+    window_hours: int,
+) -> PreSignalFollowThroughInteractionReport:
+    """Join frozen pre-signal probe context to observed post-entry outcomes."""
+
+    grouped: dict[str, list[ProbeEarlyContextEpisode]] = defaultdict(list)
+    for row in probe_report.recent_observable_probes:
+        if row.follow_through_close_3m_r is not None:
+            grouped[row.strategy_id].append(row)
+
+    def group(rows: list[ProbeEarlyContextEpisode]) -> PreSignalFollowThroughGroup:
+        def values(name: str) -> list[float]:
+            return [
+                value
+                for row in rows
+                if (value := getattr(row, name)) is not None
+            ]
+
+        def med(name: str) -> float | None:
+            items = values(name)
+            return median(items) if items else None
+
+        agreements = [
+            row.pressure_agreement_5m_15m
+            for row in rows
+            if row.pressure_agreement_5m_15m is not None
+        ]
+        with_precursor = [row for row in rows if row.precursor_pattern is not None]
+        return PreSignalFollowThroughGroup(
+            observations=len(rows),
+            winners=sum(row.result_r > 0 for row in rows),
+            losers=sum(row.result_r < 0 for row in rows),
+            median_imbalance_5m=med("side_aligned_tick_imbalance_5m"),
+            median_imbalance_15m=med("side_aligned_tick_imbalance_15m"),
+            pressure_agreement_rate=(
+                sum(agreements) / len(agreements) if agreements else None
+            ),
+            median_move_5m_r=med("side_aligned_move_5m_r"),
+            median_move_15m_r=med("side_aligned_move_15m_r"),
+            median_path_efficiency_5m=med("path_efficiency_5m"),
+            median_spread_to_risk=med("spread_to_risk"),
+            precursor_rate=(
+                len(with_precursor) / len(rows) if rows else None
+            ),
+            precursor_patterns=dict(
+                Counter(
+                    row.precursor_pattern.value
+                    for row in with_precursor
+                    if row.precursor_pattern is not None
+                )
+            ),
+            median_close_1m_r=med("follow_through_close_1m_r"),
+            median_close_3m_r=med("follow_through_close_3m_r"),
+            median_mfe_3m_r=med("early_mfe_3m_r"),
+            median_mae_3m_r=med("early_mae_3m_r"),
+        )
+
+    summaries: list[PreSignalFollowThroughInteractionSummary] = []
+    for strategy_id, rows in sorted(grouped.items()):
+        first = rows[0]
+        summaries.append(
+            PreSignalFollowThroughInteractionSummary(
+                strategy_id=strategy_id,
+                symbol=first.symbol,
+                mechanism=first.mechanism,
+                final_outcome=group(rows),
+                close3_positive=group(
+                    [row for row in rows if row.follow_through_close_3m_r > 0]
+                ),
+                close3_negative=group(
+                    [row for row in rows if row.follow_through_close_3m_r < 0]
+                ),
+                close3_zero=group(
+                    [row for row in rows if row.follow_through_close_3m_r == 0]
+                ),
+            )
+        )
+
+    all_rows = [row for rows in grouped.values() for row in rows]
+    return PreSignalFollowThroughInteractionReport(
+        generated_at=now,
+        window_hours=window_hours,
+        observations=len(all_rows),
+        winners=sum(row.result_r > 0 for row in all_rows),
+        losers=sum(row.result_r < 0 for row in all_rows),
+        close3_positive=sum(row.follow_through_close_3m_r > 0 for row in all_rows),
+        close3_negative=sum(row.follow_through_close_3m_r < 0 for row in all_rows),
+        close3_zero=sum(row.follow_through_close_3m_r == 0 for row in all_rows),
+        summaries=summaries,
+        limitations=[
+            "Prospective executable unqualified probes only; admitted, blocked and waiting populations are excluded.",
+            "Pre-signal fields come from fully closed M1 bars before signal_at; post-entry fields come from consecutive fully closed M1 bars after opened_at and before exit_at.",
+            "Close3 equal to zero is retained as its own cohort; no threshold, score, ranking or trading authority is produced.",
+            "Missing pre-signal or post-entry values remain missing and are never converted to zero.",
+        ],
+    )
+
+
 def _build_blocked_probe_early_context_report(
     *,
     probes: list[BlockedOpportunityProbe],
@@ -2333,6 +2447,11 @@ def _build_probe_early_context_report(
         tick_pressure_eligible_probes=len(tick_all),
         tick_pressure_wins=sum(row.result_r > 0 for row in tick_all),
         tick_pressure_losses=sum(row.result_r < 0 for row in tick_all),
+        recent_observable_probes=sorted(
+            [row for row in episodes if row.follow_through_close_3m_r is not None],
+            key=lambda row: row.signal_at,
+            reverse=True,
+        )[:100],
         summaries=sorted(
             summaries,
             key=lambda row: (

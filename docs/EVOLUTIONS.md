@@ -1976,3 +1976,12 @@ The existing causal geometry functions and signal time are reused. Dashboard can
 Ajout d’un contrat central de session évalué avec des datetimes timezone-aware dans `Europe/Athens`, la timezone MT4 déjà configurée. BTCUSD est traité 24/7 ; EURUSD, GBPUSD, XAUUSD et XAGUSD sont `market_closed` pendant le week-end observé du broker. Le préflight expose `closed_symbols` tout en conservant les champs existants.
 
 Les contrôles de fraîcheur de quote et M5 restent inchangés quand une session est attendue ouverte : une panne réelle demeure `degraded`. Les symboles sans profil retournent `unknown_session` et restent conservateurs. Aucun worker n’est redémarré par cette logique, et aucun comportement de trading ne change.
+
+
+## 2026-09-28 — measure first 1–3 M1 after admitted entry
+
+Extended admitted-trade research with execution-aware post-entry follow-through. BUY trades are marked against bid microbars and SELL trades against ask microbars, normalized by the original structural risk distance.
+
+Only fully closed consecutive M1 bars after the fill are used. The partial entry minute, missing-minute gaps and bars after exit are excluded. The dashboard exposes observable counts plus winner/loss medians for 1m/3m close follow-through and 3m MFE/MAE.
+
+No trading rule or exit behavior changes.

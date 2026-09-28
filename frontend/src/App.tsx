@@ -976,6 +976,16 @@ type TradingIntelligence = {
       loser_median_mae_r: number | null;
       winner_median_r_lost_while_waiting: number | null;
       loser_median_r_lost_while_waiting: number | null;
+      post_entry_1m_observable_trades: number;
+      post_entry_3m_observable_trades: number;
+      winner_median_follow_through_close_1m_r: number | null;
+      loser_median_follow_through_close_1m_r: number | null;
+      winner_median_follow_through_close_3m_r: number | null;
+      loser_median_follow_through_close_3m_r: number | null;
+      winner_median_early_mfe_3m_r: number | null;
+      loser_median_early_mfe_3m_r: number | null;
+      winner_median_early_mae_3m_r: number | null;
+      loser_median_early_mae_3m_r: number | null;
       winner_precursor_rate: number | null;
       loser_precursor_rate: number | null;
       winner_precursor_patterns: Record<string, number>;
@@ -3251,7 +3261,9 @@ export default function App() {
           <h3>Admitted Trade Context · follow-through réel · 168 h</h3>
           <p className="intelligence-note">
             Trades PAPER/DEMO admis uniquement. Le contexte M1 et precursor est figé avant signal,
-            puis comparé au résultat, MFE/MAE et coût d’attente. Les probes restent séparés.
+            puis comparé au résultat, MFE/MAE, coût d’attente et follow-through des premières M1
+            entièrement closes après le fill. Les probes restent séparés et aucune sortie anticipée
+            n’est déclenchée par cette mesure.
           </p>
           {admittedTradeEarlyContext ? (
             <>
@@ -3290,6 +3302,11 @@ export default function App() {
                     <span>MFE W / L</span>
                     <span>MAE W / L</span>
                     <span>R attente W / L</span>
+                    <span>Obs post 1m / 3m</span>
+                    <span>Close1/R W / L</span>
+                    <span>Close3/R W / L</span>
+                    <span>MFE3/R W / L</span>
+                    <span>MAE3/R W / L</span>
                     <span>Precursor W / L</span>
                   </div>
                   {admittedTradeEarlyContext.summaries
@@ -3312,6 +3329,11 @@ export default function App() {
                         <span>{row.winner_median_mfe_r == null ? "—" : row.winner_median_mfe_r.toFixed(2)} / {row.loser_median_mfe_r == null ? "—" : row.loser_median_mfe_r.toFixed(2)}</span>
                         <span>{row.winner_median_mae_r == null ? "—" : row.winner_median_mae_r.toFixed(2)} / {row.loser_median_mae_r == null ? "—" : row.loser_median_mae_r.toFixed(2)}</span>
                         <span>{row.winner_median_r_lost_while_waiting == null ? "—" : row.winner_median_r_lost_while_waiting.toFixed(2)} / {row.loser_median_r_lost_while_waiting == null ? "—" : row.loser_median_r_lost_while_waiting.toFixed(2)}</span>
+                        <span>{row.post_entry_1m_observable_trades} / {row.post_entry_3m_observable_trades}</span>
+                        <span>{row.winner_median_follow_through_close_1m_r == null ? "—" : row.winner_median_follow_through_close_1m_r.toFixed(2)} / {row.loser_median_follow_through_close_1m_r == null ? "—" : row.loser_median_follow_through_close_1m_r.toFixed(2)}</span>
+                        <span>{row.winner_median_follow_through_close_3m_r == null ? "—" : row.winner_median_follow_through_close_3m_r.toFixed(2)} / {row.loser_median_follow_through_close_3m_r == null ? "—" : row.loser_median_follow_through_close_3m_r.toFixed(2)}</span>
+                        <span>{row.winner_median_early_mfe_3m_r == null ? "—" : row.winner_median_early_mfe_3m_r.toFixed(2)} / {row.loser_median_early_mfe_3m_r == null ? "—" : row.loser_median_early_mfe_3m_r.toFixed(2)}</span>
+                        <span>{row.winner_median_early_mae_3m_r == null ? "—" : row.winner_median_early_mae_3m_r.toFixed(2)} / {row.loser_median_early_mae_3m_r == null ? "—" : row.loser_median_early_mae_3m_r.toFixed(2)}</span>
                         <span>{row.winner_precursor_rate == null ? "—" : `${(row.winner_precursor_rate * 100).toFixed(0)} %`} / {row.loser_precursor_rate == null ? "—" : `${(row.loser_precursor_rate * 100).toFixed(0)} %`}</span>
                       </div>
                     ))}

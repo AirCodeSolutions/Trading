@@ -1487,6 +1487,14 @@ def _build_admitted_trade_early_context_report(
             side=trade.side,
             signal_at=trade.signal_at,
         )
+        post_entry = _post_entry_m1_follow_through(
+            microbars_by_symbol.get(trade.symbol.upper(), []),
+            side=trade.side,
+            opened_at=trade.opened_at,
+            exit_at=trade.exit_at,
+            entry_price=trade.entry_price,
+            risk_distance=source.risk_distance,
+        )
         episodes.append(
             AdmittedTradeEarlyContextEpisode(
                 trade_id=trade.trade_id,
@@ -1523,6 +1531,16 @@ def _build_admitted_trade_early_context_report(
                     else None
                 ),
                 path_efficiency_5m=geometry_5m.path_efficiency,
+                post_entry_complete_m1_bars=int(
+                    post_entry["post_entry_complete_m1_bars"]
+                ),
+                exit_within_3m=bool(post_entry["exit_within_3m"]),
+                follow_through_close_1m_r=post_entry["follow_through_close_1m_r"],
+                early_mfe_1m_r=post_entry["early_mfe_1m_r"],
+                early_mae_1m_r=post_entry["early_mae_1m_r"],
+                follow_through_close_3m_r=post_entry["follow_through_close_3m_r"],
+                early_mfe_3m_r=post_entry["early_mfe_3m_r"],
+                early_mae_3m_r=post_entry["early_mae_3m_r"],
                 precursor_pattern=(
                     precursor.pattern if precursor is not None else None
                 ),
@@ -1552,6 +1570,16 @@ def _build_admitted_trade_early_context_report(
             row.pressure_agreement_5m_15m for row in losses
             if row.pressure_agreement_5m_15m is not None
         ]
+        post_1m = [
+            row for row in eligible if row.follow_through_close_1m_r is not None
+        ]
+        post_3m = [
+            row for row in eligible if row.follow_through_close_3m_r is not None
+        ]
+        post_1m_wins = [row for row in post_1m if row.result_r > 0]
+        post_1m_losses = [row for row in post_1m if row.result_r < 0]
+        post_3m_wins = [row for row in post_3m if row.result_r > 0]
+        post_3m_losses = [row for row in post_3m if row.result_r < 0]
         first = eligible[0]
         summaries.append(
             AdmittedTradeEarlyContextSummary(
@@ -1603,6 +1631,32 @@ def _build_admitted_trade_early_context_report(
                 loser_median_r_lost_while_waiting=_median_or_none(
                     row.r_lost_while_waiting for row in losses
                 ),
+                post_entry_1m_observable_trades=len(post_1m),
+                post_entry_3m_observable_trades=len(post_3m),
+                winner_median_follow_through_close_1m_r=_median_or_none(
+                    row.follow_through_close_1m_r for row in post_1m_wins
+                ),
+                loser_median_follow_through_close_1m_r=_median_or_none(
+                    row.follow_through_close_1m_r for row in post_1m_losses
+                ),
+                winner_median_follow_through_close_3m_r=_median_or_none(
+                    row.follow_through_close_3m_r for row in post_3m_wins
+                ),
+                loser_median_follow_through_close_3m_r=_median_or_none(
+                    row.follow_through_close_3m_r for row in post_3m_losses
+                ),
+                winner_median_early_mfe_3m_r=_median_or_none(
+                    row.early_mfe_3m_r for row in post_3m_wins
+                ),
+                loser_median_early_mfe_3m_r=_median_or_none(
+                    row.early_mfe_3m_r for row in post_3m_losses
+                ),
+                winner_median_early_mae_3m_r=_median_or_none(
+                    row.early_mae_3m_r for row in post_3m_wins
+                ),
+                loser_median_early_mae_3m_r=_median_or_none(
+                    row.early_mae_3m_r for row in post_3m_losses
+                ),
                 winner_precursor_rate=_precursor_rate(wins),
                 loser_precursor_rate=_precursor_rate(losses),
                 winner_precursor_patterns=_precursor_pattern_counts(wins),
@@ -1646,11 +1700,92 @@ def _build_admitted_trade_early_context_report(
                 "and is never backfilled before directional tick collection."
             ),
             (
+                "Post-entry follow-through uses only fully closed consecutive M1 "
+                "bars after the fill; the partial entry minute and bars after exit "
+                "are excluded."
+            ),
+            (
+                "The 1m/3m follow-through fields are observational only and do not "
+                "trigger early exits, break-even moves or stop changes."
+            ),
+            (
                 "Winner/loser differences are descriptive until both classes "
                 "contain enough genuinely post-deployment observations."
             ),
         ],
     )
+
+
+def _post_entry_m1_follow_through(
+    rows: list[XauMicrobarM1],
+    *,
+    side: Side,
+    opened_at: datetime,
+    exit_at: datetime | None,
+    entry_price: float,
+    risk_distance: float,
+) -> dict[str, int | bool | float | None]:
+    minute_floor = opened_at.replace(second=0, microsecond=0)
+    first_start = (
+        minute_floor
+        if opened_at == minute_floor
+        else minute_floor + timedelta(minutes=1)
+    )
+    by_minute = {row.minute_at: row for row in rows}
+    prefix: list[XauMicrobarM1] = []
+    for offset in range(3):
+        minute_at = first_start + timedelta(minutes=offset)
+        row = by_minute.get(minute_at)
+        if row is None:
+            break
+        if exit_at is not None and row.minute_at + timedelta(minutes=1) > exit_at:
+            break
+        prefix.append(row)
+
+    def metrics(
+        count: int,
+    ) -> tuple[float | None, float | None, float | None]:
+        if risk_distance <= 0 or len(prefix) < count:
+            return None, None, None
+        selected = prefix[:count]
+        last = selected[-1]
+        if side == Side.BUY:
+            close_r = (last.bid_close - entry_price) / risk_distance
+            mfe_r = max(
+                max(0.0, row.bid_high - entry_price) / risk_distance
+                for row in selected
+            )
+            mae_r = max(
+                max(0.0, entry_price - row.bid_low) / risk_distance
+                for row in selected
+            )
+        else:
+            close_r = (entry_price - last.ask_close) / risk_distance
+            mfe_r = max(
+                max(0.0, entry_price - row.ask_low) / risk_distance
+                for row in selected
+            )
+            mae_r = max(
+                max(0.0, row.ask_high - entry_price) / risk_distance
+                for row in selected
+            )
+        return close_r, mfe_r, mae_r
+
+    close_1m, mfe_1m, mae_1m = metrics(1)
+    close_3m, mfe_3m, mae_3m = metrics(3)
+    return {
+        "post_entry_complete_m1_bars": len(prefix),
+        "exit_within_3m": (
+            exit_at is not None
+            and exit_at < first_start + timedelta(minutes=3)
+        ),
+        "follow_through_close_1m_r": close_1m,
+        "early_mfe_1m_r": mfe_1m,
+        "early_mae_1m_r": mae_1m,
+        "follow_through_close_3m_r": close_3m,
+        "early_mfe_3m_r": mfe_3m,
+        "early_mae_3m_r": mae_3m,
+    }
 
 
 def _median_or_none(values: Iterable[float | None]) -> float | None:

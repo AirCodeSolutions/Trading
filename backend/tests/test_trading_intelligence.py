@@ -42,6 +42,7 @@ from app.services.trading_intelligence import (
     _candidate_evidence_gap_attributions,
     _classify_m1_evidence_gap,
     _market_opportunity_episodes,
+    _post_entry_m1_follow_through,
     _side_aligned_imbalance,
     _side_aligned_move_r,
     _trade_metrics,
@@ -1448,6 +1449,154 @@ def test_admitted_trade_early_context_compares_follow_through(
     assert summary.loser_precursor_rate == 0.0
     assert summary.winner_precursor_patterns == {"directional_displacement": 1}
     assert summary.loser_precursor_patterns == {}
+
+
+def test_post_entry_follow_through_uses_only_full_minutes_after_fill() -> None:
+    opened_at = NOW.replace(hour=10, minute=0, second=30)
+    first_full = NOW.replace(hour=10, minute=1, second=0)
+
+    def row(
+        minute_at: datetime,
+        *,
+        bid_low: float,
+        bid_high: float,
+        bid_close: float,
+    ) -> XauMicrobarM1:
+        spread = 0.2
+        ask_low = bid_low + spread
+        ask_high = bid_high + spread
+        ask_close = bid_close + spread
+        return XauMicrobarM1(
+            minute_at=minute_at,
+            first_quote_at=minute_at,
+            last_quote_at=minute_at + timedelta(seconds=50),
+            bid_open=100.0,
+            bid_high=bid_high,
+            bid_low=bid_low,
+            bid_close=bid_close,
+            ask_open=100.2,
+            ask_high=ask_high,
+            ask_low=ask_low,
+            ask_close=ask_close,
+            mid_open=100.1,
+            mid_high=(bid_high + ask_high) / 2,
+            mid_low=(bid_low + ask_low) / 2,
+            mid_close=(bid_close + ask_close) / 2,
+            spread_open=spread,
+            spread_high=spread,
+            spread_low=spread,
+            spread_close=spread,
+            spread_sum=spread * 4,
+            quote_count=4,
+            mid_up_ticks=2,
+            mid_down_ticks=1,
+        )
+
+    rows = [
+        # Partial entry minute: must never be used.
+        row(
+            NOW.replace(hour=10, minute=0),
+            bid_low=90.0,
+            bid_high=110.0,
+            bid_close=90.0,
+        ),
+        row(first_full, bid_low=99.9, bid_high=100.3, bid_close=100.2),
+        row(
+            first_full + timedelta(minutes=1),
+            bid_low=99.8,
+            bid_high=100.4,
+            bid_close=100.1,
+        ),
+        row(
+            first_full + timedelta(minutes=2),
+            bid_low=99.7,
+            bid_high=100.6,
+            bid_close=100.5,
+        ),
+    ]
+
+    metrics = _post_entry_m1_follow_through(
+        rows,
+        side=Side.BUY,
+        opened_at=opened_at,
+        exit_at=first_full + timedelta(minutes=3),
+        entry_price=100.0,
+        risk_distance=1.0,
+    )
+
+    assert metrics["post_entry_complete_m1_bars"] == 3
+    assert metrics["exit_within_3m"] is False
+    assert abs(float(metrics["follow_through_close_1m_r"]) - 0.2) < 1e-12
+    assert abs(float(metrics["early_mfe_1m_r"]) - 0.3) < 1e-12
+    assert abs(float(metrics["early_mae_1m_r"]) - 0.1) < 1e-12
+    assert abs(float(metrics["follow_through_close_3m_r"]) - 0.5) < 1e-12
+    assert abs(float(metrics["early_mfe_3m_r"]) - 0.6) < 1e-12
+    assert abs(float(metrics["early_mae_3m_r"]) - 0.3) < 1e-12
+
+
+def test_post_entry_follow_through_stops_before_exit_and_requires_consecutive_m1() -> None:
+    opened_at = NOW.replace(hour=10, minute=0, second=30)
+    first_full = NOW.replace(hour=10, minute=1, second=0)
+
+    def row(minute_at: datetime, close: float) -> XauMicrobarM1:
+        spread = 0.2
+        return XauMicrobarM1(
+            minute_at=minute_at,
+            first_quote_at=minute_at,
+            last_quote_at=minute_at + timedelta(seconds=50),
+            bid_open=100.0,
+            bid_high=max(100.0, close),
+            bid_low=min(100.0, close),
+            bid_close=close,
+            ask_open=100.2,
+            ask_high=max(100.2, close + spread),
+            ask_low=min(100.2, close + spread),
+            ask_close=close + spread,
+            mid_open=100.1,
+            mid_high=max(100.1, close + spread / 2),
+            mid_low=min(100.1, close + spread / 2),
+            mid_close=close + spread / 2,
+            spread_open=spread,
+            spread_high=spread,
+            spread_low=spread,
+            spread_close=spread,
+            spread_sum=spread * 4,
+            quote_count=4,
+            mid_up_ticks=2,
+            mid_down_ticks=1,
+        )
+
+    metrics = _post_entry_m1_follow_through(
+        [
+            row(first_full, 100.1),
+            row(first_full + timedelta(minutes=1), 100.2),
+            row(first_full + timedelta(minutes=2), 100.3),
+        ],
+        side=Side.BUY,
+        opened_at=opened_at,
+        exit_at=first_full + timedelta(minutes=1, seconds=30),
+        entry_price=100.0,
+        risk_distance=1.0,
+    )
+    assert metrics["post_entry_complete_m1_bars"] == 1
+    assert metrics["exit_within_3m"] is True
+    assert metrics["follow_through_close_1m_r"] is not None
+    assert metrics["follow_through_close_3m_r"] is None
+
+    gap_metrics = _post_entry_m1_follow_through(
+        [
+            row(first_full, 100.1),
+            # The second minute is missing; later bars cannot bridge the gap.
+            row(first_full + timedelta(minutes=2), 100.3),
+        ],
+        side=Side.BUY,
+        opened_at=opened_at,
+        exit_at=first_full + timedelta(minutes=4),
+        entry_price=100.0,
+        risk_distance=1.0,
+    )
+    assert gap_metrics["post_entry_complete_m1_bars"] == 1
+    assert gap_metrics["follow_through_close_3m_r"] is None
 
 
 def test_side_aligned_move_r_flips_sell_direction() -> None:

@@ -3387,3 +3387,7 @@ For each admitted trade with eligible post-entry microbars, the report can now o
 - early adverse excursion (MAE) in R.
 
 Strategy summaries compare winner/loss medians and expose how many trades have a complete 1m or 3m observation. These fields are descriptive only. They do not trigger early exits, break-even moves, trailing changes or admission changes.
+
+## 2026-09-28 — Probe post-entry follow-through (research-only)
+
+The research report now applies the already deployed causal post-entry M1 contract to resolved prospective executable unqualified probes, while keeping them separate from admitted PAPER/DEMO trades. It reports 1m/3m observability, winner/loss counts, close displacement, MFE and MAE medians. Partial fill minutes, non-consecutive bars and bars after exit remain excluded. These descriptive probe features define no exit, break-even, trailing, admission or risk rule.

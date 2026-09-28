@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import pytest
+
 from app.domain.broker import BrokerSymbolSpec
 from app.domain.macro import MacroSignalContext, MacroSignalPhase
 from app.domain.market import MarketBar, Timeframe
@@ -118,6 +120,35 @@ def test_blocked_probe_preserves_base_reason_and_max_risk_viability() -> None:
     assert probe.required_capital_max_risk_eur == 150.0
     assert probe.minimum_feasible_risk_fraction == 0.0075
     assert probe.capital_granularity_feasible_under_max_risk is True
+
+
+def test_blocked_probe_copies_stop_geometry_and_guard_measurements() -> None:
+    source = diagnostic().model_copy(
+        update={
+            "raw_stop_price": 4351.9,
+            "stop_geometry_source": "raw_structure",
+            "stop_atr_distance": 3.6,
+            "atr_m5": 4.0,
+            "structural_stop_atr_m5": 0.75,
+            "structural_stop_atr_m15": 0.5,
+            "spread_atr_m5": 0.075,
+            "spread_atr_m15": 0.05,
+            "broker_digits": 2,
+            "broker_tick_size": 0.01,
+        }
+    )
+    probe = create_blocked_probe(
+        diagnostic=source,
+        spec=spec(),
+        evaluated_at=START + timedelta(minutes=5, seconds=2),
+    )
+
+    assert probe.raw_stop_price == 4351.9
+    assert probe.stop_geometry_source == "raw_structure"
+    assert probe.atr_m5 == 4.0
+    assert probe.broker_digits == 2
+    assert probe.minimum_stop_distance_for_spread_guard == pytest.approx(2.0)
+    assert probe.additional_stop_distance_required == 0.0
 
 
 def test_blocked_probe_resolves_target_without_position_sizing() -> None:
@@ -242,9 +273,7 @@ def test_blocked_probe_preserves_macro_signal_context() -> None:
         minutes_from_safe_resume=5.0,
     )
     probe = create_blocked_probe(
-        diagnostic=diagnostic().model_copy(
-            update={"macro_context": context}
-        ),
+        diagnostic=diagnostic().model_copy(update={"macro_context": context}),
         spec=spec(),
         evaluated_at=START + timedelta(minutes=5, seconds=2),
     )

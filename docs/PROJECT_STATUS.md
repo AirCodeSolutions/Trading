@@ -3400,3 +3400,14 @@ For each exact strategy it compares final winners/losers and natural Close3-posi
 No threshold, score, ranking, admission change, early exit, break-even, trailing, stop, sizing, execution or broker change is produced. The 5-lot sizing cap and explicit DEMO order guard remain unchanged.
 
 Validation: 27 focused intelligence tests, 351 full backend tests, Ruff clean, frontend production build clean and diff check clean.
+## 2026-09-28 — prospective stop-geometry provenance
+
+PR #170 instruments the existing shadow scanner decision without changing it. New
+diagnostics persist the raw stop, ATR distance, the winning stop-geometry source,
+causal ATR M5/M15 ratios, spread ratios and the broker digits/tick-size snapshot.
+Blocked probes copy the same fields and record the descriptive stop distance needed
+to satisfy the unchanged 15% spread-to-stop guard.
+
+Legacy JSONL remains readable but is excluded from provenance summaries rather than
+backfilled. The new research endpoint and dashboard section are prospective-only.
+No stop, target, sizing, spread, admission, execution or broker behavior changes.

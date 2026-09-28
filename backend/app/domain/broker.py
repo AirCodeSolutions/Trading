@@ -11,6 +11,7 @@ class BrokerSymbolSpec(BaseModel):
     max_lot: float = Field(gt=0)
     lot_step: float = Field(gt=0)
     margin_required: float = Field(default=0, ge=0)
+    digits: int | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def validate_market(self) -> "BrokerSymbolSpec":

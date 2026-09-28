@@ -471,6 +471,30 @@ type BlockedProbeRuntime = {
   };
 };
 
+type StopGeometryResearch = {
+  instrumented_observations: number;
+  legacy_observations_excluded: number;
+  summaries: {
+    symbol: string;
+    mechanism: string;
+    source: string;
+    total_instrumented: number;
+    spread_blocked: number;
+    executable: number;
+    median_stop_atr_m5: number | null;
+    median_stop_atr_m15: number | null;
+    median_spread_atr_m5: number | null;
+    median_spread_atr_m15: number | null;
+    median_spread_to_stop: number | null;
+    median_additional_distance_atr_m5: number | null;
+    median_additional_distance_atr_m15: number | null;
+    blocked_wins: number;
+    blocked_losses: number;
+    blocked_total_r: number;
+    blocked_expectancy_r: number;
+  }[];
+};
+
 type OpportunityFunnelStrategy = {
   strategy_id: string;
   symbol: string;
@@ -1388,6 +1412,8 @@ export default function App() {
     useState<TradingIntelligence["probe_early_context"]>(null);
   const [blockedProbeEarlyContext, setBlockedProbeEarlyContext] =
     useState<TradingIntelligence["blocked_probe_early_context"]>(null);
+  const [stopGeometryResearch, setStopGeometryResearch] =
+    useState<StopGeometryResearch | null>(null);
   const [admittedTradeEarlyContext, setAdmittedTradeEarlyContext] =
     useState<TradingIntelligence["admitted_trade_early_context"]>(null);
   const [candidateEvidenceCoverage, setCandidateEvidenceCoverage] =
@@ -1449,6 +1475,7 @@ export default function App() {
           opportunitiesResponse,
           blockedProbesResponse,
           opportunityFunnelResponse,
+          stopGeometryResponse,
           probeReviewContractResponse,
           intelligenceResponse,
           trailingShadowResponse,
@@ -1477,6 +1504,7 @@ export default function App() {
           fetch("/api/v1/shadow/overview"),
           fetch("/api/v1/shadow/blocked-probes"),
           fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
+          fetch("/api/v1/research/stop-geometry?hours=168"),
           fetch("/api/v1/research/probe-review/contract"),
           fetch("/api/v1/intelligence/overview?hours=24"),
           fetch("/api/v1/research/trailing-shadow"),
@@ -1516,6 +1544,9 @@ export default function App() {
           : [];
         const opportunityFunnelPayload = opportunityFunnelResponse.ok
           ? await opportunityFunnelResponse.json()
+          : null;
+        const stopGeometryPayload = stopGeometryResponse.ok
+          ? await stopGeometryResponse.json()
           : null;
         const probeReviewContractPayload = probeReviewContractResponse.ok
           ? await probeReviewContractResponse.json()
@@ -1569,7 +1600,8 @@ export default function App() {
         setPreflight(preflightPayload);
         setOpportunities(opportunitiesPayload);
         setBlockedProbes(blockedProbesPayload);
-        setOpportunityFunnel(opportunityFunnelPayload);
+          setOpportunityFunnel(opportunityFunnelPayload);
+          setStopGeometryResearch(stopGeometryPayload);
         setProbeReviewContract(probeReviewContractPayload);
         setIntelligence(intelligencePayload);
         setTrailingShadow(trailingShadowPayload);
@@ -3597,6 +3629,43 @@ export default function App() {
             <p className="strategy-empty">Snapshot probe early-context en cours de chargement.</p>
           )}
         </div>
+
+        {stopGeometryResearch ? (
+          <div className="intelligence-subsection">
+            <h3>Stop Geometry / Execution Cost · 168 h</h3>
+            <p className="intelligence-note">
+              Provenance instrumentée prospectivement. Les lignes historiques sans provenance
+              restent exclues. Mesure descriptive uniquement : aucun stop ni garde n’est modifié.
+            </p>
+            <div className="early-context-kpis">
+              <span><b>{stopGeometryResearch.instrumented_observations}</b> observations instrumentées</span>
+              <span><b>{stopGeometryResearch.legacy_observations_excluded}</b> legacy N/A</span>
+            </div>
+            {stopGeometryResearch.summaries.length ? (
+              <div className="intelligence-table">
+                <div className="intelligence-row blocked-context-row intelligence-head">
+                  <span>Actif / mécanisme</span><span>Source</span><span>N bloqués / exec.</span>
+                  <span>Stop/ATR15</span><span>Spread/ATR15</span><span>Spread/stop</span>
+                  <span>Distance ATR</span><span>W / L / R</span>
+                </div>
+                {stopGeometryResearch.summaries.map((row) => (
+                  <div className="intelligence-row blocked-context-row" key={`${row.symbol}:${row.mechanism}:${row.source}`}>
+                    <strong>{row.symbol} · {row.mechanism.replaceAll("_", " ")}</strong>
+                    <span>{row.source}</span>
+                    <span>{row.spread_blocked} / {row.executable}</span>
+                    <span>{row.median_stop_atr_m15 == null ? "—" : row.median_stop_atr_m15.toFixed(2)}</span>
+                    <span>{row.median_spread_atr_m15 == null ? "—" : row.median_spread_atr_m15.toFixed(2)}</span>
+                    <span>{row.median_spread_to_stop == null ? "—" : `${(row.median_spread_to_stop * 100).toFixed(1)} %`}</span>
+                    <span>{row.median_additional_distance_atr_m15 == null ? "—" : row.median_additional_distance_atr_m15.toFixed(2)}</span>
+                    <span>{row.blocked_wins} / {row.blocked_losses} / {row.blocked_total_r.toFixed(2)}R</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="strategy-empty">Aucune observation instrumentée disponible.</p>
+            )}
+          </div>
+        ) : null}
 
         <div className="intelligence-subsection">
           <h3>Blocked Signal Economics · M1 + raison de blocage · 168 h</h3>

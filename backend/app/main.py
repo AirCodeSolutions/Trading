@@ -46,6 +46,7 @@ from app.domain.runtime_control import RuntimeDrainRequest, RuntimeDrainState
 from app.domain.session import SessionPreflight
 from app.domain.shadow import ShadowCollectionResult, ShadowOpportunityDiagnostic
 from app.domain.shadow_paper import ShadowPaperSummary
+from app.domain.stop_geometry import StopGeometryResearchReport
 from app.domain.trading_intelligence import TradingIntelligenceOverview
 from app.domain.trailing_shadow import TrailingShadowSummary
 from app.domain.xau_feasible_pullback_shadow import XauFeasiblePullbackSummary
@@ -118,6 +119,7 @@ from app.services.session_preflight import build_session_preflight
 from app.services.shadow_collector import collect_btc_break_retest_once
 from app.services.shadow_overview import load_shadow_overview
 from app.services.shadow_paper import load_shadow_paper_summary
+from app.services.stop_geometry_research import build_stop_geometry_report
 from app.services.trading_intelligence import (
     INTELLIGENCE_FILE,
     build_trading_intelligence,
@@ -219,9 +221,7 @@ def runtime_config() -> dict[str, object]:
         else settings.reference_capital_eur
     )
     capital_source = (
-        runtime_capital.source.value
-        if runtime_capital is not None
-        else "research_fallback"
+        runtime_capital.source.value if runtime_capital is not None else "research_fallback"
     )
     return {
         "execution_mode": settings.execution_mode,
@@ -314,9 +314,7 @@ def mt4_live_market_quality() -> list[MarketQualityResult]:
 
 @app.get(f"{settings.api_prefix}/market/mt4/costs")
 def mt4_execution_costs() -> dict[str, dict[str, float | int]]:
-    return summarize_execution_costs(
-        settings.shadow_ledger_dir / "execution_costs.jsonl"
-    )
+    return summarize_execution_costs(settings.shadow_ledger_dir / "execution_costs.jsonl")
 
 
 @app.get(
@@ -375,6 +373,21 @@ def shadow_opportunity_funnel(hours: int = 24) -> OpportunityFunnel:
 
 
 @app.get(
+    f"{settings.api_prefix}/research/stop-geometry",
+    response_model=StopGeometryResearchReport,
+)
+def stop_geometry_research(hours: int = 168) -> StopGeometryResearchReport:
+    if hours < 1 or hours > 168:
+        raise HTTPException(status_code=422, detail="hours must be between 1 and 168")
+    return build_stop_geometry_report(
+        settings.shadow_ledger_dir,
+        now=datetime.now(tz=_server_timezone()),
+        window_hours=hours,
+        symbols=settings.session_watch_symbols,
+    )
+
+
+@app.get(
     f"{settings.api_prefix}/intelligence/overview",
     response_model=TradingIntelligenceOverview,
 )
@@ -384,14 +397,8 @@ def trading_intelligence_overview(
 ) -> TradingIntelligenceOverview:
     if hours < 1 or hours > 168:
         raise HTTPException(status_code=422, detail="hours must be between 1 and 168")
-    cached = load_trading_intelligence(
-        settings.shadow_ledger_dir / INTELLIGENCE_FILE
-    )
-    if (
-        not include_waiting_early_context
-        and cached is not None
-        and cached.window_hours == hours
-    ):
+    cached = load_trading_intelligence(settings.shadow_ledger_dir / INTELLIGENCE_FILE)
+    if not include_waiting_early_context and cached is not None and cached.window_hours == hours:
         return cached
     return build_trading_intelligence(
         _mt4_files_dir(),
@@ -421,9 +428,7 @@ def precursor_forward_research() -> PrecursorForwardResearchReport:
     response_model=ExecutionQualitySummary,
 )
 def demo_execution_quality() -> ExecutionQualitySummary:
-    return build_execution_quality_summary(
-        settings.shadow_ledger_dir / AUDIT_FILE
-    )
+    return build_execution_quality_summary(settings.shadow_ledger_dir / AUDIT_FILE)
 
 
 @app.get(
@@ -433,9 +438,7 @@ def demo_execution_quality() -> ExecutionQualitySummary:
 def qualification_history(limit: int = 100) -> list[QualificationHistoryEvent]:
     if limit < 1 or limit > 1000:
         raise HTTPException(status_code=422, detail="limit must be between 1 and 1000")
-    rows = load_qualification_history(
-        settings.shadow_ledger_dir / "qualification_history.jsonl"
-    )
+    rows = load_qualification_history(settings.shadow_ledger_dir / "qualification_history.jsonl")
     return rows[-limit:][::-1]
 
 
@@ -444,9 +447,7 @@ def qualification_history(limit: int = 100) -> list[QualificationHistoryEvent]:
     response_model=DailyTradingReport,
 )
 def daily_trading_report() -> DailyTradingReport:
-    latest = load_daily_trading_report(
-        settings.shadow_ledger_dir / "daily_report_latest.json"
-    )
+    latest = load_daily_trading_report(settings.shadow_ledger_dir / "daily_report_latest.json")
     if latest is not None:
         return latest
     now = datetime.now(tz=_server_timezone())
@@ -556,9 +557,7 @@ def research_xau_feasible_pullback() -> XauFeasiblePullbackSummary:
     response_model=PrecursorExecutionShadowSummary,
 )
 def research_xau_compression_precursor() -> PrecursorExecutionShadowSummary:
-    return load_xau_compression_precursor_shadow_summary(
-        settings.shadow_ledger_dir
-    )
+    return load_xau_compression_precursor_shadow_summary(settings.shadow_ledger_dir)
 
 
 @app.get(
@@ -566,9 +565,7 @@ def research_xau_compression_precursor() -> PrecursorExecutionShadowSummary:
     response_model=PrecursorExecutionShadowSummary,
 )
 def research_xau_auction_precursor() -> PrecursorExecutionShadowSummary:
-    return load_xau_auction_precursor_shadow_summary(
-        settings.shadow_ledger_dir
-    )
+    return load_xau_auction_precursor_shadow_summary(settings.shadow_ledger_dir)
 
 
 @app.get(
@@ -706,10 +703,7 @@ def research_regime(bars: list[MarketBar]) -> RegimeSnapshot:
         raise HTTPException(status_code=422, detail="regime engine requires M15 bars")
     if len({bar.symbol.upper() for bar in bars}) != 1:
         raise HTTPException(status_code=422, detail="regime bars must belong to one symbol")
-    if any(
-        current.timestamp <= previous.timestamp
-        for previous, current in pairwise(bars)
-    ):
+    if any(current.timestamp <= previous.timestamp for previous, current in pairwise(bars)):
         raise HTTPException(status_code=422, detail="regime bars must be chronological")
     return classify_regime(bars)
 

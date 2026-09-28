@@ -980,6 +980,9 @@ def test_probe_early_context_separates_winners_and_losses(
         *,
         up: int,
         down: int,
+        bid_low: float = 0.999,
+        bid_high: float = 1.001,
+        bid_close: float = 1.0,
     ) -> XauMicrobarM1:
         spread = 0.0002
         return XauMicrobarM1(
@@ -987,17 +990,17 @@ def test_probe_early_context_separates_winners_and_losses(
             first_quote_at=minute_at,
             last_quote_at=minute_at + timedelta(seconds=50),
             bid_open=1.0,
-            bid_high=1.001,
-            bid_low=0.999,
-            bid_close=1.0,
+            bid_high=bid_high,
+            bid_low=bid_low,
+            bid_close=bid_close,
             ask_open=1.0002,
-            ask_high=1.0012,
-            ask_low=0.9992,
-            ask_close=1.0002,
+            ask_high=bid_high + spread,
+            ask_low=bid_low + spread,
+            ask_close=bid_close + spread,
             mid_open=1.0001,
-            mid_high=1.0011,
-            mid_low=0.9991,
-            mid_close=1.0001,
+            mid_high=bid_high + spread / 2,
+            mid_low=bid_low + spread / 2,
+            mid_close=bid_close + spread / 2,
             spread_open=spread,
             spread_high=spread,
             spread_low=spread,
@@ -1021,6 +1024,18 @@ def test_probe_early_context_separates_winners_and_losses(
                     down=down,
                 )
             )
+        for index in range(3):
+            winner = signal_at == signal_win
+            rows.append(
+                microbar(
+                    signal_at + timedelta(minutes=index),
+                    up=up,
+                    down=down,
+                    bid_low=0.9995 if winner else 0.997,
+                    bid_high=1.003 if winner else 1.0002,
+                    bid_close=1.002 if winner else 0.998,
+                )
+            )
     (tmp_path / "BTCUSD_micro_m1.jsonl").write_text(
         "".join(row.model_dump_json() + "\n" for row in rows),
         encoding="utf-8",
@@ -1039,13 +1054,13 @@ def test_probe_early_context_separates_winners_and_losses(
             signal_at=signal_at,
             entry_bar_at=signal_at,
             opened_at=signal_at,
-            entry_price=100.0,
-            stop_price=99.0,
-            target_price=101.8,
-            spread_at_entry=0.1,
+            entry_price=1.0,
+            stop_price=0.99,
+            target_price=1.018,
+            spread_at_entry=0.001,
             lots=0.01,
             risk_eur=10.0,
-            risk_distance=1.0,
+            risk_distance=0.01,
             target_r=1.8,
             max_holding_bars=12,
             status=(
@@ -1054,7 +1069,7 @@ def test_probe_early_context_separates_winners_and_losses(
                 else PaperTradeStatus.STOP
             ),
             exit_at=signal_at + timedelta(minutes=10),
-            exit_price=101.8 if result_r > 0 else 99.0,
+            exit_price=1.018 if result_r > 0 else 0.99,
             result_r=result_r,
             pnl_eur=result_r * 10.0,
             bars_held=2,
@@ -1106,6 +1121,20 @@ def test_probe_early_context_separates_winners_and_losses(
     assert summary.loser_precursor_rate == 0.0
     assert summary.winner_precursor_patterns == {"directional_displacement": 1}
     assert summary.loser_precursor_patterns == {}
+    assert summary.post_entry_1m_observable_probes == 2
+    assert summary.post_entry_3m_observable_probes == 2
+    assert summary.post_entry_1m_wins == 1
+    assert summary.post_entry_1m_losses == 1
+    assert summary.post_entry_3m_wins == 1
+    assert summary.post_entry_3m_losses == 1
+    assert abs(summary.winner_median_follow_through_close_1m_r - 0.2) < 1e-12
+    assert abs(summary.loser_median_follow_through_close_1m_r + 0.2) < 1e-12
+    assert abs(summary.winner_median_follow_through_close_3m_r - 0.2) < 1e-12
+    assert abs(summary.loser_median_follow_through_close_3m_r + 0.2) < 1e-12
+    assert abs(summary.winner_median_early_mfe_3m_r - 0.3) < 1e-12
+    assert abs(summary.loser_median_early_mfe_3m_r - 0.02) < 1e-12
+    assert abs(summary.winner_median_early_mae_3m_r - 0.05) < 1e-12
+    assert abs(summary.loser_median_early_mae_3m_r - 0.3) < 1e-12
 
 
 def test_blocked_probe_early_context_groups_exact_block_reason(
@@ -1597,6 +1626,59 @@ def test_post_entry_follow_through_stops_before_exit_and_requires_consecutive_m1
     )
     assert gap_metrics["post_entry_complete_m1_bars"] == 1
     assert gap_metrics["follow_through_close_3m_r"] is None
+
+
+def test_post_entry_follow_through_marks_sell_on_ask_and_keeps_invalid_risk_empty() -> None:
+    first_full = NOW.replace(hour=11, minute=1)
+
+    def sell_row(minute_at: datetime, *, ask_low: float, ask_high: float, ask_close: float) -> XauMicrobarM1:
+        return m1_bar(minute_at, up=2, down=2).model_copy(
+            update={
+                "bid_low": ask_low - 0.2,
+                "bid_high": ask_high - 0.2,
+                "bid_close": ask_close - 0.2,
+                "ask_low": ask_low,
+                "ask_high": ask_high,
+                "ask_close": ask_close,
+            }
+        )
+
+    winner = _post_entry_m1_follow_through(
+        [
+            sell_row(first_full + timedelta(minutes=index), ask_low=99.4, ask_high=100.2, ask_close=99.5)
+            for index in range(3)
+        ],
+        side=Side.SELL,
+        opened_at=NOW.replace(hour=11, minute=0, second=30),
+        exit_at=first_full + timedelta(minutes=3),
+        entry_price=100.0,
+        risk_distance=1.0,
+    )
+    assert abs(float(winner["follow_through_close_3m_r"]) - 0.5) < 1e-12
+    assert abs(float(winner["early_mfe_3m_r"]) - 0.6) < 1e-12
+    assert abs(float(winner["early_mae_3m_r"]) - 0.2) < 1e-12
+
+    loser = _post_entry_m1_follow_through(
+        [sell_row(first_full, ask_low=99.9, ask_high=101.0, ask_close=100.8)],
+        side=Side.SELL,
+        opened_at=NOW.replace(hour=11, minute=0, second=30),
+        exit_at=first_full + timedelta(minutes=1),
+        entry_price=100.0,
+        risk_distance=1.0,
+    )
+    assert abs(float(loser["early_mae_1m_r"]) - 1.0) < 1e-12
+
+    invalid_risk = _post_entry_m1_follow_through(
+        [sell_row(first_full, ask_low=99.4, ask_high=100.2, ask_close=99.5)],
+        side=Side.SELL,
+        opened_at=NOW.replace(hour=11, minute=0, second=30),
+        exit_at=first_full + timedelta(minutes=1),
+        entry_price=100.0,
+        risk_distance=0.0,
+    )
+    assert invalid_risk["follow_through_close_1m_r"] is None
+    assert invalid_risk["early_mfe_1m_r"] is None
+    assert invalid_risk["early_mae_1m_r"] is None
 
 
 def test_side_aligned_move_r_flips_sell_direction() -> None:

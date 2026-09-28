@@ -242,6 +242,14 @@ class ProbeEarlyContextEpisode(BaseModel):
     precursor_first_seen_at: datetime | None = None
     precursor_pattern: OpportunityCausalPattern | None = None
     precursor_lead_minutes_to_signal: float | None = Field(default=None, ge=0)
+    post_entry_complete_m1_bars: int = Field(default=0, ge=0)
+    exit_within_3m: bool = False
+    follow_through_close_1m_r: float | None = None
+    early_mfe_1m_r: float | None = Field(default=None, ge=0)
+    early_mae_1m_r: float | None = Field(default=None, ge=0)
+    follow_through_close_3m_r: float | None = None
+    early_mfe_3m_r: float | None = Field(default=None, ge=0)
+    early_mae_3m_r: float | None = Field(default=None, ge=0)
 
 
 class ProbeEarlyContextSummary(BaseModel):
@@ -274,6 +282,20 @@ class ProbeEarlyContextSummary(BaseModel):
     loser_precursor_rate: float | None = Field(default=None, ge=0, le=1)
     winner_precursor_patterns: dict[str, int] = Field(default_factory=dict)
     loser_precursor_patterns: dict[str, int] = Field(default_factory=dict)
+    post_entry_1m_observable_probes: int = Field(default=0, ge=0)
+    post_entry_3m_observable_probes: int = Field(default=0, ge=0)
+    post_entry_1m_wins: int = Field(default=0, ge=0)
+    post_entry_1m_losses: int = Field(default=0, ge=0)
+    post_entry_3m_wins: int = Field(default=0, ge=0)
+    post_entry_3m_losses: int = Field(default=0, ge=0)
+    winner_median_follow_through_close_1m_r: float | None = None
+    loser_median_follow_through_close_1m_r: float | None = None
+    winner_median_follow_through_close_3m_r: float | None = None
+    loser_median_follow_through_close_3m_r: float | None = None
+    winner_median_early_mfe_3m_r: float | None = Field(default=None, ge=0)
+    loser_median_early_mfe_3m_r: float | None = Field(default=None, ge=0)
+    winner_median_early_mae_3m_r: float | None = Field(default=None, ge=0)
+    loser_median_early_mae_3m_r: float | None = Field(default=None, ge=0)
 
 
 class ProbeEarlyContextReport(BaseModel):

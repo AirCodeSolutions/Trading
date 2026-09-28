@@ -907,6 +907,20 @@ type TradingIntelligence = {
       loser_precursor_rate: number | null;
       winner_precursor_patterns: Record<string, number>;
       loser_precursor_patterns: Record<string, number>;
+      post_entry_1m_observable_probes: number;
+      post_entry_3m_observable_probes: number;
+      post_entry_1m_wins: number;
+      post_entry_1m_losses: number;
+      post_entry_3m_wins: number;
+      post_entry_3m_losses: number;
+      winner_median_follow_through_close_1m_r: number | null;
+      loser_median_follow_through_close_1m_r: number | null;
+      winner_median_follow_through_close_3m_r: number | null;
+      loser_median_follow_through_close_3m_r: number | null;
+      winner_median_early_mfe_3m_r: number | null;
+      loser_median_early_mfe_3m_r: number | null;
+      winner_median_early_mae_3m_r: number | null;
+      loser_median_early_mae_3m_r: number | null;
     }[];
     limitations: string[];
   } | null;
@@ -3464,6 +3478,47 @@ export default function App() {
                         </span>
                       </div>
                     ))}
+                </div>
+              ) : null}
+              {probeEarlyContext.summaries.some((row) => row.post_entry_1m_observable_probes > 0) ? (
+                <div className="probe-follow-through">
+                  <h4>Post-entry probe follow-through</h4>
+                  <p className="intelligence-note">
+                    Probes prospectifs simulés uniquement : premières M1 complètes après l’entrée,
+                    sans mélange avec les trades PAPER/DEMO admis. Ces mesures ne définissent aucune sortie.
+                  </p>
+                  <div className="intelligence-table">
+                    <div className="intelligence-row probe-follow-through-row intelligence-head">
+                      <span>Stratégie</span>
+                      <span>Résolus</span>
+                      <span>Obs. 1m / 3m</span>
+                      <span>W / L 1m</span>
+                      <span>W / L 3m</span>
+                      <span>Close1 R W / L</span>
+                      <span>Close3 R W / L</span>
+                      <span>MFE3 R W / L</span>
+                      <span>MAE3 R W / L</span>
+                    </div>
+                    {probeEarlyContext.summaries
+                      .filter((row) => row.post_entry_1m_observable_probes > 0)
+                      .map((row) => {
+                        const pair = (winner: number | null, loser: number | null) =>
+                          `${winner == null ? "—" : winner.toFixed(2)} / ${loser == null ? "—" : loser.toFixed(2)}`;
+                        return (
+                          <div className="intelligence-row probe-follow-through-row" key={`${row.strategy_id}-post-entry`}>
+                            <strong>{row.strategy_id.replaceAll("_", " ")}</strong>
+                            <span>{row.resolved_probes}</span>
+                            <span>{row.post_entry_1m_observable_probes} / {row.post_entry_3m_observable_probes}</span>
+                            <span>{row.post_entry_1m_wins} / {row.post_entry_1m_losses}</span>
+                            <span>{row.post_entry_3m_wins} / {row.post_entry_3m_losses}</span>
+                            <span>{pair(row.winner_median_follow_through_close_1m_r, row.loser_median_follow_through_close_1m_r)}</span>
+                            <span>{pair(row.winner_median_follow_through_close_3m_r, row.loser_median_follow_through_close_3m_r)}</span>
+                            <span>{pair(row.winner_median_early_mfe_3m_r, row.loser_median_early_mfe_3m_r)}</span>
+                            <span>{pair(row.winner_median_early_mae_3m_r, row.loser_median_early_mae_3m_r)}</span>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </div>
               ) : null}
             </>

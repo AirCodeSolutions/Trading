@@ -2054,6 +2054,14 @@ def _build_probe_early_context_report(
             side=probe.side,
             signal_at=probe.signal_at,
         )
+        post_entry = _post_entry_m1_follow_through(
+            microbars_by_symbol.get(probe.symbol.upper(), []),
+            side=probe.side,
+            opened_at=probe.opened_at,
+            exit_at=probe.exit_at,
+            entry_price=probe.entry_price,
+            risk_distance=probe.risk_distance,
+        )
         episodes.append(
             ProbeEarlyContextEpisode(
                 trade_id=probe.trade_id,
@@ -2129,6 +2137,16 @@ def _build_probe_early_context_report(
                     if precursor is not None
                     else None
                 ),
+                post_entry_complete_m1_bars=int(
+                    post_entry["post_entry_complete_m1_bars"]
+                ),
+                exit_within_3m=bool(post_entry["exit_within_3m"]),
+                follow_through_close_1m_r=post_entry["follow_through_close_1m_r"],
+                early_mfe_1m_r=post_entry["early_mfe_1m_r"],
+                early_mae_1m_r=post_entry["early_mae_1m_r"],
+                follow_through_close_3m_r=post_entry["follow_through_close_3m_r"],
+                early_mfe_3m_r=post_entry["early_mfe_3m_r"],
+                early_mae_3m_r=post_entry["early_mae_3m_r"],
             )
         )
 
@@ -2164,6 +2182,16 @@ def _build_probe_early_context_report(
             for row in losses
             if row.pressure_agreement_5m_15m is not None
         ]
+        post_1m = [
+            row for row in eligible if row.follow_through_close_1m_r is not None
+        ]
+        post_3m = [
+            row for row in eligible if row.follow_through_close_3m_r is not None
+        ]
+        post_1m_wins = [row for row in post_1m if row.result_r > 0]
+        post_1m_losses = [row for row in post_1m if row.result_r < 0]
+        post_3m_wins = [row for row in post_3m if row.result_r > 0]
+        post_3m_losses = [row for row in post_3m if row.result_r < 0]
         first = eligible[0]
         summaries.append(
             ProbeEarlyContextSummary(
@@ -2261,6 +2289,36 @@ def _build_probe_early_context_report(
                         if row.precursor_pattern is not None
                     )
                 ),
+                post_entry_1m_observable_probes=len(post_1m),
+                post_entry_3m_observable_probes=len(post_3m),
+                post_entry_1m_wins=len(post_1m_wins),
+                post_entry_1m_losses=len(post_1m_losses),
+                post_entry_3m_wins=len(post_3m_wins),
+                post_entry_3m_losses=len(post_3m_losses),
+                winner_median_follow_through_close_1m_r=_median_or_none(
+                    row.follow_through_close_1m_r for row in post_1m_wins
+                ),
+                loser_median_follow_through_close_1m_r=_median_or_none(
+                    row.follow_through_close_1m_r for row in post_1m_losses
+                ),
+                winner_median_follow_through_close_3m_r=_median_or_none(
+                    row.follow_through_close_3m_r for row in post_3m_wins
+                ),
+                loser_median_follow_through_close_3m_r=_median_or_none(
+                    row.follow_through_close_3m_r for row in post_3m_losses
+                ),
+                winner_median_early_mfe_3m_r=_median_or_none(
+                    row.early_mfe_3m_r for row in post_3m_wins
+                ),
+                loser_median_early_mfe_3m_r=_median_or_none(
+                    row.early_mfe_3m_r for row in post_3m_losses
+                ),
+                winner_median_early_mae_3m_r=_median_or_none(
+                    row.early_mae_3m_r for row in post_3m_wins
+                ),
+                loser_median_early_mae_3m_r=_median_or_none(
+                    row.early_mae_3m_r for row in post_3m_losses
+                ),
             )
         )
 
@@ -2292,6 +2350,14 @@ def _build_probe_early_context_report(
             (
                 "This report uses resolved prospective unqualified probes only; "
                 "it does not mix them with admitted PAPER/DEMO trades."
+            ),
+            (
+                "Post-entry follow-through uses only fully closed consecutive M1 "
+                "bars after the simulated probe entry and before its exit."
+            ),
+            (
+                "The 1m/3m probe fields are descriptive only and do not define "
+                "an exit, break-even, trailing or admission rule."
             ),
             (
                 "M1 geometry is built only from microbars fully closed before probe "

@@ -1985,3 +1985,7 @@ Extended admitted-trade research with execution-aware post-entry follow-through.
 Only fully closed consecutive M1 bars after the fill are used. The partial entry minute, missing-minute gaps and bars after exit are excluded. The dashboard exposes observable counts plus winner/loss medians for 1m/3m close follow-through and 3m MFE/MAE.
 
 No trading rule or exit behavior changes.
+
+## 2026-09-28 — Prospective probe post-entry M1 follow-through
+
+Extended `ProbeEarlyContextReport` with the same strictly causal 1m/3m post-entry geometry used for admitted trades. The surface is restricted to resolved prospective executable unqualified probes and exposes separate observability and winner/loss medians for close, MFE and MAE. The Research dashboard labels the population as simulated prospective probes. No execution, strategy, signal, admission, sizing, stop, target, trailing or broker authority changed.

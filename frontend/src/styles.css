@@ -2166,6 +2166,21 @@ h1 {
   grid-template-columns: 2.2fr 0.65fr 0.9fr 0.9fr 0.8fr 0.8fr 1fr 1fr 0.8fr 1.1fr 1.05fr 1fr 1.1fr 1.8fr;
 }
 
+.probe-follow-through {
+  margin-top: 18px;
+}
+
+.probe-follow-through h4 {
+  margin: 0 0 6px;
+  color: #d6e4ef;
+  font-size: 13px;
+}
+
+.probe-follow-through-row {
+  min-width: 1480px;
+  grid-template-columns: 2.2fr 0.7fr 0.95fr 0.8fr 0.8fr 1.15fr 1.15fr 1.15fr 1.15fr;
+}
+
 
 .blocked-context-row {
   min-width: 1780px;

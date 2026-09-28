@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from app.domain.macro import MacroSignalContext
 from app.domain.opportunity import OpportunityMechanism
+from app.domain.session_landmark import SessionLandmarkContext
 from app.domain.trading import Side
 
 
@@ -33,6 +34,7 @@ class ShadowPaperTrade(BaseModel):
     target_r: float = Field(gt=0)
     max_holding_bars: int = Field(gt=0)
     macro_context: MacroSignalContext | None = None
+    session_landmark_context: SessionLandmarkContext | None = None
     status: PaperTradeStatus = PaperTradeStatus.OPEN
     exit_at: datetime | None = None
     exit_price: float | None = None

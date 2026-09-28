@@ -118,6 +118,7 @@ def create_blocked_probe(
         spread_atr_m15=diagnostic.spread_atr_m15,
         broker_digits=diagnostic.broker_digits,
         broker_tick_size=diagnostic.broker_tick_size,
+        session_landmark_context=diagnostic.session_landmark_context,
         minimum_stop_distance_for_spread_guard=minimum_stop_distance,
         additional_stop_distance_required=additional_distance,
         additional_distance_atr_m5=(

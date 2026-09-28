@@ -3411,3 +3411,7 @@ to satisfy the unchanged 15% spread-to-stop guard.
 Legacy JSONL remains readable but is excluded from provenance summaries rather than
 backfilled. The new research endpoint and dashboard section are prospective-only.
 No stop, target, sizing, spread, admission, execution or broker behavior changes.
+
+## #171 — causal session landmark research
+
+La recherche #171 persiste prospectivement, au moment du signal, les niveaux de la journée précédente et les extrêmes Asia, London et US disponibles jusque-là. Les niveaux sont calculés avec `Europe/Athens` et uniquement avec des M5 complètement closes avant `signal_at`. Le contexte reste séparé des populations probes, blocked probes et PAPER ; il ne participe à aucun signal, stop, sizing, garde ou admission. Les anciennes observations restent sans contexte (`N/A`) et ne sont pas backfillées.

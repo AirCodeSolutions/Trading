@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from app.domain.macro import MacroSignalContext
 from app.domain.opportunity import OpportunityMechanism
+from app.domain.session_landmark import SessionLandmarkContext
 from app.domain.shadow import StopGeometrySource
 from app.domain.shadow_paper import PaperTradeStatus
 from app.domain.trading import Side
@@ -32,6 +33,7 @@ class BlockedOpportunityProbe(BaseModel):
     spread_atr_m15: float | None = None
     broker_digits: int | None = None
     broker_tick_size: float | None = None
+    session_landmark_context: SessionLandmarkContext | None = None
     minimum_stop_distance_for_spread_guard: float | None = None
     additional_stop_distance_required: float | None = None
     additional_distance_atr_m5: float | None = None

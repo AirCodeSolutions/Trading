@@ -495,6 +495,13 @@ type StopGeometryResearch = {
   }[];
 };
 
+type SessionLandmarkResearch = {
+  instrumented_observations: number;
+  legacy_observations_excluded: number;
+  summaries: { symbol: string; mechanism: string; observable: number; winners: number; losers: number; median_nearest_distance_atr_m5: number | null; median_nearest_distance_atr_m15: number | null; median_active_session_position: number | null }[];
+  latest: { symbol: string; mechanism: string; context: { active_session: string | null; nearest_landmark_type: string | null; nearest_landmark_distance_atr_m5: number | null; nearest_landmark_distance_atr_m15: number | null; active_session_position: number | null } }[];
+};
+
 type OpportunityFunnelStrategy = {
   strategy_id: string;
   symbol: string;
@@ -1414,6 +1421,8 @@ export default function App() {
     useState<TradingIntelligence["blocked_probe_early_context"]>(null);
   const [stopGeometryResearch, setStopGeometryResearch] =
     useState<StopGeometryResearch | null>(null);
+  const [sessionLandmarkResearch, setSessionLandmarkResearch] =
+    useState<SessionLandmarkResearch | null>(null);
   const [admittedTradeEarlyContext, setAdmittedTradeEarlyContext] =
     useState<TradingIntelligence["admitted_trade_early_context"]>(null);
   const [candidateEvidenceCoverage, setCandidateEvidenceCoverage] =
@@ -1476,6 +1485,7 @@ export default function App() {
           blockedProbesResponse,
           opportunityFunnelResponse,
           stopGeometryResponse,
+          sessionLandmarkResponse,
           probeReviewContractResponse,
           intelligenceResponse,
           trailingShadowResponse,
@@ -1505,6 +1515,7 @@ export default function App() {
           fetch("/api/v1/shadow/blocked-probes"),
           fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           fetch("/api/v1/research/stop-geometry?hours=168"),
+          fetch("/api/v1/research/session-landmarks?hours=168"),
           fetch("/api/v1/research/probe-review/contract"),
           fetch("/api/v1/intelligence/overview?hours=24"),
           fetch("/api/v1/research/trailing-shadow"),
@@ -1547,6 +1558,9 @@ export default function App() {
           : null;
         const stopGeometryPayload = stopGeometryResponse.ok
           ? await stopGeometryResponse.json()
+          : null;
+        const sessionLandmarkPayload = sessionLandmarkResponse.ok
+          ? await sessionLandmarkResponse.json()
           : null;
         const probeReviewContractPayload = probeReviewContractResponse.ok
           ? await probeReviewContractResponse.json()
@@ -1602,6 +1616,7 @@ export default function App() {
         setBlockedProbes(blockedProbesPayload);
           setOpportunityFunnel(opportunityFunnelPayload);
           setStopGeometryResearch(stopGeometryPayload);
+          setSessionLandmarkResearch(sessionLandmarkPayload);
         setProbeReviewContract(probeReviewContractPayload);
         setIntelligence(intelligencePayload);
         setTrailingShadow(trailingShadowPayload);
@@ -3664,6 +3679,35 @@ export default function App() {
             ) : (
               <p className="strategy-empty">Aucune observation instrumentée disponible.</p>
             )}
+          </div>
+        ) : null}
+
+        {sessionLandmarkResearch ? (
+          <div className="intelligence-subsection">
+            <h3>Session &amp; Landmark Context · 168 h</h3>
+            <p className="intelligence-note">
+              Niveaux causaux calculés avec les M5 entièrement closes avant le signal. Research-only : aucun signal, stop ou garde n’est modifié.
+            </p>
+            <div className="early-context-kpis">
+              <span><b>{sessionLandmarkResearch.instrumented_observations}</b> instrumentées</span>
+              <span><b>{sessionLandmarkResearch.legacy_observations_excluded}</b> legacy N/A</span>
+            </div>
+            {sessionLandmarkResearch.latest.length ? (
+              <div className="intelligence-table">
+                <div className="intelligence-row blocked-context-row intelligence-head">
+                  <span>Actif / mécanisme</span><span>Session</span><span>Nearest</span><span>Dist. ATR5/15</span><span>Position range</span>
+                </div>
+                {sessionLandmarkResearch.latest.map((row) => (
+                  <div className="intelligence-row blocked-context-row" key={`${row.symbol}:${row.mechanism}`}>
+                    <strong>{row.symbol} · {row.mechanism.replaceAll("_", " ")}</strong>
+                    <span>{row.context.active_session ?? "—"}</span>
+                    <span>{row.context.nearest_landmark_type ?? "—"}</span>
+                    <span>{row.context.nearest_landmark_distance_atr_m5 == null ? "—" : row.context.nearest_landmark_distance_atr_m5.toFixed(2)} / {row.context.nearest_landmark_distance_atr_m15 == null ? "—" : row.context.nearest_landmark_distance_atr_m15.toFixed(2)}</span>
+                    <span>{row.context.active_session_position == null ? "—" : row.context.active_session_position.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="strategy-empty">Aucune observation prospective instrumentée disponible.</p>}
           </div>
         ) : null}
 

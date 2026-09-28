@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from app.domain.macro import MacroSignalContext
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.regime import MarketRegime
+from app.domain.session_landmark import SessionLandmarkContext
 from app.domain.shadow_paper import ShadowPaperSummary
 from app.domain.trading import Side
 
@@ -67,6 +68,7 @@ class ShadowOpportunityDiagnostic(BaseModel):
     spread_atr_m15: float | None = None
     broker_digits: int | None = None
     broker_tick_size: float | None = None
+    session_landmark_context: SessionLandmarkContext | None = None
     target_r: float | None = Field(default=None, gt=0)
     max_holding_bars: int | None = Field(default=None, gt=0)
     base_risk: ShadowSizingSnapshot | None = None

@@ -3375,3 +3375,15 @@ The dashboard shows the leading explanation per probes, waiting episodes, admitt
 PR #163, déployée au HEAD `d96525d480b9cfecbbde07d714c3617d62dcd30b`, distingue désormais une fermeture normale de marché d’un flux réellement stale. Le profil central est évalué dans la timezone MT4 existante `Europe/Athens` : BTCUSD est 24/7 ; EURUSD, GBPUSD, XAUUSD et XAGUSD suivent la semaine broker observée.
 
 Le samedi vérifié, BTCUSD est `ready`, les quatre autres actifs sont `market_closed`, `closed_symbols` les liste et `degraded_symbols` est vide. Une M5 stale pendant une session ouverte reste `degraded`. Cette évolution est d’observabilité opérationnelle uniquement : elle ne change ni scanner, ni admission, ni risque, ni autorité de trading.
+
+
+## 2026-09-28 — admitted post-entry M1 follow-through research
+
+Prepared a research-only extension of the admitted PAPER/DEMO trade context to measure the first fully observable minutes after entry. The new fields use only consecutive M1 bars that are fully closed after the fill and before the trade exit; the partial entry minute is excluded.
+
+For each admitted trade with eligible post-entry microbars, the report can now observe at 1m and 3m:
+- side-aligned close displacement in structural-risk units;
+- early favorable excursion (MFE) in R;
+- early adverse excursion (MAE) in R.
+
+Strategy summaries compare winner/loss medians and expose how many trades have a complete 1m or 3m observation. These fields are descriptive only. They do not trigger early exits, break-even moves, trailing changes or admission changes.

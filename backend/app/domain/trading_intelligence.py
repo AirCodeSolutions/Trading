@@ -304,6 +304,14 @@ class BlockedProbeEarlyContextEpisode(BaseModel):
     side_aligned_tick_imbalance_15m: float | None = Field(default=None, ge=-1, le=1)
     pressure_agreement_5m_15m: bool | None = None
     path_efficiency_5m: float = Field(ge=0, le=1)
+    post_entry_complete_m1_bars: int = Field(default=0, ge=0)
+    exit_within_3m: bool = False
+    follow_through_close_1m_r: float | None = None
+    early_mfe_1m_r: float | None = Field(default=None, ge=0)
+    early_mae_1m_r: float | None = Field(default=None, ge=0)
+    follow_through_close_3m_r: float | None = None
+    early_mfe_3m_r: float | None = Field(default=None, ge=0)
+    early_mae_3m_r: float | None = Field(default=None, ge=0)
     precursor_pattern: OpportunityCausalPattern | None = None
 
 
@@ -399,6 +407,16 @@ class AdmittedTradeEarlyContextSummary(BaseModel):
     loser_median_mae_r: float | None = Field(default=None, ge=0)
     winner_median_r_lost_while_waiting: float | None = None
     loser_median_r_lost_while_waiting: float | None = None
+    post_entry_1m_observable_trades: int = Field(default=0, ge=0)
+    post_entry_3m_observable_trades: int = Field(default=0, ge=0)
+    winner_median_follow_through_close_1m_r: float | None = None
+    loser_median_follow_through_close_1m_r: float | None = None
+    winner_median_follow_through_close_3m_r: float | None = None
+    loser_median_follow_through_close_3m_r: float | None = None
+    winner_median_early_mfe_3m_r: float | None = Field(default=None, ge=0)
+    loser_median_early_mfe_3m_r: float | None = Field(default=None, ge=0)
+    winner_median_early_mae_3m_r: float | None = Field(default=None, ge=0)
+    loser_median_early_mae_3m_r: float | None = Field(default=None, ge=0)
     winner_precursor_rate: float | None = Field(default=None, ge=0, le=1)
     loser_precursor_rate: float | None = Field(default=None, ge=0, le=1)
     winner_precursor_patterns: dict[str, int] = Field(default_factory=dict)

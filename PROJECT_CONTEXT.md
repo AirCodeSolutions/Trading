@@ -320,3 +320,58 @@ Rapporter au minimum :
 ## 19. Consigne courte pour tout agent
 
 > Lis PROJECT_CONTEXT.md avant toute action. Réconcilie ensuite main, les docs canoniques et le runtime live. Respecte flatness/drain, ne touche jamais aux positions externes, conserve le hard cap 5 lots et max_spread_to_stop=0.15, n'ajoute aucun threshold sur petit échantillon, et ne confonds jamais recherche descriptive avec autorité trading. Une hypothèse économique à la fois, tests avant merge, déploiement seulement book Trading-New flat.
+
+## 20. Reconstruction Trading-New V2 — directive 2026-09-29
+
+Le chantier prioritaire est désormais la reconstruction Trading-New V2 décrite dans :
+- `context.md`
+- `TRADING_NEW_V2_PLAN.md`
+
+Ordre directeur :
+1. Opportunity Engine V2 ;
+2. Market State V2 ;
+3. Executable Entry Zone ;
+4. Trigger Engine M1/M5 ;
+5. Position Manager V2 ;
+6. spécialisation par actif ;
+7. Champion / Challengers ;
+8. Portfolio Opportunity Allocator ;
+9. simplification ;
+10. validation économique et déploiement V2.
+
+Le diagnostic de départ est que le système a trop évolué comme plateforme de recherche et pas assez comme moteur de trading. Tant que le coeur V2 n'est pas construit, ne pas lancer de nouvelle couche research uniquement parce qu'une métrique supplémentaire est mesurable.
+
+### Gouvernance des agents
+
+- ChatGPT conserve la maîtrise du chantier : architecture, économie, risque, revue PR, merge et déploiement.
+- Codex Luna exécute uniquement des prompts bornés à l'étape courante.
+- Codex Luna ne merge pas, ne déploie pas, ne modifie pas les guards et ne promeut aucune stratégie de sa propre initiative.
+- Une étape et une hypothèse économique à la fois.
+
+### Dashboard transversal
+
+Toute évolution backend V2 doit avoir son contrat de visibilité dashboard.
+Le dashboard doit progressivement exposer Market State, Setup/Armed/Triggered, Executable Entry Zone, why-now/why-waiting/why-invalidated, puis le Position Manager adaptatif.
+La recherche sans autorité doit être clairement séparée de la vue trading opérationnelle.
+
+### Sorties adaptatives
+
+`target_r` et `max_holding_bars` ne doivent plus rester la logique principale du V2.
+Le Position Manager V2 doit évoluer vers stop structurel non élargissable, no-follow-through, protection, trailing, extension, sortie d'invalidation/régime et safety timeout final.
+
+### Suivi de chantier obligatoire
+
+À chaque chat de pilotage Trading-New, rapporter au minimum :
+- HEAD main ;
+- PR et CI ;
+- étape V2 ;
+- état dashboard ;
+- runtime/drain/flatness si vérifiables ;
+- changements économiques ;
+- changements research-only ;
+- blocages ;
+- prochaine action ;
+- prompt Codex Luna courant/suivant.
+
+Si un état live n'est pas accessible, le signaler et ne jamais le remplacer par une valeur mémorisée.
+

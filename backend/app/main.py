@@ -28,6 +28,7 @@ from app.domain.manual_demo import (
     ManualDemoTradeRequest,
 )
 from app.domain.market import MarketBar, Timeframe
+from app.domain.market_brief import DailyMarketBrief
 from app.domain.opportunity import (
     Mt4OpportunityBacktestRequest,
     OpportunityBacktestConfig,
@@ -86,6 +87,7 @@ from app.services.manual_demo import (
     submit_manual_demo_close,
     submit_manual_demo_order,
 )
+from app.services.market_brief import build_daily_market_brief
 from app.services.market_quality import assess_market
 from app.services.market_store import MarketStore
 from app.services.market_universe import build_market_universe
@@ -289,6 +291,16 @@ def mt4_market_universe() -> list[MarketUniverseAsset]:
         _mt4_files_dir(),
         datetime.now(tz=_server_timezone()),
         symbols=settings.session_watch_symbols,
+    )
+
+
+@app.get(
+    f"{settings.api_prefix}/research/market-brief",
+    response_model=DailyMarketBrief,
+)
+def market_brief() -> DailyMarketBrief:
+    return build_daily_market_brief(
+        _mt4_files_dir(), now=datetime.now(tz=_server_timezone())
     )
 
 

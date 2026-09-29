@@ -204,6 +204,19 @@ type MarketUniverseAsset = {
   reason: string;
 };
 
+type DailyMarketBrief = {
+  generated_at: string;
+  timezone: string;
+  assets: {
+    symbol: string; bid: number | null; ask: number | null; spread: number | null;
+    session: string | null; regime: string | null; volatility_percentile: number | null;
+    nearest_landmark: string | null; nearest_distance_atr_m15: number | null;
+    next_event: { name: string; impact: string } | null; next_event_time_until_display: string | null;
+    macro_blocked: boolean; readiness: string; warnings: string[];
+  }[];
+  upcoming_events: { event: { name: string; impact: string; start_at: string }; time_until_display: string; affected_assets: string[] }[];
+};
+
 type MarketQualitySnapshot = {
   symbol: string;
   spread_atr_m5: number;
@@ -1451,6 +1464,7 @@ export default function App() {
   const [paper, setPaper] = useState<PaperSummary | null>(null);
   const [quotes, setQuotes] = useState<MarketQuote[]>([]);
   const [universe, setUniverse] = useState<MarketUniverseAsset[]>([]);
+  const [marketBrief, setMarketBrief] = useState<DailyMarketBrief | null>(null);
   const [marketQuality, setMarketQuality] = useState<MarketQualitySnapshot[]>([]);
   const [overview, setOverview] = useState<TradingOverview | null>(null);
   const [costs, setCosts] = useState<CostSummary>({});
@@ -1483,6 +1497,7 @@ export default function App() {
           shadowResponse,
           paperResponse,
           universeResponse,
+          marketBriefResponse,
           qualityResponse,
           overviewResponse,
           costsResponse,
@@ -1514,6 +1529,7 @@ export default function App() {
           fetch("/api/v1/shadow/mt4/btc/break-retest"),
           fetch("/api/v1/shadow/mt4/btc/break-retest/paper"),
           fetch("/api/v1/market/mt4/universe"),
+          fetch("/api/v1/research/market-brief"),
           fetch("/api/v1/market/mt4/quality"),
           fetch("/api/v1/portfolio/overview"),
           fetch("/api/v1/market/mt4/costs"),
@@ -1549,6 +1565,7 @@ export default function App() {
         const shadowPayload = shadowResponse.ok ? await shadowResponse.json() : null;
         const paperPayload = paperResponse.ok ? await paperResponse.json() : null;
         const universePayload = universeResponse.ok ? await universeResponse.json() : [];
+        const marketBriefPayload = marketBriefResponse.ok ? await marketBriefResponse.json() : null;
         const qualityPayload = qualityResponse.ok ? await qualityResponse.json() : [];
         const overviewPayload = overviewResponse.ok ? await overviewResponse.json() : null;
         const costsPayload = costsResponse.ok ? await costsResponse.json() : {};
@@ -1619,6 +1636,7 @@ export default function App() {
         setShadow(shadowPayload);
         setPaper(paperPayload);
         setUniverse(universePayload);
+        setMarketBrief(marketBriefPayload);
         setMarketQuality(qualityPayload);
         setOverview(overviewPayload);
         setCosts(costsPayload);
@@ -2183,6 +2201,22 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      <section className="market-brief" hidden={activeView !== "overview"}>
+        <div className="section-heading">
+          <div><span className="eyebrow">MARKET BRIEF · {marketBrief?.timezone ?? "Europe/Athens"}</span><h2>Market Brief</h2></div>
+          <span className="intelligence-note">Event Radar déterministe · {marketBrief?.upcoming_events.length ?? 0} événement(s)</span>
+        </div>
+        <div className="market-brief-grid">
+          {(marketBrief?.assets ?? []).map((asset) => (
+            <article className="market-brief-card" key={asset.symbol}>
+              <div className="market-brief-card-head"><strong>{asset.symbol}</strong><span className={asset.readiness === "READY" ? "positive-text" : "negative-text"}>{asset.readiness}</span></div>
+              <strong className="market-brief-price">{asset.bid == null ? "—" : asset.bid.toFixed(asset.symbol.includes("USD") && !asset.symbol.startsWith("BTC") ? 5 : 2)} / {asset.ask == null ? "—" : asset.ask.toFixed(asset.symbol.includes("USD") && !asset.symbol.startsWith("BTC") ? 5 : 2)}</strong>
+              <div className="market-brief-lines"><span>Session <b>{asset.session ?? "—"}</b></span><span>Régime <b>{asset.regime ?? "—"}</b></span><span>Spread <b>{asset.spread == null ? "—" : asset.spread}</b></span><span>Volatilité <b>{asset.volatility_percentile == null ? "—" : `${Math.round(asset.volatility_percentile * 100)} %`}</b></span><span>Landmark <b>{asset.nearest_landmark ?? "—"} {asset.nearest_distance_atr_m15 == null ? "" : `(${asset.nearest_distance_atr_m15.toFixed(2)} ATR15)`}</b></span><span>Macro <b className={asset.macro_blocked ? "negative-text" : ""}>{asset.macro_blocked ? "BLOCK" : asset.next_event ? `${asset.next_event.name} · ${asset.next_event_time_until_display}` : "—"}</b></span></div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="command-center">
         <div className="command-center-heading">

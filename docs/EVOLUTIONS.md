@@ -2011,3 +2011,6 @@ Ajout d’un `SessionLandmarkContext` causal aux diagnostics de signal, puis aux
 ## #172 — performance attribution matrix (research-only)
 
 Trading Intelligence expose désormais un journal analytique par population (`admitted`, `unqualified_probe`, `blocked_probe`). Chaque cohorte conserve N, W/L, expectancy, profit factor, drawdown chronologique, médianes de résultat et mesures de coût disponibles. Les dimensions univariées et les interactions sont limitées à la liste gelée de #172 ; aucune recherche combinatoire, projection de PnL, ranking ou règle horaire n’est produite.
+## #173 — daily market brief / Event Radar V2 (research-only)
+
+Ajout de `GET /api/v1/research/market-brief`, qui assemble par actif le marché courant, session Europe/Athens, régime M15, ATR/volatilité, landmarks causaux #171, prochain événement macro structuré et fraîcheur des données. Le dashboard affiche cinq cartes compactes et un radar chronologique. Aucun texte génératif, scraping news, score caché, signal, garde ou chemin d’exécution n’est utilisé.

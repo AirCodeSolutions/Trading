@@ -8,9 +8,9 @@ from app.domain.market_brief import DailyMarketBrief, MarketBriefAsset, MarketBr
 from app.domain.trading import Side
 from app.services.macro_gate import active_macro_blackouts, load_macro_events
 from app.services.market_session import MarketSessionStatus, market_session_status
-from app.services.mt4_bar_sources import load_freshest_closed_bars
 from app.services.mt4_csv import _server_timezone
 from app.services.mt4_live_quotes import read_live_market_quotes
+from app.services.mt4_market_data import load_recent_closed_market_bars
 from app.services.opportunity_strategies import _atr_series
 from app.services.regime import classify_regime
 from app.services.session_landmarks import build_session_landmark_context
@@ -63,8 +63,10 @@ def format_time_until(minutes: float) -> str:
 
 def _build_asset(files_dir, symbol, now, quote, events):
     session_state = market_session_status(symbol, now)
-    bars_m5 = load_freshest_closed_bars(files_dir, symbol, Timeframe.M5, now)
-    bars_m15 = load_freshest_closed_bars(files_dir, symbol, Timeframe.M15, now)
+    # 600 M5 bars cover the previous-day/session landmarks and the current
+    # operational context; 250 M15 bars cover the regime replay warmup.
+    bars_m5 = load_recent_closed_market_bars(files_dir, symbol, Timeframe.M5, now, limit=600)
+    bars_m15 = load_recent_closed_market_bars(files_dir, symbol, Timeframe.M15, now, limit=250)
     warnings: list[str] = []
     if quote is None or quote.status.value != "live":
         warnings.append("data issue: quote unavailable or stale")

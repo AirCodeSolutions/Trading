@@ -3421,3 +3421,7 @@ Ajout d’un journal de performance research-only, séparant strictement admitte
 ## #173 — Daily Market Brief / Event Radar V2
 
 Le dashboard expose désormais un briefing déterministe et causal pour BTCUSD, EURUSD, GBPUSD, XAUUSD et XAGUSD. Il réutilise les quotes, M5/M15, régime, ATR, macro structurée, readiness et landmarks #171. Les événements sont triés chronologiquement avec un temps restant lisible ; les états visibles sont READY, MACRO WATCH, MACRO BLOCK, MARKET CLOSED et DATA ISSUE. Le brief est un outil d’observabilité et de préparation, sans autorité de trading.
+
+## 2026-09-29 — session range position contract
+
+Le contexte research #171 borne désormais `active_session_position` dans `[0,1]` et conserve l’information de breakout dans `active_session_location` (`BELOW_RANGE`, `INSIDE_RANGE`, `ABOVE_RANGE`). Les niveaux, le cutoff causal, la timezone et les populations restent inchangés. Le nouveau champ est optionnel afin de préserver la lecture des JSONL historiques ; aucun backfill n’est effectué.

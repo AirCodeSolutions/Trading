@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from datetime import datetime, time, timedelta
 
 from app.domain.market import MarketBar
-from app.domain.session_landmark import SessionLandmarkContext
+from app.domain.session_landmark import SessionLandmarkContext, SessionLandmarkLocation
 from app.domain.trading import Side
 from app.services.mt4_csv import _server_timezone
 from app.services.opportunity_strategies import (
@@ -80,11 +80,18 @@ def build_session_landmark_context(
         if active_high is not None and active_low is not None
         else None
     )
-    active_position = (
-        (signal_price - active_low) / active_range
-        if active_low is not None and active_range and active_range > 0
-        else None
-    )
+    active_position = None
+    active_location = None
+    if active_low is not None and active_high is not None and active_range and active_range > 0:
+        if signal_price < active_low:
+            active_position = 0.0
+            active_location = SessionLandmarkLocation.BELOW_RANGE
+        elif signal_price > active_high:
+            active_position = 1.0
+            active_location = SessionLandmarkLocation.ABOVE_RANGE
+        else:
+            active_position = (signal_price - active_low) / active_range
+            active_location = SessionLandmarkLocation.INSIDE_RANGE
     landmarks = {
         name: value for name, value in zip(
             _LANDMARK_ORDER, (pdh, pdl, ah, al, lh, ll, uh, ul), strict=True
@@ -120,4 +127,5 @@ def build_session_landmark_context(
         active_session_range=active_range,
         active_session_range_atr_m5=(active_range / atr_m5 if active_range is not None and atr_m5 and atr_m5 > 0 else None),
         active_session_position=active_position,
+        active_session_location=active_location,
     )

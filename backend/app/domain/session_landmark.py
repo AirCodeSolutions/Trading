@@ -1,6 +1,13 @@
 from datetime import datetime
+from enum import StrEnum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class SessionLandmarkLocation(StrEnum):
+    BELOW_RANGE = "BELOW_RANGE"
+    INSIDE_RANGE = "INSIDE_RANGE"
+    ABOVE_RANGE = "ABOVE_RANGE"
 
 
 class SessionLandmarkContext(BaseModel):
@@ -26,4 +33,5 @@ class SessionLandmarkContext(BaseModel):
     active_session_low: float | None = None
     active_session_range: float | None = None
     active_session_range_atr_m5: float | None = None
-    active_session_position: float | None = None
+    active_session_position: float | None = Field(default=None, ge=0, le=1)
+    active_session_location: SessionLandmarkLocation | None = None

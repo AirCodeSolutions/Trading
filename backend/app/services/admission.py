@@ -93,3 +93,23 @@ def demo_collection_allowed(admission: AdmissionDecision | None) -> bool:
         and admission.state == AdmissionState.SHADOW
         and paper_entry_allowed(admission)
     )
+
+
+def can_collect_research(admission: AdmissionDecision | None) -> bool:
+    """Allow executable signals to create research-only observations.
+
+    This capability is independent from PAPER and DEMO authority. Rejected
+    strategies retain the existing research evidence path, but never gain
+    execution authority from it.
+    """
+
+    return admission is None or admission.state in {
+        AdmissionState.SHADOW,
+        AdmissionState.REJECTED,
+    }
+
+
+def can_execute_demo(admission: AdmissionDecision | None) -> bool:
+    """Return the historical admission capability used by DEMO gating."""
+
+    return admission is not None and admission.state == AdmissionState.ACTIVE

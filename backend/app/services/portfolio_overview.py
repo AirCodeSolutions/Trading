@@ -11,7 +11,11 @@ from app.domain.portfolio import (
     ProspectiveQualificationState,
     TradingOverview,
 )
-from app.services.admission import demo_collection_allowed, paper_entry_allowed
+from app.services.admission import (
+    can_execute_demo,
+    demo_collection_allowed,
+    paper_entry_allowed,
+)
 from app.services.broker_account import read_broker_demo_snapshot
 from app.services.paper_registry import load_paper_registry
 from app.services.prospective_qualification import prospective_entry_allowed
@@ -76,7 +80,7 @@ def build_trading_overview(
         row
         for row in paper_rows
         if admissions.get(row.strategy_id) is not None
-        and admissions[row.strategy_id].state == AdmissionState.ACTIVE
+        and can_execute_demo(admissions[row.strategy_id])
         and row.qualification.state == ProspectiveQualificationState.SUPPORTS_DEMO
     ]
 

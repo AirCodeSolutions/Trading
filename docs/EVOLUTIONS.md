@@ -2028,3 +2028,16 @@ autorité sur le signal, le stop, le target, le sizing ou l'admission.
 
 Les cinq observations historiques restent legacy et ne sont pas backfillées. La
 nouvelle cohorte `POST_SHOCK_CONSUMED_MOVE_V1` commence après le déploiement.
+## 2026-09-29 — research collection capability separated from DEMO authority
+
+Le collecteur distingue désormais explicitement `can_collect_research` de
+`can_execute_demo`. Un signal `signal_executable` d’une stratégie SHADOW ou du
+chemin research existant peut alimenter un probe prospectif `RESEARCH_ONLY` même
+si `paper_entry_allowed` vaut `false`.
+
+Cette capacité ne modifie ni la logique du signal, ni les critères de
+qualification, ni l’admission historique. Les probes restent hors du registre
+PAPER et ne peuvent produire ni `ExecutionProposal`, ni commande CSV, ni écriture
+broker. Les stratégies REJECTED conservent uniquement leur chemin de preuve
+research existant et ne peuvent pas redevenir tradables automatiquement. #176 et
+sa population prospective restent inchangés.

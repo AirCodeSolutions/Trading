@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 from app.domain.admission import AdmissionDecision, AdmissionState
 from app.domain.opportunity import OpportunityMechanism
+from app.services.admission import can_collect_research, can_execute_demo
 from app.services.multi_shadow_collector import (
     paper_entry_allowed,
     shadow_mechanism_enabled,
@@ -48,6 +49,31 @@ def test_unqualified_probe_tracks_only_non_paper_admissions() -> None:
     )
     assert unqualified_probe_entry_allowed(decision(AdmissionState.SHADOW)) is False
     assert unqualified_probe_entry_allowed(decision(AdmissionState.ACTIVE)) is False
+
+
+def test_shadow_collects_research_without_paper_or_demo_authority() -> None:
+    shadow = decision(AdmissionState.SHADOW, weakest_expectancy_r=-0.01)
+    assert can_collect_research(shadow) is True
+    assert paper_entry_allowed(shadow) is False
+    assert can_execute_demo(shadow) is False
+    assert unqualified_probe_entry_allowed(shadow) is True
+
+
+def test_rejected_keeps_research_only_path_without_demo_authority() -> None:
+    rejected = decision(AdmissionState.REJECTED)
+    assert can_collect_research(rejected) is True
+    assert paper_entry_allowed(rejected) is False
+    assert can_execute_demo(rejected) is False
+    assert unqualified_probe_entry_allowed(rejected) is True
+
+
+def test_active_paper_authority_does_not_create_duplicate_research_probe() -> None:
+    active = decision(AdmissionState.ACTIVE)
+    assert can_collect_research(active) is False
+    assert can_execute_demo(active) is True
+    assert unqualified_probe_entry_allowed(active) is False
+
+
 
 
 def test_unqualified_probe_continues_existing_state_after_promotion(tmp_path: Path) -> None:

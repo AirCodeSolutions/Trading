@@ -5,7 +5,7 @@ from app.core.config import ExecutionMode, settings
 from app.domain.market import Timeframe
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.shadow import ShadowCollectionResult
-from app.services.admission import paper_entry_allowed
+from app.services.admission import can_collect_research, paper_entry_allowed
 from app.services.blocked_probe import advance_blocked_probe_book
 from app.services.macro_gate import (
     classify_macro_signal_context,
@@ -190,7 +190,7 @@ def should_advance_unqualified_probe(admission, state_path: Path) -> bool:
 
 
 def unqualified_probe_entry_allowed(admission) -> bool:
-    return not paper_entry_allowed(admission)
+    return can_collect_research(admission) and not paper_entry_allowed(admission)
 
 
 def shadow_mechanism_enabled(

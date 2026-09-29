@@ -154,6 +154,26 @@ def test_demo_collection_writes_open_once_for_same_paper_trade(tmp_path: Path, m
     assert state.open_command_id == first.command_id
 
 
+def test_research_only_observation_cannot_create_demo_command(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    enable(monkeypatch)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    current = overview(trade())
+    current.portfolio.action = PortfolioAction.NO_TRADE
+    current.portfolio.selected_strategy_id = None
+    current.paper_strategies[0].paper_entry_allowed = False
+
+    advance_demo_collection(tmp_path, runtime, current, macro(), NOW)
+
+    assert read_pending_command(tmp_path / "trading_demo_command.csv") is None
+    state = load_demo_collection_state(runtime / "demo_collection_state.json")
+    assert state.open_command_id is None
+    assert state.paper_trade_id is None
+
+
 def test_demo_collection_closes_remaining_bridge_ticket_after_paper_timeout(tmp_path: Path, monkeypatch) -> None:
     enable(monkeypatch)
     runtime = tmp_path / "runtime"

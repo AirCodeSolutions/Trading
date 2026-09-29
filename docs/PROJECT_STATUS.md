@@ -3437,3 +3437,12 @@ Aucun signal, guard, stop, target, sizing, admission ou exécution n'utilise ces
 champs. La collecte `POST_SHOCK_CONSUMED_MOVE_V1` doit atteindre au moins 10
 observations avant un checkpoint descriptif et 20 observations résolues avant
 toute première évaluation économique.
+## 2026-09-29 — research-only collection separated from broker authority
+
+Executable shadow signals may now use an explicit research-collection capability
+independent from PAPER/DEMO authority. SHADOW and the existing rejected research
+path can create prospective unqualified probes, while `paper_entry_allowed` and
+the DEMO portfolio gate remain unchanged. Research observations stay outside the
+PAPER registry and cannot create an execution proposal, command CSV, Pilot
+command or MT4 position. Qualification gates and historical admission remain
+unchanged; #176 remains a separate cohort.

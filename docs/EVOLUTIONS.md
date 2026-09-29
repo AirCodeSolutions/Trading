@@ -2018,3 +2018,13 @@ Ajout de `GET /api/v1/research/market-brief`, qui assemble par actif le marché 
 ## #176 — correction du contrat de position dans la range active
 
 Une position research #171 au-dessus du high de session pouvait dépasser `1.0`. Le calcul produit maintenant une position bornée et expose séparément la localisation `BELOW_RANGE`, `INSIDE_RANGE` ou `ABOVE_RANGE`. Les anciens artefacts restent lisibles avec une localisation absente ; aucune logique trading n’utilise ce champ.
+# #177 — Post-shock consumed move research
+
+Les diagnostics `post_shock_continuation` instrumentent désormais, prospectivement,
+la M15 POST_SHOCK causale, sa barre et ses métriques exactes, la clôture
+pré-shock, la latence de disponibilité et le déplacement déjà consommé avant le
+signal. Le contexte est optionnel, absent des mécanismes non post-shock et sans
+autorité sur le signal, le stop, le target, le sizing ou l'admission.
+
+Les cinq observations historiques restent legacy et ne sont pas backfillées. La
+nouvelle cohorte `POST_SHOCK_CONSUMED_MOVE_V1` commence après le déploiement.

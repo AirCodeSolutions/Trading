@@ -31,6 +31,32 @@ def _rolling_atr(true_ranges: Sequence[float], period: int = 14) -> list[float]:
     return values
 
 
+def shock_bar_metrics(
+    bars: Sequence[MarketBar],
+    index: int,
+) -> tuple[float, float, float, float, float, float] | None:
+    """Return the exact shock metrics used by ``classify_regime``."""
+    if index < 1 or index >= len(bars):
+        return None
+    true_ranges = _true_ranges(bars)
+    atr_values = _rolling_atr(true_ranges)
+    previous_atr = atr_values[index - 1]
+    bar = bars[index]
+    bar_range = bar.high - bar.low
+    shock_ratio = true_ranges[index] / previous_atr if previous_atr > 0 else 0.0
+    body_fraction = abs(bar.close - bar.open) / bar_range if bar_range > 0 else 0.0
+    close_location = (bar.close - bar.low) / bar_range if bar_range > 0 else 0.5
+    direction = 1 if bar.close > bar.open else -1 if bar.close < bar.open else 0
+    return (
+        true_ranges[index],
+        previous_atr,
+        shock_ratio,
+        body_fraction,
+        close_location,
+        direction,
+    )
+
+
 def _efficiency(bars: Sequence[MarketBar], lookback: int = 12) -> float:
     window = bars[-(lookback + 1) :]
     if len(window) < 2:

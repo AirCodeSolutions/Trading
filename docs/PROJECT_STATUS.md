@@ -3425,3 +3425,15 @@ Le dashboard expose désormais un briefing déterministe et causal pour BTCUSD, 
 ## 2026-09-29 — session range position contract
 
 Le contexte research #171 borne désormais `active_session_position` dans `[0,1]` et conserve l’information de breakout dans `active_session_location` (`BELOW_RANGE`, `INSIDE_RANGE`, `ABOVE_RANGE`). Les niveaux, le cutoff causal, la timezone et les populations restent inchangés. Le nouveau champ est optionnel afin de préserver la lecture des JSONL historiques ; aucun backfill n’est effectué.
+# 2026-09-29 — post-shock consumed move V1
+
+Une instrumentation research-only mesure prospectivement la consommation du
+mouvement entre la clôture M15 pré-shock et le signal `post_shock_continuation`.
+Elle persiste la barre shock, ses métriques de régime, les timestamps causaux,
+le déplacement side-aligned, le MFE/MAE pré-signal et leurs normalisations par
+l'ATR précédent. Les données legacy restent séparées et sans backfill.
+
+Aucun signal, guard, stop, target, sizing, admission ou exécution n'utilise ces
+champs. La collecte `POST_SHOCK_CONSUMED_MOVE_V1` doit atteindre au moins 10
+observations avant un checkpoint descriptif et 20 observations résolues avant
+toute première évaluation économique.

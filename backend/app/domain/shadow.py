@@ -26,6 +26,34 @@ class StopGeometrySource(StrEnum):
     RAW_STRUCTURE_FLOOR_COMPARISON_WITH_SPREAD = "raw_structure_floor_comparison_with_spread"
 
 
+class PostShockResearchContext(BaseModel):
+    """Prospective, causal context for post-shock consumption research."""
+
+    shock_bar_at: datetime
+    shock_known_at: datetime
+    shock_open: float | None = None
+    shock_high: float | None = None
+    shock_low: float | None = None
+    shock_close: float | None = None
+    pre_shock_close: float | None = None
+    shock_true_range: float | None = None
+    shock_previous_atr: float | None = None
+    shock_ratio: float | None = None
+    shock_body_fraction: float | None = None
+    shock_close_location: float | None = None
+    shock_direction: int | None = Field(default=None, ge=-1, le=1)
+    signal_known_at: datetime
+    post_shock_latency_minutes: float | None = None
+    post_shock_elapsed_complete_m5_bars: int | None = Field(default=None, ge=0)
+    signal_reference_price: float | None = None
+    pre_signal_consumed_move: float | None = None
+    pre_signal_consumed_move_atr: float | None = None
+    pre_signal_mfe: float | None = None
+    pre_signal_mfe_atr: float | None = None
+    pre_signal_mae: float | None = None
+    pre_signal_mae_atr: float | None = None
+
+
 class ShadowSizingSnapshot(BaseModel):
     risk_fraction: float = Field(gt=0, le=1)
     approved: bool
@@ -74,6 +102,7 @@ class ShadowOpportunityDiagnostic(BaseModel):
     base_risk: ShadowSizingSnapshot | None = None
     max_risk: ShadowSizingSnapshot | None = None
     macro_context: MacroSignalContext | None = None
+    post_shock_research_context: PostShockResearchContext | None = None
     reason: str
 
 

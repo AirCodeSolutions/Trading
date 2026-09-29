@@ -8,6 +8,7 @@ from app.domain.market import MarketBar
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.regime import MarketRegime, RegimeSnapshot
 from app.domain.shadow import (
+    PostShockResearchContext,
     ShadowOpportunityDiagnostic,
     ShadowSignalState,
     ShadowSizingSnapshot,
@@ -21,6 +22,7 @@ from app.services.opportunity_strategies import (
     _structural_displacement_sequence_signal,
     _structural_persistence_sequence_signal,
 )
+from app.services.regime import shock_bar_metrics
 from app.services.replay import RegimeReplay
 from app.services.session_continuity import reopen_warmup_remaining
 from app.services.session_landmarks import build_session_landmark_context
@@ -177,6 +179,18 @@ def scan_shadow_opportunity(
         atr_m5=atr_m5_value,
         atr_m15=regime.atr,
     )
+    post_shock_research_context = (
+        _post_shock_research_context(
+            bars_m5,
+            bars_m15,
+            regime_index,
+            regime,
+            side,
+            entry,
+        )
+        if mechanism == OpportunityMechanism.POST_SHOCK_CONTINUATION
+        else None
+    )
 
     base_sizing = _sizing_snapshot(
         spec,
@@ -229,7 +243,73 @@ def scan_shadow_opportunity(
         max_holding_bars=max_holding_bars,
         base_risk=base_sizing,
         max_risk=max_sizing,
+        post_shock_research_context=post_shock_research_context,
         reason=final_reason,
+    )
+
+
+def _post_shock_research_context(
+    bars_m5: Sequence[MarketBar],
+    bars_m15: Sequence[MarketBar],
+    shock_index: int,
+    regime: RegimeSnapshot,
+    side: Side,
+    signal_reference_price: float,
+) -> PostShockResearchContext | None:
+    metrics = shock_bar_metrics(bars_m15, shock_index)
+    if metrics is None:
+        return None
+    shock_true_range, previous_atr, shock_ratio, body_fraction, close_location, direction = metrics
+    shock_bar = bars_m15[shock_index]
+    pre_shock_close = bars_m15[shock_index - 1].close
+    shock_known_at = shock_bar.timestamp + timedelta(minutes=15)
+    signal_known_at = bars_m5[-1].timestamp + timedelta(minutes=5)
+    latency = (signal_known_at - shock_known_at).total_seconds() / 60
+    if latency < 0:
+        return None
+
+    causal_m5 = [
+        bar
+        for bar in bars_m5
+        if bar.timestamp >= shock_bar.timestamp
+        and bar.timestamp + timedelta(minutes=5) <= signal_known_at
+    ]
+    if side == Side.BUY:
+        consumed = signal_reference_price - pre_shock_close
+        mfe = max((bar.high - pre_shock_close for bar in causal_m5), default=None)
+        mae = max((pre_shock_close - bar.low for bar in causal_m5), default=None)
+    else:
+        consumed = pre_shock_close - signal_reference_price
+        mfe = max((pre_shock_close - bar.low for bar in causal_m5), default=None)
+        mae = max((bar.high - pre_shock_close for bar in causal_m5), default=None)
+
+    def normalized(value: float | None) -> float | None:
+        return value / previous_atr if value is not None and previous_atr > 0 else None
+
+    return PostShockResearchContext(
+        shock_bar_at=shock_bar.timestamp,
+        shock_known_at=shock_known_at,
+        shock_open=shock_bar.open,
+        shock_high=shock_bar.high,
+        shock_low=shock_bar.low,
+        shock_close=shock_bar.close,
+        pre_shock_close=pre_shock_close,
+        shock_true_range=shock_true_range,
+        shock_previous_atr=previous_atr,
+        shock_ratio=shock_ratio,
+        shock_body_fraction=body_fraction,
+        shock_close_location=close_location,
+        shock_direction=direction,
+        signal_known_at=signal_known_at,
+        post_shock_latency_minutes=latency,
+        post_shock_elapsed_complete_m5_bars=len(causal_m5),
+        signal_reference_price=signal_reference_price,
+        pre_signal_consumed_move=consumed,
+        pre_signal_consumed_move_atr=normalized(consumed),
+        pre_signal_mfe=mfe,
+        pre_signal_mfe_atr=normalized(mfe),
+        pre_signal_mae=mae,
+        pre_signal_mae_atr=normalized(mae),
     )
 
 

@@ -2028,3 +2028,16 @@ autorité sur le signal, le stop, le target, le sizing ou l'admission.
 
 Les cinq observations historiques restent legacy et ne sont pas backfillées. La
 nouvelle cohorte `POST_SHOCK_CONSUMED_MOVE_V1` commence après le déploiement.
+
+## Opportunity Engine V2 — état descriptif des setups
+
+La première fondation V2 expose une machine d'état commune (`NONE`, `SETUP`,
+`ARMED`, `TRIGGERED`, `INVALIDATED`, `EXPIRED`) avec transitions explicites,
+provenance et timestamps de barres closes. Les familles migrées dans cette
+étape sont `break_retest_reaccel` et `directional_pullback_resumption` ; les
+autres mécanismes V1 restent inchangés.
+
+L'endpoint `/api/v1/opportunities/v2/states` et la surface compacte
+`Opportunity State` sont descriptifs. `SETUP` et `ARMED` ne peuvent créer ni
+PAPER, ni proposition d'exécution, ni commande broker. Aucun signal, stop,
+target, sizing, spread guard, admission ou autorité DEMO n'est modifié.

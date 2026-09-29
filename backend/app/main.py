@@ -37,6 +37,7 @@ from app.domain.opportunity import (
     PortfolioResearchResult,
 )
 from app.domain.opportunity_funnel import OpportunityFunnel
+from app.domain.opportunity_state import OpportunityStateSnapshot
 from app.domain.performance_attribution import PerformanceAttributionReport
 from app.domain.portfolio import MarketUniverseAsset, TradingOverview
 from app.domain.precursor_execution_shadow import PrecursorExecutionShadowSummary
@@ -95,8 +96,13 @@ from app.services.mt4_csv import _server_timezone, read_mt4_csv, summarize_mt4_c
 from app.services.mt4_history import resolve_mt4_history_path
 from app.services.mt4_live_bars import read_closed_bar_snapshot
 from app.services.mt4_live_quotes import read_live_market_quotes
+from app.services.mt4_market_data import load_closed_market_bars
 from app.services.mt4_specs import get_mt4_symbol_spec, list_mt4_symbol_specs
 from app.services.opportunity_backtester import run_opportunity_backtest
+from app.services.opportunity_engine_v2 import (
+    REPRESENTATIVE_MECHANISMS,
+    build_opportunity_state,
+)
 from app.services.opportunity_funnel import build_opportunity_funnel
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.performance_attribution import build_performance_attribution_report
@@ -386,6 +392,39 @@ def shadow_opportunity_funnel(hours: int = 24) -> OpportunityFunnel:
         base_risk_fraction=settings.risk_per_trade_fraction,
         absolute_max_risk_fraction=settings.absolute_max_risk_fraction,
     )
+
+
+@app.get(
+    f"{settings.api_prefix}/opportunities/v2/states",
+    response_model=list[OpportunityStateSnapshot],
+)
+def opportunity_states_v2() -> list[OpportunityStateSnapshot]:
+    evaluated_at = datetime.now(tz=_server_timezone())
+    states: list[OpportunityStateSnapshot] = []
+    for symbol in settings.session_watch_symbols:
+        bars_m5 = load_closed_market_bars(
+            _mt4_files_dir(),
+            symbol,
+            timeframe=Timeframe.M5,
+            evaluated_at=evaluated_at,
+        )
+        bars_m15 = load_closed_market_bars(
+            _mt4_files_dir(),
+            symbol,
+            timeframe=Timeframe.M15,
+            evaluated_at=evaluated_at,
+        )
+        for mechanism in REPRESENTATIVE_MECHANISMS:
+            states.append(
+                build_opportunity_state(
+                    symbol=symbol,
+                    bars_m5=bars_m5,
+                    bars_m15=bars_m15,
+                    mechanism=mechanism,
+                    evaluated_at=evaluated_at,
+                )
+            )
+    return states
 
 
 @app.get(

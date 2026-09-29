@@ -7,6 +7,14 @@ then DEMO, without increasing risk to compensate for missing edge.
 
 Economic reference capital is now **400 EUR** (updated 2026-09-22). Risk percentages remain unchanged.
 
+## Opportunity Engine V2 — fondation état des setups
+
+La fondation V2 représente causalement les états `NONE`, `SETUP`, `ARMED`,
+`TRIGGERED`, `INVALIDATED` et `EXPIRED` pour `break_retest_reaccel` et
+`directional_pullback_resumption`. Les transitions utilisent uniquement des
+barres closes et sont exposées par une API read-only pour le dashboard. Aucun
+ordre, gate, sizing, garde ou transport broker n'est modifié.
+
 ## Active market scope
 
 Development and runtime scope is now intentionally restricted to:

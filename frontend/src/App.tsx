@@ -157,6 +157,20 @@ type ShadowDiagnostic = {
   reason: string;
 };
 
+type OpportunityStateSnapshot = {
+  symbol: string;
+  mechanism: string;
+  side: "buy" | "sell" | null;
+  state: "none" | "setup" | "armed" | "triggered" | "invalidated" | "expired";
+  first_seen_at: string | null;
+  updated_at: string;
+  triggered_at: string | null;
+  invalidation_reason: string | null;
+  expiration_reason: string | null;
+  reason: string;
+  age_seconds: number | null;
+};
+
 type PaperTrade = {
   trade_id: string;
   side: "buy" | "sell";
@@ -1424,6 +1438,7 @@ export default function App() {
   const [drainBusy, setDrainBusy] = useState(false);
   const [shadow, setShadow] = useState<ShadowDiagnostic | null>(null);
   const [opportunities, setOpportunities] = useState<ShadowDiagnostic[]>([]);
+  const [opportunityStates, setOpportunityStates] = useState<OpportunityStateSnapshot[]>([]);
   const [blockedProbes, setBlockedProbes] = useState<BlockedProbeRuntime[]>([]);
   const [opportunityFunnel, setOpportunityFunnel] = useState<OpportunityFunnel | null>(null);
   const [probeReviewContract, setProbeReviewContract] =
@@ -1505,6 +1520,7 @@ export default function App() {
           demoResponse,
           preflightResponse,
           opportunitiesResponse,
+          opportunityStatesResponse,
           blockedProbesResponse,
           opportunityFunnelResponse,
           stopGeometryResponse,
@@ -1537,6 +1553,7 @@ export default function App() {
           fetch("/api/v1/execution/demo/status"),
           fetch("/api/v1/session/preflight"),
           fetch("/api/v1/shadow/overview"),
+          fetch("/api/v1/opportunities/v2/states"),
           fetch("/api/v1/shadow/blocked-probes"),
           fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           fetch("/api/v1/research/stop-geometry?hours=168"),
@@ -1576,6 +1593,9 @@ export default function App() {
           : null;
         const opportunitiesPayload = opportunitiesResponse.ok
           ? await opportunitiesResponse.json()
+          : [];
+        const opportunityStatesPayload = opportunityStatesResponse.ok
+          ? await opportunityStatesResponse.json()
           : [];
         const blockedProbesPayload = blockedProbesResponse.ok
           ? await blockedProbesResponse.json()
@@ -1644,6 +1664,7 @@ export default function App() {
         setDemo(demoPayload);
         setPreflight(preflightPayload);
         setOpportunities(opportunitiesPayload);
+        setOpportunityStates(opportunityStatesPayload);
         setBlockedProbes(blockedProbesPayload);
           setOpportunityFunnel(opportunityFunnelPayload);
           setStopGeometryResearch(stopGeometryPayload);
@@ -4507,6 +4528,38 @@ export default function App() {
               <small>
                 Market-first : {row.missed} manquée(s) / {row.market} opportunité(s)
                 sur 24 h.
+              </small>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="opportunity-state-panel" hidden={activeView !== "trading"}>
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">OPPORTUNITY ENGINE V2 · DESCRIPTIVE</p>
+            <h2>Opportunity State</h2>
+          </div>
+          <p>États calculés sur barres closes. SETUP et ARMED ne portent aucune autorité broker.</p>
+        </div>
+        <div className="opportunity-state-grid">
+          {opportunityStates.map((item) => (
+            <article className="opportunity-state-card" key={`${item.symbol}:${item.mechanism}`}>
+              <div className="opportunity-state-card-heading">
+                <strong>{item.symbol}</strong>
+                <span className={`opportunity-state-badge state-${item.state}`}>
+                  {item.state.toUpperCase()}
+                </span>
+              </div>
+              <span className="opportunity-state-mechanism">
+                {item.mechanism.replaceAll("_", " ")}
+                {item.side ? ` · ${item.side.toUpperCase()}` : ""}
+              </span>
+              <p>{item.reason}</p>
+              <small>
+                {item.first_seen_at
+                  ? `Âge ${Math.max(0, Math.round(item.age_seconds / 60))} min`
+                  : "Aucun setup détecté"}
               </small>
             </article>
           ))}

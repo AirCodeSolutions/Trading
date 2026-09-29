@@ -42,6 +42,37 @@ def test_london_so_far_and_zero_range_are_causal() -> None:
     assert context.active_session_position == 0.5
 
 
+def test_session_position_preserves_range_location_at_boundaries_and_breakouts() -> None:
+    signal = datetime(2026, 9, 28, 11, 0, tzinfo=TZ)
+    bars = [bar(datetime(2026, 9, 28, 10, 0, tzinfo=TZ), 20, 10)]
+
+    inside = build_session_landmark_context(bars, signal, 15, Side.BUY)
+    above = build_session_landmark_context(bars, signal, 21, Side.BUY)
+    below = build_session_landmark_context(bars, signal, 9, Side.BUY)
+    at_high = build_session_landmark_context(bars, signal, 20, Side.BUY)
+    at_low = build_session_landmark_context(bars, signal, 10, Side.BUY)
+
+    assert inside.active_session_position == 0.5
+    assert inside.active_session_location == "INSIDE_RANGE"
+    assert above.active_session_position == 1.0
+    assert above.active_session_location == "ABOVE_RANGE"
+    assert below.active_session_position == 0.0
+    assert below.active_session_location == "BELOW_RANGE"
+    assert at_high.active_session_position == 1.0
+    assert at_high.active_session_location == "INSIDE_RANGE"
+    assert at_low.active_session_position == 0.0
+    assert at_low.active_session_location == "INSIDE_RANGE"
+
+
+def test_zero_range_has_no_session_position_or_location() -> None:
+    signal = datetime(2026, 9, 28, 11, 0, tzinfo=TZ)
+    bars = [bar(datetime(2026, 9, 28, 10, 0, tzinfo=TZ), 10, 10)]
+    context = build_session_landmark_context(bars, signal, 10, Side.BUY)
+
+    assert context.active_session_position is None
+    assert context.active_session_location is None
+
+
 def test_missing_history_returns_none_without_zeroes() -> None:
     signal = datetime(2026, 9, 28, 1, 0, tzinfo=TZ)
     context = build_session_landmark_context([], signal, 10, Side.BUY)

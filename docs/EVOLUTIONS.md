@@ -2014,3 +2014,7 @@ Trading Intelligence expose désormais un journal analytique par population (`ad
 ## #173 — daily market brief / Event Radar V2 (research-only)
 
 Ajout de `GET /api/v1/research/market-brief`, qui assemble par actif le marché courant, session Europe/Athens, régime M15, ATR/volatilité, landmarks causaux #171, prochain événement macro structuré et fraîcheur des données. Le dashboard affiche cinq cartes compactes et un radar chronologique. Aucun texte génératif, scraping news, score caché, signal, garde ou chemin d’exécution n’est utilisé.
+
+## #176 — correction du contrat de position dans la range active
+
+Une position research #171 au-dessus du high de session pouvait dépasser `1.0`. Le calcul produit maintenant une position bornée et expose séparément la localisation `BELOW_RANGE`, `INSIDE_RANGE` ou `ABOVE_RANGE`. Les anciens artefacts restent lisibles avec une localisation absente ; aucune logique trading n’utilise ce champ.

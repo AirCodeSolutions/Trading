@@ -3418,3 +3418,6 @@ La recherche #171 persiste prospectivement, au moment du signal, les niveaux de 
 ## #172 — performance attribution matrix
 
 Ajout d’un journal de performance research-only, séparant strictement admitted trades, executable unqualified probes et blocked probes. Le rapport `/api/v1/research/performance-attribution` agrège les résultats par actif, mécanisme, session, heure broker, jour de semaine, régime, side, source de stop et landmark, ainsi que les sept interactions pré-enregistrées. Les métriques restent descriptives, chronologiques pour le drawdown, et ne produisent aucun filtre ni classement trading.
+## #173 — Daily Market Brief / Event Radar V2
+
+Le dashboard expose désormais un briefing déterministe et causal pour BTCUSD, EURUSD, GBPUSD, XAUUSD et XAGUSD. Il réutilise les quotes, M5/M15, régime, ATR, macro structurée, readiness et landmarks #171. Les événements sont triés chronologiquement avec un temps restant lisible ; les états visibles sont READY, MACRO WATCH, MACRO BLOCK, MARKET CLOSED et DATA ISSUE. Le brief est un outil d’observabilité et de préparation, sans autorité de trading.

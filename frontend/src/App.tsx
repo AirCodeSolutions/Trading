@@ -4557,7 +4557,7 @@ export default function App() {
               </span>
               <p>{item.reason}</p>
               <small>
-                {item.first_seen_at
+                {item.first_seen_at && item.age_seconds != null
                   ? `Âge ${Math.max(0, Math.round(item.age_seconds / 60))} min`
                   : "Aucun setup détecté"}
               </small>

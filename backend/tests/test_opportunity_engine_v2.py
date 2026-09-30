@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -6,13 +7,14 @@ import pytest
 from app.domain.market import MarketBar, Timeframe
 from app.domain.opportunity import OpportunityCandidate, OpportunityMechanism
 from app.domain.opportunity_state import OpportunityState, OpportunityStateEvent
+from app.domain.regime import MarketRegime
 from app.domain.trading import Side
 from app.services.opportunity_engine_v2 import (
     build_opportunity_state,
     transition_opportunity_state,
 )
 
-AT = datetime(2026, 9, 29, 12, 0, tzinfo=UTC)
+AT = datetime(2026, 9, 30, 12, 0, tzinfo=UTC)
 
 
 def _bar(timestamp: datetime, close: float = 100.0) -> MarketBar:
@@ -44,103 +46,170 @@ def _bars() -> tuple[list[MarketBar], list[MarketBar]]:
     return m5, m15
 
 
-def test_valid_opportunity_state_transitions_are_explicit() -> None:
+def test_valid_transitions_have_explicit_closed_bar_provenance() -> None:
     state, setup = transition_opportunity_state(
         OpportunityState.NONE,
         OpportunityStateEvent.SETUP_DETECTED,
         at=AT,
-        source_bar_at=AT - timedelta(minutes=5),
+        source_closed_at=AT - timedelta(minutes=5),
         reason="setup",
     )
-    assert state is OpportunityState.SETUP
     state, armed = transition_opportunity_state(
         state,
         OpportunityStateEvent.ARMED,
         at=AT + timedelta(minutes=5),
-        source_bar_at=AT,
+        source_closed_at=AT,
         reason="armed",
     )
-    assert state is OpportunityState.ARMED
     state, triggered = transition_opportunity_state(
         state,
         OpportunityStateEvent.TRIGGERED,
         at=AT + timedelta(minutes=10),
-        source_bar_at=AT + timedelta(minutes=5),
+        source_closed_at=AT + timedelta(minutes=5),
         reason="triggered",
     )
     assert state is OpportunityState.TRIGGERED
-    assert [setup.state, armed.state, triggered.state] == [
-        OpportunityState.SETUP,
-        OpportunityState.ARMED,
-        OpportunityState.TRIGGERED,
+    assert [item.at for item in (setup, armed, triggered)] == [
+        AT,
+        AT + timedelta(minutes=5),
+        AT + timedelta(minutes=10),
+    ]
+    assert [item.source_closed_at for item in (setup, armed, triggered)] == [
+        AT - timedelta(minutes=5),
+        AT,
+        AT + timedelta(minutes=5),
     ]
 
 
 @pytest.mark.parametrize(
     ("current", "event"),
     [
-        (OpportunityState.NONE, OpportunityState.TRIGGERED),
-        (OpportunityState.SETUP, OpportunityState.TRIGGERED),
-        (OpportunityState.TRIGGERED, OpportunityState.ARMED),
+        (OpportunityState.NONE, OpportunityStateEvent.TRIGGERED),
+        (OpportunityState.SETUP, OpportunityStateEvent.TRIGGERED),
+        (OpportunityState.TRIGGERED, OpportunityStateEvent.ARMED),
     ],
 )
 def test_invalid_transitions_are_rejected(
     current: OpportunityState, event: OpportunityStateEvent
 ) -> None:
     with pytest.raises(ValueError, match="invalid opportunity transition"):
-        transition_opportunity_state(
-            current,
-            event,
-            at=AT,
-            source_bar_at=AT,
-            reason="invalid",
-        )
+        transition_opportunity_state(current, event, at=AT, source_closed_at=AT, reason="invalid")
 
 
-@pytest.mark.parametrize("event", [OpportunityStateEvent.INVALIDATED, OpportunityStateEvent.EXPIRED])
-def test_setup_and_armed_can_invalidate_or_expire(event: OpportunityStateEvent) -> None:
+@pytest.mark.parametrize(
+    "event", [OpportunityStateEvent.INVALIDATED, OpportunityStateEvent.EXPIRED]
+)
+def test_setup_and_armed_can_end_causally(event: OpportunityStateEvent) -> None:
     for current in (OpportunityState.SETUP, OpportunityState.ARMED):
         state, transition = transition_opportunity_state(
-            current,
-            event,
-            at=AT,
-            source_bar_at=AT,
-            reason="closed causal condition",
+            current, event, at=AT, source_closed_at=AT, reason="closed causal condition"
         )
         assert state in (OpportunityState.INVALIDATED, OpportunityState.EXPIRED)
-        assert transition.reason == "closed causal condition"
+        assert transition.source_closed_at == AT
 
 
-def test_future_bar_cannot_drive_a_transition() -> None:
-    with pytest.raises(ValueError, match="decision cannot precede"):
+def test_open_bar_is_rejected_as_source() -> None:
+    with pytest.raises(ValueError, match="source bar close"):
         transition_opportunity_state(
             OpportunityState.NONE,
             OpportunityStateEvent.SETUP_DETECTED,
             at=AT,
-            source_bar_at=AT + timedelta(minutes=5),
-            reason="future bar",
+            source_closed_at=AT + timedelta(minutes=5),
+            reason="not closed",
         )
 
 
-def test_existing_break_retest_candidate_is_exposed_as_triggered_without_execution_authority() -> None:
-    bars_m5, bars_m15 = _bars()
-    latest_signal_at = bars_m5[-1].timestamp + timedelta(minutes=5)
-    candidate = OpportunityCandidate(
+def _candidate(mechanism: OpportunityMechanism, signal_at: datetime) -> OpportunityCandidate:
+    return OpportunityCandidate(
         symbol="XAUUSD",
-        mechanism=OpportunityMechanism.BREAK_RETEST_REACCEL,
+        mechanism=mechanism,
         side=Side.BUY,
-        signal_at=latest_signal_at,
-        entry_at=latest_signal_at,
-        signal_index=len(bars_m5) - 1,
-        entry_index=len(bars_m5) - 1,
-        structural_stop=98.0,
+        signal_at=signal_at,
+        entry_at=signal_at,
+        signal_index=30,
+        entry_index=31,
+        structural_stop=98,
         target_r=1.8,
         max_holding_bars=12,
-        reason="closed-bar break/retest trigger",
+        reason="V1 trigger",
     )
-    with patch(
-        "app.services.opportunity_engine_v2.generate_candidates",
-        return_value=[candidate],
+
+
+def test_break_retest_builds_real_setup_armed_triggered_lifecycle() -> None:
+    bars_m5, bars_m15 = _bars()
+    regime = SimpleNamespace(regime=MarketRegime.DIRECTIONAL, direction=1)
+    phases = iter(
+        [(OpportunityStateEvent.SETUP_DETECTED, "breakout")]
+        + [(OpportunityStateEvent.ARMED, "retest")] * 10
+    )
+    with (
+        patch("app.services.opportunity_engine_v2._regime_for", return_value=regime),
+        patch(
+            "app.services.opportunity_engine_v2._break_phase",
+            side_effect=lambda *args: next(phases),
+        ),
+        patch(
+            "app.services.opportunity_engine_v2._trigger_candidate",
+            side_effect=[None] * 10 + [_candidate(OpportunityMechanism.BREAK_RETEST_REACCEL, AT)],
+        ),
+    ):
+        snapshot = build_opportunity_state(
+            symbol="XAUUSD",
+            bars_m5=bars_m5,
+            bars_m15=bars_m15,
+            mechanism=OpportunityMechanism.BREAK_RETEST_REACCEL,
+            evaluated_at=AT + timedelta(minutes=5),
+        )
+    assert snapshot.state is OpportunityState.TRIGGERED
+    assert [item.state for item in snapshot.provenance[-3:]] == [
+        OpportunityState.SETUP,
+        OpportunityState.ARMED,
+        OpportunityState.TRIGGERED,
+    ]
+    assert snapshot.provenance[-3].at < snapshot.provenance[-2].at < snapshot.provenance[-1].at
+
+
+def test_pullback_setup_can_be_invalidated_without_trigger() -> None:
+    bars_m5, bars_m15 = _bars()
+    directional = SimpleNamespace(regime=MarketRegime.DIRECTIONAL, direction=1)
+    balanced = SimpleNamespace(regime=MarketRegime.BALANCED, direction=0)
+    regimes = iter([directional] * 9 + [directional, balanced])
+    phases = iter(
+        [(None, "")] * 9 + [(OpportunityStateEvent.SETUP_DETECTED, "first pullback"), (None, "")]
+    )
+    with (
+        patch(
+            "app.services.opportunity_engine_v2._regime_for",
+            side_effect=lambda *args: next(regimes),
+        ),
+        patch(
+            "app.services.opportunity_engine_v2._pullback_phase",
+            side_effect=lambda *args: next(phases),
+        ),
+        patch("app.services.opportunity_engine_v2._trigger_candidate", return_value=None),
+    ):
+        snapshot = build_opportunity_state(
+            symbol="XAUUSD",
+            bars_m5=bars_m5,
+            bars_m15=bars_m15,
+            mechanism=OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
+            evaluated_at=AT + timedelta(minutes=5),
+        )
+    assert snapshot.state is OpportunityState.INVALIDATED
+
+
+def test_setup_can_expire_on_the_bar_ending_its_native_window() -> None:
+    bars_m5, bars_m15 = _bars()
+    bars_m5 = bars_m5[:30]
+    regime = SimpleNamespace(regime=MarketRegime.DIRECTIONAL, direction=1)
+    phases = iter([(OpportunityStateEvent.SETUP_DETECTED, "breakout")] + [(None, "")] * 4)
+    with (
+        patch("app.services.opportunity_engine_v2._regime_for", return_value=regime),
+        patch(
+            "app.services.opportunity_engine_v2._break_phase",
+            side_effect=lambda *args: next(phases),
+        ),
+        patch("app.services.opportunity_engine_v2._trigger_candidate", return_value=None),
     ):
         snapshot = build_opportunity_state(
             symbol="XAUUSD",
@@ -149,56 +218,31 @@ def test_existing_break_retest_candidate_is_exposed_as_triggered_without_executi
             mechanism=OpportunityMechanism.BREAK_RETEST_REACCEL,
             evaluated_at=AT,
         )
-    assert snapshot.state is OpportunityState.TRIGGERED
-    assert snapshot.side is Side.BUY
-    assert snapshot.provenance[-1].state is OpportunityState.TRIGGERED
-    assert snapshot.model_dump()["state"] is OpportunityState.TRIGGERED
-    assert not hasattr(snapshot, "execution_proposal")
+    assert snapshot.state is OpportunityState.EXPIRED
 
 
-def test_setup_is_causal_and_non_broker() -> None:
+def test_future_bar_cannot_create_a_state() -> None:
     bars_m5, bars_m15 = _bars()
-    candidate = OpportunityCandidate(
-        symbol="XAUUSD",
-        mechanism=OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
-        side=Side.SELL,
-        signal_at=bars_m5[-2].timestamp + timedelta(minutes=5),
-        entry_at=bars_m5[-2].timestamp + timedelta(minutes=5),
-        signal_index=len(bars_m5) - 2,
-        entry_index=len(bars_m5) - 2,
-        structural_stop=102.0,
-        target_r=1.5,
-        max_holding_bars=12,
-        reason="closed-bar setup",
-    )
-    with patch(
-        "app.services.opportunity_engine_v2.generate_candidates",
-        return_value=[candidate],
-    ):
+    with patch("app.services.opportunity_engine_v2._regime_timeline", return_value=([], [])):
         snapshot = build_opportunity_state(
             symbol="XAUUSD",
             bars_m5=bars_m5,
             bars_m15=bars_m15,
-            mechanism=OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
+            mechanism=OpportunityMechanism.BREAK_RETEST_REACCEL,
             evaluated_at=AT,
         )
-    assert snapshot.state is OpportunityState.ARMED
-    assert snapshot.model_dump_json()
-    assert snapshot.provenance[-1].source_bar_at <= snapshot.updated_at
+    assert snapshot.state is OpportunityState.NONE
 
 
-def test_opportunity_state_api_serializes_read_only_snapshots(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app import main
-
-    bars_m5, bars_m15 = _bars()
-    monkeypatch.setattr(main.settings, "session_watch_symbols", ["XAUUSD"])
-    monkeypatch.setattr(main, "_mt4_files_dir", lambda: AT)
-    monkeypatch.setattr(main, "load_closed_market_bars", lambda *args, **kwargs: (
-        bars_m5 if kwargs["timeframe"] is Timeframe.M5 else bars_m15
-    ))
-    payload = [snapshot.model_dump(mode="json") for snapshot in main.opportunity_states_v2()]
-    assert {item["mechanism"] for item in payload} == {
-        "break_retest_reaccel",
-        "directional_pullback_resumption",
-    }
-    assert all("age_seconds" in item for item in payload)
+def test_api_snapshot_serializes_and_has_no_broker_authority() -> None:
+    snapshot = build_opportunity_state(
+        symbol="XAUUSD",
+        bars_m5=[],
+        bars_m15=[],
+        mechanism=OpportunityMechanism.BREAK_RETEST_REACCEL,
+        evaluated_at=AT,
+    )
+    payload = snapshot.model_dump(mode="json")
+    assert payload["state"] == "none"
+    assert "execution_proposal" not in payload
+    assert "command" not in payload

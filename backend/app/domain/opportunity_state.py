@@ -27,7 +27,7 @@ class OpportunityStateEvent(StrEnum):
 class OpportunityStateTransition(BaseModel):
     state: OpportunityState
     at: datetime
-    source_bar_at: datetime
+    source_closed_at: datetime
     event: OpportunityStateEvent
     reason: str
 

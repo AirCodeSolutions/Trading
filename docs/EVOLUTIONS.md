@@ -2041,3 +2041,10 @@ L'endpoint `/api/v1/opportunities/v2/states` et la surface compacte
 `Opportunity State` sont descriptifs. `SETUP` et `ARMED` ne peuvent créer ni
 PAPER, ni proposition d'exécution, ni commande broker. Aucun signal, stop,
 target, sizing, spread guard, admission ou autorité DEMO n'est modifié.
+
+Le snapshot V2 est reconstruit depuis les phases partielles causales des barres
+M5 closes : breakout puis retest pour `break_retest_reaccel`, première puis
+seconde barre de pullback pour `directional_pullback_resumption`. Le passage à
+`TRIGGERED` réutilise les constructeurs de candidats V1 ; les fenêtres natives
+produisent `INVALIDATED` ou `EXPIRED`, puis l'état courant revient à `NONE`.
+Chaque transition conserve l'instant de clôture qui la rend connaissable.

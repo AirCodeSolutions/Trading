@@ -15,6 +15,11 @@ La fondation V2 représente causalement les états `NONE`, `SETUP`, `ARMED`,
 barres closes et sont exposées par une API read-only pour le dashboard. Aucun
 ordre, gate, sizing, garde ou transport broker n'est modifié.
 
+Les deux phases V2 représentatives sont dérivées de conditions partielles
+pré-signal ; le trigger final réutilise les constructeurs V1 existants. Les
+états terminaux sont causaux et transitoires dans le dashboard. Aucun état V2
+ne possède d'autorité broker.
+
 ## Active market scope
 
 Development and runtime scope is now intentionally restricted to:

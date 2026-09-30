@@ -29,6 +29,7 @@ from app.domain.manual_demo import (
 )
 from app.domain.market import MarketBar, Timeframe
 from app.domain.market_brief import DailyMarketBrief
+from app.domain.market_state import MarketStateV2
 from app.domain.opportunity import (
     Mt4OpportunityBacktestRequest,
     OpportunityBacktestConfig,
@@ -90,6 +91,7 @@ from app.services.manual_demo import (
 )
 from app.services.market_brief import build_daily_market_brief
 from app.services.market_quality import assess_market
+from app.services.market_state import build_market_state
 from app.services.market_store import MarketStore
 from app.services.market_universe import build_market_universe
 from app.services.mt4_csv import _server_timezone, read_mt4_csv, summarize_mt4_csv
@@ -308,6 +310,32 @@ def market_brief() -> DailyMarketBrief:
     return build_daily_market_brief(
         _mt4_files_dir(), now=datetime.now(tz=_server_timezone())
     )
+
+
+@app.get(
+    f"{settings.api_prefix}/market-state/v2",
+    response_model=list[MarketStateV2],
+)
+def market_state_v2() -> list[MarketStateV2]:
+    now = datetime.now(tz=_server_timezone())
+    files_dir = _mt4_files_dir()
+    quotes = {
+        quote.symbol: quote
+        for quote in read_live_market_quotes(
+            files_dir, now, symbols=settings.session_watch_symbols
+        )
+    }
+    return [
+        build_market_state(
+            symbol,
+            now,
+            load_closed_market_bars(files_dir, symbol, Timeframe.M5, now),
+            load_closed_market_bars(files_dir, symbol, Timeframe.M15, now),
+            quote=quotes.get(symbol),
+            macro_path=settings.macro_events_path,
+        )
+        for symbol in settings.session_watch_symbols
+    ]
 
 
 @app.get(

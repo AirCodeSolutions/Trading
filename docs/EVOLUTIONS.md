@@ -2053,3 +2053,12 @@ La décision `TRIGGERED` partage désormais une primitive de prédicat entre le
 scanner shadow, le générateur de candidats V1 et le moteur V2. Elle ne crée
 aucune barre d'entrée synthétique : l'entrée économique reste construite par
 V1 uniquement lorsqu'une barre réelle suivante existe.
+
+## Étape 2 — Market State V2
+
+Ajout d'une source descriptive commune par actif pour le régime M15 de
+référence, les features M5 causales, les landmarks de session, le macro et le
+coût de spread. Les données optionnelles ou manquantes restent explicitement
+indisponibles et aucune barre future n'est utilisée. L'API
+`/api/v1/market-state/v2` et la vue dashboard associée n'ont aucune autorité
+de trading ; les règles V1 et les garde-fous broker restent inchangés.

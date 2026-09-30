@@ -3472,3 +3472,16 @@ le prix courant et les ratios de spread. Une quote stale/future conserve son
 diagnostic mais déclenche un fallback vers le dernier close M5 causal. Le
 macro indique séparément sa disponibilité et son blackout éventuel. En régime
 neutre, les landmarks n'inventent aucune distance side-aligned.
+
+## Étape 3 — Executable Entry Zone V2
+
+L'Entry Zone intervient uniquement après un `TRIGGERED` causal pour les deux
+familles V2 représentatives. Elle décrit la compatibilité économique du prix
+courant avec la géométrie de stop shadow, le spread, le sizing et la marge ;
+elle ne signifie jamais autorisation DEMO et ne crée aucun ordre.
+
+L'entrée utilise exclusivement une quote fraîche et causale (ASK pour BUY,
+BID pour SELL). Le capital runtime provient de l'equity DEMO, puis du balance
+DEMO si nécessaire ; l'absence de capital ne retombe pas sur le capital de
+recherche. `post_trigger_chase_atr` et la room vers le landmark restent
+descriptifs, sans seuil late ou target supplémentaire.

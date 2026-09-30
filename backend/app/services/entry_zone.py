@@ -89,7 +89,7 @@ def build_entry_zone(
     capital: RuntimeCapitalSnapshot,
 ) -> ExecutableEntryZoneV2:
     base = {
-        "symbol": snapshot.symbol, "mechanism": snapshot.mechanism.value, "side": snapshot.side,
+        "symbol": snapshot.symbol, "mechanism": snapshot.mechanism.value,
         "opportunity_state": snapshot.state, "evaluated_at": market_state.evaluated_at,
         "extension_atr": market_state.extension_atr, "momentum_atr": market_state.momentum_atr,
         "acceleration_atr": market_state.acceleration_atr, "efficiency_m5": market_state.efficiency_m5,
@@ -149,6 +149,14 @@ def build_entry_zone(
     reason = sizing_result.reason
     if snapshot.mechanism is OpportunityMechanism.BREAK_RETEST_REACCEL:
         reason = f"{reason}; dynamic stop geometry"
+    policy_resolvable = sizing_result.reason in {
+        "spread consumes too much of the stop distance",
+        "minimum broker lot exceeds the risk budget",
+        "rounded size falls below the broker minimum lot",
+    }
+    if not sizing_result.approved and not policy_resolvable:
+        state = EntryZoneState.ECONOMICALLY_BLOCKED
+        reason = sizing_result.reason
     elif not band_viable:
         reason = "no viable entry zone: spread minimum exceeds minimum-lot budget distance"
     elif not within_band:

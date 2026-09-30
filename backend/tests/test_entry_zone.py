@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from app.domain.broker import BrokerSymbolSpec
 from app.domain.entry_zone import EntryZoneState
 from app.domain.live_market import LiveMarketQuote, MarketFeedStatus
+from app.domain.market import MarketBar, Timeframe
 from app.domain.market_state import MarketStateV2
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.opportunity_state import (
@@ -85,3 +86,90 @@ def test_trigger_provenance_keeps_trigger_and_source_close_distinct():
     source_closed_at = NOW.replace(minute=55)
     snapshot = OpportunityStateSnapshot(symbol="XAUUSD", mechanism=OpportunityMechanism.BREAK_RETEST_REACCEL, state=OpportunityState.TRIGGERED, triggered_at=trigger_at, updated_at=NOW, reason="test", provenance=[OpportunityStateTransition(state=OpportunityState.TRIGGERED, at=trigger_at, source_closed_at=source_closed_at, event=OpportunityStateEvent.TRIGGERED, reason="test")])
     assert snapshot.triggered_at != snapshot.provenance[0].source_closed_at
+
+
+def _real_pullback_case():
+    start = datetime(2026, 9, 30, 8, tzinfo=ZoneInfo("Europe/Athens"))
+    m15 = []
+    price = 100.0
+    for index in range(55):
+        close = price + 0.2
+        m15.append(MarketBar(symbol="XAUUSD", timeframe=Timeframe.M15, timestamp=start + timedelta(minutes=index * 15), open=price, high=close + 0.1, low=price - 0.1, close=close))
+        price = close
+    m5 = []
+    for index in range(27):
+        value = 105 + index * 0.05
+        m5.append(MarketBar(symbol="XAUUSD", timeframe=Timeframe.M5, timestamp=start + timedelta(minutes=750 + index * 5), open=value, high=value + 0.2, low=value - 0.2, close=value + 0.05))
+    m5.extend([
+        MarketBar(symbol="XAUUSD", timeframe=Timeframe.M5, timestamp=start + timedelta(minutes=885), open=106.35, high=106.4, low=105.1, close=105.5),
+        MarketBar(symbol="XAUUSD", timeframe=Timeframe.M5, timestamp=start + timedelta(minutes=890), open=105.5, high=105.6, low=104.8, close=105.0),
+        MarketBar(symbol="XAUUSD", timeframe=Timeframe.M5, timestamp=start + timedelta(minutes=895), open=105.0, high=106.6, low=104.9, close=106.5),
+    ])
+    trigger_at = start + timedelta(minutes=900)
+    transition = OpportunityStateTransition(state=OpportunityState.TRIGGERED, at=trigger_at, source_closed_at=trigger_at, event=OpportunityStateEvent.TRIGGERED, reason="real trigger")
+    snapshot = OpportunityStateSnapshot(symbol="XAUUSD", mechanism=OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION, state=OpportunityState.TRIGGERED, triggered_at=trigger_at, updated_at=trigger_at, reason="real trigger", provenance=[transition])
+    state = MarketStateV2(symbol="XAUUSD", evaluated_at=trigger_at + timedelta(minutes=5), m5_freshness="fresh", m15_freshness="fresh", atr_m5=1.0)
+    spec = BrokerSymbolSpec(symbol="XAUUSD", bid=106.5, ask=106.51, tick_size=0.01, tick_value=1, min_lot=0.1, max_lot=10, lot_step=0.1)
+    quote = LiveMarketQuote(symbol="XAUUSD", as_of=trigger_at + timedelta(minutes=5), bid=106.5, ask=106.51, mid=106.505, spread=0.01, spread_pct=0.01, digits=2, age_seconds=0, status=MarketFeedStatus.LIVE)
+    capital = RuntimeCapitalSnapshot(capital_eur=10000, source=RuntimeCapitalSource.BROKER_EQUITY, is_demo=True)
+    return snapshot, state, m5, m15, quote, spec, capital
+
+
+def test_real_trigger_reaches_currently_executable_without_broker_action():
+    case = _real_pullback_case()
+    zone = build_entry_zone(snapshot=case[0], market_state=case[1], bars_m5=case[2], bars_m15=case[3], quote=case[4], spec=case[5], capital=case[6])
+    assert zone.state is EntryZoneState.CURRENTLY_EXECUTABLE
+    assert zone.current_entry is not None and zone.structural_stop is not None
+    assert zone.sizing is not None and zone.sizing.lots is not None and zone.sizing.lots > 0
+    assert zone.sizing.lots <= 5
+    assert zone.trigger_source_closed_at == case[0].provenance[0].source_closed_at
+    assert zone.post_trigger_chase_atr is not None
+
+
+@pytest.mark.parametrize("quote_mode", ["stale", "future", "absent"])
+def test_real_trigger_requires_fresh_quote(quote_mode):
+    snapshot, state, m5, m15, quote, spec, capital = _real_pullback_case()
+    if quote_mode == "stale":
+        quote = quote.model_copy(update={"status": MarketFeedStatus.STALE})
+    elif quote_mode == "future":
+        quote = quote.model_copy(update={"as_of": state.evaluated_at + timedelta(minutes=1)})
+    else:
+        quote = None
+    zone = build_entry_zone(snapshot=snapshot, market_state=state, bars_m5=m5, bars_m15=m15, quote=quote, spec=spec, capital=capital)
+    assert zone.state is EntryZoneState.DATA_UNAVAILABLE
+
+@pytest.mark.parametrize(
+    "capital",
+    [
+        RuntimeCapitalSnapshot(capital_eur=10000, source=RuntimeCapitalSource.BROKER_BALANCE, is_demo=True),
+        RuntimeCapitalSnapshot(capital_eur=400, source=RuntimeCapitalSource.RESEARCH_FALLBACK, is_demo=True),
+        RuntimeCapitalSnapshot(capital_eur=10000, source=RuntimeCapitalSource.BROKER_EQUITY, is_demo=False),
+        RuntimeCapitalSnapshot(source=RuntimeCapitalSource.UNAVAILABLE),
+    ],
+)
+def test_real_trigger_accepts_only_demo_broker_capital(capital):
+    case = _real_pullback_case()
+    zone = build_entry_zone(snapshot=case[0], market_state=case[1], bars_m5=case[2], bars_m15=case[3], quote=case[4], spec=case[5], capital=capital)
+    if capital.source is RuntimeCapitalSource.BROKER_BALANCE:
+        assert zone.state is EntryZoneState.CURRENTLY_EXECUTABLE
+    else:
+        assert zone.state is EntryZoneState.DATA_UNAVAILABLE
+
+
+def test_real_pullback_band_is_numeric_and_trigger_provenance_is_preserved():
+    snapshot, state, m5, m15, quote, spec, capital = _real_pullback_case()
+    source = snapshot.provenance[0].source_closed_at - timedelta(minutes=5)
+    snapshot = snapshot.model_copy(update={"provenance": [snapshot.provenance[0].model_copy(update={"source_closed_at": source})]})
+    zone = build_entry_zone(snapshot=snapshot, market_state=state, bars_m5=m5, bars_m15=m15, quote=quote, spec=spec, capital=capital)
+    assert zone.state is EntryZoneState.CURRENTLY_EXECUTABLE
+    assert zone.trigger_at == snapshot.provenance[0].at
+    assert zone.trigger_source_closed_at == source
+    assert zone.entry_zone_low is not None and zone.entry_zone_high is not None
+    assert zone.entry_zone_low <= zone.entry_zone_high
+    assert zone.minimum_stop_distance_for_spread <= zone.maximum_stop_distance_for_min_lot_budget
+
+
+def test_shared_stop_geometry_covers_asia_sweep_sides():
+    from app.services.stop_geometry import resolve_trigger_structural_stop
+    assert resolve_trigger_structural_stop(OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL, Side.BUY, 95, 100, 2, 1) == 95
+    assert resolve_trigger_structural_stop(OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL, Side.SELL, 105, 100, 2, 1) == 106

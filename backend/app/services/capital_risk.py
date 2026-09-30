@@ -33,7 +33,9 @@ def size_position(request: PositionSizeRequest) -> PositionSizeResult:
         return _rejected(request, risk_fraction, stop_distance, spread, "stop distance must be > 0")
 
     spread_to_stop = spread / stop_distance
-    if spread_to_stop > settings.max_spread_to_stop:
+    # Permit the configured boundary despite binary floating-point representation
+    # (for example, 0.15 / 1.0 may be represented just above 0.15).
+    if spread_to_stop > settings.max_spread_to_stop + 1e-12:
         return _rejected(
             request,
             risk_fraction,

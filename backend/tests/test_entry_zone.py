@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
 from app.domain.broker import BrokerSymbolSpec
 from app.domain.entry_zone import EntryZoneState
 from app.domain.live_market import LiveMarketQuote, MarketFeedStatus
@@ -17,8 +18,10 @@ from app.domain.opportunity_state import (
     OpportunityStateTransition,
 )
 from app.domain.runtime_capital import RuntimeCapitalSnapshot, RuntimeCapitalSource
+from app.domain.session_landmark import SessionLandmarkContext
 from app.domain.trading import Side
-from app.services.entry_zone import _stop_for, build_entry_zone
+from app.services.capital_risk import size_position
+from app.services.entry_zone import _landmark, _stop_for, build_entry_zone
 from app.services.opportunity_triggers import TriggerInspection
 
 NOW = datetime(2026, 9, 30, 12, tzinfo=ZoneInfo("Europe/Athens"))
@@ -173,3 +176,114 @@ def test_shared_stop_geometry_covers_asia_sweep_sides():
     from app.services.stop_geometry import resolve_trigger_structural_stop
     assert resolve_trigger_structural_stop(OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL, Side.BUY, 95, 100, 2, 1) == 95
     assert resolve_trigger_structural_stop(OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL, Side.SELL, 105, 100, 2, 1) == 106
+
+
+def test_waiting_price_when_current_price_is_too_close_but_band_is_viable():
+    snapshot, state, m5, m15, quote, spec, capital = _real_pullback_case()
+    quote = quote.model_copy(update={"bid": 104.70, "ask": 104.80, "mid": 104.75})
+    spec = spec.model_copy(update={"bid": quote.bid, "ask": quote.ask})
+    zone = build_entry_zone(snapshot=snapshot, market_state=state, bars_m5=m5, bars_m15=m15, quote=quote, spec=spec, capital=capital)
+    assert zone.state is EntryZoneState.WAITING_PRICE
+    assert zone.entry_zone_low is not None and zone.entry_zone_high is not None
+    assert zone.entry_zone_low <= zone.entry_zone_high
+    assert zone.current_entry < zone.entry_zone_low
+    assert zone.minimum_stop_distance_for_spread == pytest.approx((quote.ask - quote.bid) / settings.max_spread_to_stop)
+
+
+def test_waiting_price_when_current_price_is_too_far_but_band_is_viable():
+    snapshot, state, m5, m15, quote, spec, capital = _real_pullback_case()
+    quote = quote.model_copy(update={"bid": 116.0, "ask": 116.01, "mid": 116.005})
+    spec = spec.model_copy(update={"bid": quote.bid, "ask": quote.ask})
+    zone = build_entry_zone(snapshot=snapshot, market_state=state, bars_m5=m5, bars_m15=m15, quote=quote, spec=spec, capital=capital)
+    assert zone.state is EntryZoneState.WAITING_PRICE
+    assert zone.entry_zone_low is not None and zone.entry_zone_high is not None
+    assert zone.current_entry > zone.entry_zone_high
+
+
+def test_margin_rejection_is_economically_blocked_not_waiting_price():
+    snapshot, state, m5, m15, quote, spec, capital = _real_pullback_case()
+    spec = spec.model_copy(update={"margin_required": 100_000})
+    zone = build_entry_zone(snapshot=snapshot, market_state=state, bars_m5=m5, bars_m15=m15, quote=quote, spec=spec, capital=capital)
+    assert zone.state is EntryZoneState.ECONOMICALLY_BLOCKED
+    assert zone.sizing is not None
+    assert zone.sizing.sizing_reason == "estimated margin exceeds capital policy"
+
+
+def test_spread_limit_is_numeric_and_not_relaxed():
+    exact = size_position(__import__("app.domain.broker", fromlist=["PositionSizeRequest"]).PositionSizeRequest(
+        spec=BrokerSymbolSpec(symbol="XAUUSD", bid=100, ask=100.15, tick_size=0.01, tick_value=1, min_lot=0.1, max_lot=10, lot_step=0.1),
+        entry=100.15, stop=99.15, capital_eur=10000,
+    ))
+    above = size_position(__import__("app.domain.broker", fromlist=["PositionSizeRequest"]).PositionSizeRequest(
+        spec=BrokerSymbolSpec(symbol="XAUUSD", bid=100, ask=100.1501, tick_size=0.01, tick_value=1, min_lot=0.1, max_lot=10, lot_step=0.1),
+        entry=100.1501, stop=99.15, capital_eur=10000,
+    ))
+    assert exact.spread_to_stop == pytest.approx(settings.max_spread_to_stop)
+    assert exact.approved
+    assert above.spread_to_stop > settings.max_spread_to_stop
+    assert not above.approved
+    assert above.reason == "spread consumes too much of the stop distance"
+
+
+def test_pullback_min_lot_budget_and_five_lot_cap_are_reported():
+    snapshot, state, m5, m15, quote, spec, _ = _real_pullback_case()
+    tiny = RuntimeCapitalSnapshot(capital_eur=1, source=RuntimeCapitalSource.BROKER_EQUITY, is_demo=True)
+    zone = build_entry_zone(snapshot=snapshot, market_state=state, bars_m5=m5, bars_m15=m15, quote=quote, spec=spec, capital=tiny)
+    assert zone.sizing is not None
+    assert zone.sizing.min_lot_loss_eur > zone.sizing.risk_budget_eur
+    assert zone.maximum_stop_distance_for_min_lot_budget < zone.current_stop_distance
+    huge = _real_pullback_case()[6].model_copy(update={"capital_eur": 1_000_000})
+    capped = build_entry_zone(snapshot=snapshot, market_state=state, bars_m5=m5, bars_m15=m15, quote=quote, spec=spec, capital=huge)
+    assert capped.sizing is not None and capped.sizing.lots <= settings.max_lots_per_trade <= 5
+
+
+@pytest.mark.parametrize("side", [Side.BUY, Side.SELL])
+def test_landmark_selection_is_side_aligned(side):
+    if side is Side.BUY:
+        entry = 106.51
+        landmarks = SessionLandmarkContext(at=NOW, previous_day_high=110, asia_high=108, london_high_so_far=107)
+    else:
+        entry = 103.5
+        landmarks = SessionLandmarkContext(at=NOW, previous_day_low=99, asia_low=102, london_low_so_far=101)
+    state = MarketStateV2(symbol="XAUUSD", evaluated_at=NOW, m5_freshness="fresh", m15_freshness="fresh", atr_m5=1.0, session_context=landmarks)
+    landmark_type, landmark_price, distance, distance_atr, room = _landmark(state, side, entry, 1.0)
+    assert landmark_type is not None
+    assert landmark_price is not None
+    if side is Side.BUY:
+        assert landmark_type == "london_high_so_far"
+        assert landmark_price == 107
+    else:
+        assert landmark_type == "asia_low"
+        assert landmark_price == 102
+    assert distance == pytest.approx(abs(landmark_price - entry))
+    assert distance_atr == pytest.approx(distance)
+    assert room == pytest.approx(distance)
+
+
+def test_no_favorable_landmark_returns_none():
+    state = MarketStateV2(symbol="XAUUSD", evaluated_at=NOW, m5_freshness="fresh", m15_freshness="fresh", atr_m5=1.0, session_context=SessionLandmarkContext(at=NOW, previous_day_low=90, asia_low=91))
+    assert _landmark(state, Side.BUY, 100, 1.0) == (None, None, None, None, None)
+    assert _landmark(state, Side.SELL, 80, 1.0) == (None, None, None, None, None)
+
+
+@pytest.mark.parametrize("field", ["quote", "spec"])
+def test_wrong_quote_or_spec_symbol_is_unavailable(field):
+    snapshot, state, m5, m15, quote, spec, capital = _real_pullback_case()
+    if field == "quote":
+        quote = quote.model_copy(update={"symbol": "BTCUSD"})
+    else:
+        spec = spec.model_copy(update={"symbol": "BTCUSD"})
+    zone = build_entry_zone(snapshot=snapshot, market_state=state, bars_m5=m5, bars_m15=m15, quote=quote, spec=spec, capital=capital)
+    assert zone.state is EntryZoneState.DATA_UNAVAILABLE
+
+
+@pytest.mark.parametrize("timeframe", [Timeframe.M5, Timeframe.M15])
+def test_wrong_bar_symbol_is_unavailable(timeframe):
+    snapshot, state, m5, m15, quote, spec, capital = _real_pullback_case()
+    bad = MarketBar(symbol="BTCUSD", timeframe=timeframe, timestamp=(m5 if timeframe is Timeframe.M5 else m15)[0].timestamp, open=100, high=101, low=99, close=100)
+    if timeframe is Timeframe.M5:
+        m5 = [bad, *m5[1:]]
+    else:
+        m15 = [bad, *m15[1:]]
+    zone = build_entry_zone(snapshot=snapshot, market_state=state, bars_m5=m5, bars_m15=m15, quote=quote, spec=spec, capital=capital)
+    assert zone.state is EntryZoneState.DATA_UNAVAILABLE

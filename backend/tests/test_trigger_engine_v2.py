@@ -150,6 +150,15 @@ def test_break_retest_early_trigger_uses_close_location():
     assert rejected.state is TriggerEngineState.WAITING
 
 
+def test_pullback_sell_move_saved_is_side_aligned():
+    snapshot = armed_snapshot(Side.SELL, triggered=True)
+    sell_row = row(START + timedelta(minutes=11), side=Side.SELL, close=99, up=1, down=4)
+    result = build_trigger_engine_snapshot(snapshot=snapshot, microbars=[sell_row], evaluated_at=START + timedelta(minutes=15), bars_m5=pullback_bars(), atr_reference=2, v1_reference_price=98)
+    assert result.state is TriggerEngineState.EARLY_TRIGGERED
+    assert result.early_trigger_price == sell_row.bid_close
+    assert result.move_saved_vs_v1_atr == pytest.approx((sell_row.bid_close - 98) / 2)
+
+
 def test_trigger_endpoint_returns_five_assets_and_two_mechanisms(monkeypatch, tmp_path):
     from fastapi.testclient import TestClient
 

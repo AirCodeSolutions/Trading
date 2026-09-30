@@ -3465,3 +3465,10 @@ données absentes restent indisponibles.
 `GET /api/v1/market-state/v2` et le panneau Market State sont en lecture seule.
 Le snapshot ne participe à aucune décision de signal, admission, sizing,
 spread guard, stop, target ou exécution.
+
+La quote possède une provenance et un statut explicites (`fresh`, `stale`,
+`future`, `unavailable`) ; seules les quotes fraîches et non futures alimentent
+le prix courant et les ratios de spread. Une quote stale/future conserve son
+diagnostic mais déclenche un fallback vers le dernier close M5 causal. Le
+macro indique séparément sa disponibilité et son blackout éventuel. En régime
+neutre, les landmarks n'inventent aucune distance side-aligned.

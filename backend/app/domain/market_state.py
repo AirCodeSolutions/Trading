@@ -3,7 +3,6 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
-from app.domain.macro import MacroGateStatus
 from app.domain.session_landmark import SessionLandmarkContext
 
 
@@ -22,11 +21,32 @@ class MarketStateM1Context(BaseModel):
     freshness_seconds: float | None = None
 
 
+class MarketStateQuoteContext(BaseModel):
+    available: bool = False
+    as_of: datetime | None = None
+    status: str = "unavailable"
+    age_seconds: float | None = None
+    bid: float | None = None
+    ask: float | None = None
+    spread: float | None = None
+
+
+class MarketStateMacroContext(BaseModel):
+    available: bool = False
+    source: str = "unavailable"
+    blocked: bool | None = None
+    next_event_name: str | None = None
+
+
 class MarketStateV2(BaseModel):
     symbol: str
     evaluated_at: datetime
-    latest_closed_m5_at: datetime | None = None
-    latest_closed_m15_at: datetime | None = None
+    latest_closed_m5_at: datetime | None = None  # source bar start, retained for compatibility
+    latest_closed_m15_at: datetime | None = None  # source bar start, retained for compatibility
+    latest_m5_bar_at: datetime | None = None
+    latest_m5_closed_at: datetime | None = None
+    latest_m15_bar_at: datetime | None = None
+    latest_m15_closed_at: datetime | None = None
     m5_freshness: MarketStateFreshness
     m15_freshness: MarketStateFreshness
     regime: str | None = None
@@ -47,7 +67,8 @@ class MarketStateV2(BaseModel):
     range_expansion_ratio: float | None = None
     exhaustion_proxy: float | None = None
     session_context: SessionLandmarkContext | None = None
-    macro: MacroGateStatus | None = None
+    macro: MarketStateMacroContext = Field(default_factory=MarketStateMacroContext)
+    quote: MarketStateQuoteContext = Field(default_factory=MarketStateQuoteContext)
     spread: float | None = None
     spread_atr_m5: float | None = None
     spread_atr_m15: float | None = None

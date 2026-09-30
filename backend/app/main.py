@@ -91,7 +91,7 @@ from app.services.manual_demo import (
 )
 from app.services.market_brief import build_daily_market_brief
 from app.services.market_quality import assess_market
-from app.services.market_state import build_market_state
+from app.services.market_state import build_market_state, build_market_state_macro_context
 from app.services.market_store import MarketStore
 from app.services.market_universe import build_market_universe
 from app.services.mt4_csv import _server_timezone, read_mt4_csv, summarize_mt4_csv
@@ -325,6 +325,7 @@ def market_state_v2() -> list[MarketStateV2]:
             files_dir, now, symbols=settings.session_watch_symbols
         )
     }
+    macro = build_market_state_macro_context(settings.macro_events_path, now)
     return [
         build_market_state(
             symbol,
@@ -332,7 +333,7 @@ def market_state_v2() -> list[MarketStateV2]:
             load_closed_market_bars(files_dir, symbol, Timeframe.M5, now),
             load_closed_market_bars(files_dir, symbol, Timeframe.M15, now),
             quote=quotes.get(symbol),
-            macro_path=settings.macro_events_path,
+            macro=macro,
         )
         for symbol in settings.session_watch_symbols
     ]

@@ -176,6 +176,10 @@ type MarketStateV2 = {
   evaluated_at: string;
   latest_closed_m5_at: string | null;
   latest_closed_m15_at: string | null;
+  latest_m5_bar_at: string | null;
+  latest_m5_closed_at: string | null;
+  latest_m15_bar_at: string | null;
+  latest_m15_closed_at: string | null;
   m5_freshness: string;
   m15_freshness: string;
   regime: string | null;
@@ -195,7 +199,8 @@ type MarketStateV2 = {
   range_expansion_ratio: number | null;
   exhaustion_proxy: number | null;
   session_context: { active_session: string; nearest_landmark_type: string | null; nearest_landmark_distance_atr_m15: number | null } | null;
-  macro: { blocked: boolean; next_event: { name: string } | null } | null;
+  macro: { available: boolean; blocked: boolean | null; next_event_name: string | null };
+  quote: { available: boolean; status: string; age_seconds: number | null; spread: number | null };
   spread: number | null;
   spread_atr_m5: number | null;
   spread_atr_m15: number | null;
@@ -2295,7 +2300,7 @@ export default function App() {
                 <span>Exhaust. <b>{item.exhaustion_proxy?.toFixed(2) ?? "—"}</b></span>
                 <span>Spread/ATR5 <b>{item.spread_atr_m5?.toFixed(3) ?? "—"}</b></span>
               </div>
-              <small>Session {item.session_context?.active_session ?? "—"} · Landmark {item.session_context?.nearest_landmark_type ?? "—"} · Macro {item.macro?.blocked ? "BLOCK" : "clear"} · M1 {item.m1.available ? "available" : "unavailable"}</small>
+              <small>Session {item.session_context?.active_session ?? "—"} · Landmark {item.session_context?.nearest_landmark_type ?? "—"} · Macro {!item.macro.available ? "unavailable" : item.macro.blocked ? "BLOCK" : "clear"} · Quote {item.quote.status} · M1 {item.m1.available ? "available" : "unavailable"}</small>
             </article>
           ))}
         </div>

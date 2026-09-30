@@ -2062,3 +2062,7 @@ coût de spread. Les données optionnelles ou manquantes restent explicitement
 indisponibles et aucune barre future n'est utilisée. L'API
 `/api/v1/market-state/v2` et la vue dashboard associée n'ont aucune autorité
 de trading ; les règles V1 et les garde-fous broker restent inchangés.
+
+La correction #180 rend explicites la provenance/fraîcheur des quotes, les
+timestamps de clôture M5/M15, l'indisponibilité macro et le comportement neutre
+des landmarks. Le contexte macro est composé une seule fois par réponse API.

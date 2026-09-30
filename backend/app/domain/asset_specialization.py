@@ -18,8 +18,14 @@ class EvidenceAlignment(StrEnum):
     NO_EVIDENCE = "no_evidence"
     HISTORICAL_ONLY = "historical_only"
     PROSPECTIVE_COLLECTING = "prospective_collecting"
+    PROSPECTIVE_ONLY = "prospective_only"
     HISTORICAL_AND_PROSPECTIVE = "historical_and_prospective"
     CONFLICTED = "conflicted"
+
+
+class AssetProfileStatus(StrEnum):
+    STANDARD = "standard"
+    VIABILITY_RESEARCH = "viability_research"
 
 
 class AssetMechanismEvidence(BaseModel):
@@ -30,6 +36,8 @@ class AssetMechanismEvidence(BaseModel):
     strategy_id: str
     historical_state: AdmissionState | None = None
     weakest_historical_expectancy_r: float | None = None
+    historical_worst_drawdown_r: float | None = None
+    historical_paper_collection_candidate: bool | None = None
     prospective_state: str | None = None
     paper_n: int = Field(default=0, ge=0)
     paper_expectancy_r: float | None = None
@@ -53,6 +61,7 @@ class AssetMechanismEvidence(BaseModel):
 class AssetSpecializationSnapshot(BaseModel):
     symbol: str
     profile_version: str = "asset-playbook-v2"
+    profile_status: AssetProfileStatus = AssetProfileStatus.STANDARD
     primary_mechanisms: list[OpportunityMechanism] = Field(default_factory=list)
     secondary_mechanisms: list[OpportunityMechanism] = Field(default_factory=list)
     mechanism_evidence: list[AssetMechanismEvidence] = Field(default_factory=list)
@@ -76,12 +85,12 @@ class AssetSpecializationResearchRow(BaseModel):
     validation_expectancy_r: float
     validation_profit_factor: float
     validation_max_drawdown_r: float
-    validation_cost_r: float
+    validation_average_execution_cost_r: float
     holdout_trades: int
     holdout_expectancy_r: float
     holdout_profit_factor: float
     holdout_max_drawdown_r: float
-    holdout_cost_r: float
+    holdout_average_execution_cost_r: float
     admission_state: AdmissionState
 
 

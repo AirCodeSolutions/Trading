@@ -210,16 +210,22 @@ type PositionManagerReport = {
   baseline_average_mfe_capture: number | null; v2_average_mfe_capture: number | null;
   baseline_average_giveback_r: number; v2_average_giveback_r: number;
   no_follow_through_count: number; extension_count: number; regime_loss_count: number;
+  comparisons: Array<{
+    symbol: string; mechanism: string; pending: boolean; invalid_data: boolean;
+    delta_r: number | null; baseline_giveback_r: number | null; v2_giveback_r: number | null;
+    baseline_mfe_capture: number | null; v2_mfe_capture: number | null;
+  }>;
 };
 
 type AssetSpecializationSnapshot = {
   symbol: string;
+  profile_status: string;
   primary_mechanisms: string[];
   secondary_mechanisms: string[];
   evidence_reason: string;
   mechanism_evidence: Array<{
     mechanism: string; role: string; compatible: boolean;
-    historical_state: string | null; prospective_state: string | null;
+    historical_state: string | null; weakest_historical_expectancy_r: number | null; historical_worst_drawdown_r: number | null; prospective_state: string | null;
     paper_n: number; paper_expectancy_r: number | null; paper_profit_factor: number | null;
     paper_max_drawdown_r: number | null; pm_delta_r: number | null;
     shadow_state: string | null; evidence_alignment: string;
@@ -4829,19 +4835,19 @@ export default function App() {
             const evidence = asset.mechanism_evidence.filter((row) => row.paper_n > 0 || row.historical_state !== null);
             return (
               <span key={asset.symbol}>
-                <strong>{asset.symbol}</strong> · {asset.symbol === "XAGUSD" ? "VIABILITY RESEARCH" : `${asset.primary_mechanisms.length} PRIMARY`} · {evidence.length} evidence
+                <strong>{asset.symbol}</strong> · {asset.profile_status === "viability_research" ? "VIABILITY RESEARCH" : `${asset.primary_mechanisms.length} PRIMARY`} · {evidence.length} evidence
               </span>
             );
           })}
         </div>
         {assetSpecialization.length > 0 && (
           <div className="opportunity-table">
-            <div className="opportunity-row opportunity-head"><span>Asset</span><span>Mechanism</span><span>Role</span><span>Historical</span><span>Prospective</span><span>N</span><span>Exp / PF / DD</span><span>Alignment</span></div>
+            <div className="opportunity-row opportunity-head"><span>Asset</span><span>Mechanism</span><span>Role</span><span>Historical / weak / DD</span><span>Prospective</span><span>N</span><span>Exp / PF / DD</span><span>PM ΔR</span><span>Shadow</span><span>Alignment</span></div>
             {assetSpecialization.flatMap((asset) => asset.mechanism_evidence.map((row) => (
               <div className="opportunity-row" key={`${asset.symbol}:${row.mechanism}`}>
                 <strong>{asset.symbol}</strong><span>{row.mechanism.replaceAll("_", " ")}</span><span>{row.compatible ? row.role.replaceAll("_", " ") : "NOT COMPATIBLE"}</span>
-                <span>{row.historical_state ?? "—"}</span><span>{row.prospective_state ?? "—"}</span><span>{row.paper_n}</span>
-                <span>{row.paper_expectancy_r?.toFixed(2) ?? "—"} / {row.paper_profit_factor?.toFixed(2) ?? "—"} / {row.paper_max_drawdown_r?.toFixed(2) ?? "—"}</span><span>{row.evidence_alignment.replaceAll("_", " ")}</span>
+                <span>{row.historical_state ?? "—"} · {row.weakest_historical_expectancy_r?.toFixed(2) ?? "—"} / {row.historical_worst_drawdown_r?.toFixed(2) ?? "—"}</span><span>{row.prospective_state ?? "—"}</span><span>{row.paper_n}</span>
+                <span>{row.paper_expectancy_r?.toFixed(2) ?? "—"} / {row.paper_profit_factor?.toFixed(2) ?? "—"} / {row.paper_max_drawdown_r?.toFixed(2) ?? "—"}</span><span>{(() => { const pm = positionManagerResearch?.comparisons.find((item) => item.symbol === asset.symbol && item.mechanism === row.mechanism && !item.pending && !item.invalid_data && item.delta_r !== null); return pm ? `${pm.delta_r!.toFixed(2)}R` : "—"; })()}</span><span>{row.shadow_state ?? "—"}</span><span>{row.evidence_alignment.replaceAll("_", " ")}</span>
               </div>
             )))}
           </div>

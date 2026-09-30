@@ -74,6 +74,10 @@ class PositionManagerComparison(BaseModel):
     v2_exit_reason: str | None = None
     mfe_r: float | None = None
     mae_r: float | None = None
+    baseline_mfe_r: float | None = None
+    baseline_mae_r: float | None = None
+    v2_mfe_r: float | None = None
+    v2_mae_r: float | None = None
     baseline_mfe_capture: float | None = None
     v2_mfe_capture: float | None = None
     baseline_giveback_r: float | None = None

@@ -6,9 +6,14 @@ import pytest
 from app.domain.market import MarketBar, Timeframe
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.position_manager import PositionManagerV2Action, PositionManagerV2State
-from app.domain.shadow_paper import ShadowPaperTrade
+from app.domain.session_landmark import SessionLandmarkContext
+from app.domain.shadow_paper import PaperTradeStatus, ShadowPaperTrade
 from app.domain.trading import Side
-from app.services.position_manager_v2 import replay_position_manager_v2
+from app.domain.trailing_manager import TrailingManagerConfig
+from app.services.position_manager_v2 import (
+    build_position_manager_report,
+    replay_position_manager_v2,
+)
 
 START = datetime(2026, 9, 30, 10, tzinfo=ZoneInfo("Europe/Athens"))
 
@@ -117,3 +122,38 @@ def test_mfe_and_mae_use_sell_ask_adjusted_extremes():
     assert snapshot is not None
     assert snapshot.mfe_r == pytest.approx(2.45)
     assert snapshot.mae_r == pytest.approx(0.55)
+
+
+def test_pending_snapshot_marks_to_market_on_last_close():
+    snapshot, comparison = replay_position_manager_v2(
+        trade(target=110, max_bars=18), [bar(0, close=101.0, high=101.2, low=99.8)],
+    )
+    assert comparison.pending is True
+    assert snapshot is not None
+    assert snapshot.current_result_r == pytest.approx(0.5)
+
+
+def test_favorable_close_without_real_stop_protection_cannot_extend():
+    context = SessionLandmarkContext(at=START, previous_day_high=110)
+    candidate = trade(target=103, max_bars=5).model_copy(update={"session_landmark_context": context})
+    snapshot, comparison = replay_position_manager_v2(
+        candidate,
+        [bar(0, close=101.6), bar(1, close=102.0), bar(2, close=102.2), bar(3, close=102.3)],
+        config=TrailingManagerConfig(enable_stop_trailing=False),
+    )
+    assert comparison.pending is True
+    assert snapshot is not None
+    assert snapshot.protected is False
+    assert comparison.extension_used is False
+
+
+def test_persisted_baseline_mismatch_is_invalid_and_excluded():
+    persisted = trade(target=103).model_copy(update={
+        "status": PaperTradeStatus.TARGET, "result_r": 99.0, "exit_price": 103.0, "bars_held": 2,
+    })
+    report = build_position_manager_report(
+        [persisted], {"XAUUSD": [bar(0, close=100), bar(1, close=103, high=103)]},
+        now=START + timedelta(hours=1), window_hours=168,
+    )
+    assert report.invalid == 1
+    assert report.trades == 0

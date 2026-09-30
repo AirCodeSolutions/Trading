@@ -2105,6 +2105,7 @@ PAPER existant à une machine descriptive : `INITIAL_RISK`,
 pending avant l'horizon exact, calcule MFE/MAE sur les extrêmes et reconstruit
 la baseline depuis une copie OPEN des trades clos. L'extension est décidée à
 la clôture et devient active à la barre suivante, uniquement vers un landmark
-capturé. Le stop initial n'est jamais élargi et aucune divergence baseline
-n'est masquée. Aucun writer, ordre,
+capturé. `protected` représente le stop réellement protégé et les actions ou
+candidates ne persistent pas d'une barre à l'autre. Le stop initial n'est
+jamais élargi et aucune divergence baseline n'est masquée. Aucun writer, ordre,
 PAPER state, sizing, risque ou autorité DEMO n'est modifié.

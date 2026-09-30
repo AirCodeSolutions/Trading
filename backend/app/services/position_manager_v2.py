@@ -62,6 +62,14 @@ def _mfe_mae(trade: ShadowPaperTrade, bar: MarketBar) -> tuple[float, float]:
     return max(0.0, (trade.entry_price - (bar.low + trade.spread_at_entry)) / trade.risk_distance), max(0.0, ((bar.high + trade.spread_at_entry) - trade.entry_price) / trade.risk_distance)
 
 
+def _excursions(trade: ShadowPaperTrade, bars: Sequence[MarketBar]) -> tuple[float, float]:
+    mfe = mae = 0.0
+    for bar in bars:
+        bar_mfe, bar_mae = _mfe_mae(trade, bar)
+        mfe, mae = max(mfe, bar_mfe), max(mae, bar_mae)
+    return mfe, mae
+
+
 def replay_position_manager_v2(
     trade: ShadowPaperTrade,
     bars_m5: Sequence[MarketBar],
@@ -99,8 +107,12 @@ def replay_position_manager_v2(
     trailing_policy = policy.model_copy(update={"enable_target_extension": False})
 
     for index, bar in enumerate(relevant, start=1):
+        action = PositionManagerV2Action.HOLD
+        candidate_stop = candidate_target = None
         stop_hit, target_hit = _bar_hits(trade, bar, current_stop=current_stop, current_target=current_target)
         if stop_hit or target_hit:
+            bar_mfe, bar_mae = _mfe_mae(trade, bar)
+            mfe, mae = max(mfe, bar_mfe), max(mae, bar_mae)
             exit_r = _exit_r(trade, current_stop if stop_hit else current_target)
             exit_reason = "stop" if stop_hit else "target"
             exit_bars = index
@@ -128,14 +140,17 @@ def replay_position_manager_v2(
             no_follow = True
             break
 
-        if close_r >= policy.break_even_activation_r:
-            protected, state = True, PositionManagerV2State.PROTECT
+        eligible_for_protection = close_r >= policy.break_even_activation_r
         adjustment = propose_trailing_adjustment(trade=trade, closed_bars=seen, current_stop=current_stop, current_target=current_target, config=trailing_policy)
         if adjustment is not None and adjustment.stop_after != current_stop:
             _assert_no_added_risk(trade, current_stop, adjustment.stop_after)
             candidate_stop, current_stop = adjustment.stop_after, adjustment.stop_after
-            state, action, reason = PositionManagerV2State.TRAIL if protected else PositionManagerV2State.PROTECT, PositionManagerV2Action.TIGHTEN_STOP, adjustment.reason
-        if protected and _directional_closes(seen[-policy.structure_window:], trade.side):
+            action = PositionManagerV2Action.TIGHTEN_STOP
+            reason = adjustment.reason
+        protected = current_stop >= trade.entry_price if trade.side is Side.BUY else current_stop <= trade.entry_price
+        if protected:
+            state = PositionManagerV2State.PROTECT if eligible_for_protection else state
+        if protected and len(seen) >= policy.structure_window and _directional_closes(seen[-policy.structure_window:], trade.side):
             landmark_type, landmark_price = _landmark_beyond_target(trade, current_target)
             if landmark_price is not None:
                 candidate_target, current_target = landmark_price, landmark_price
@@ -149,8 +164,13 @@ def replay_position_manager_v2(
         exit_r, exit_reason, exit_bars = _exit_r(trade, exit_price), "safety_timeout", len(relevant)
         state, action, reason = PositionManagerV2State.SAFETY_TIMEOUT, PositionManagerV2Action.EXIT_SAFETY_TIMEOUT, "max_holding_bars safety timeout"
     pending = exit_r is None
-    current_result = 0.0 if pending else exit_r
+    mark_price = relevant[min(exit_bars, len(relevant)) - 1].close if exit_bars else relevant[-1].close
+    current_result = _exit_r(trade, mark_price if trade.side is Side.BUY else mark_price + trade.spread_at_entry) if pending else exit_r
     baseline_result = baseline.result_r
+    baseline_bars = relevant[:baseline.bars_held]
+    baseline_mfe, baseline_mae = _excursions(trade, baseline_bars)
+    v2_bars = relevant[:exit_bars] if not pending else relevant
+    v2_mfe, v2_mae = _excursions(trade, v2_bars)
     invalid = False
     invalid_reason = None
     if trade.status is not PaperTradeStatus.OPEN:
@@ -166,11 +186,12 @@ def replay_position_manager_v2(
         trade_id=trade.trade_id, symbol=trade.symbol, mechanism=trade.mechanism,
         baseline_result_r=baseline_result, v2_result_r=None if pending else exit_r,
         delta_r=None if pending or baseline_result is None else exit_r - baseline_result,
-        baseline_exit_reason=baseline.status.value, v2_exit_reason=exit_reason, mfe_r=mfe, mae_r=mae,
-        baseline_mfe_capture=baseline_result / mfe if baseline_result is not None and mfe > 0 else None,
-        v2_mfe_capture=exit_r / mfe if not pending and mfe > 0 else None,
-        baseline_giveback_r=max(0.0, mfe - baseline_result) if baseline_result is not None else None,
-        v2_giveback_r=max(0.0, mfe - exit_r) if not pending else None,
+        baseline_exit_reason=baseline.status.value, v2_exit_reason=exit_reason, mfe_r=v2_mfe, mae_r=v2_mae,
+        baseline_mfe_r=baseline_mfe, baseline_mae_r=baseline_mae, v2_mfe_r=v2_mfe, v2_mae_r=v2_mae,
+        baseline_mfe_capture=baseline_result / baseline_mfe if baseline_result is not None and baseline_mfe > 0 else None,
+        v2_mfe_capture=exit_r / v2_mfe if not pending and v2_mfe > 0 else None,
+        baseline_giveback_r=max(0.0, baseline_mfe - baseline_result) if baseline_result is not None else None,
+        v2_giveback_r=max(0.0, v2_mfe - exit_r) if not pending else None,
         bars_held_baseline=baseline.bars_held, bars_held_v2=None if pending else exit_bars,
         protected_before_exit=protected, extension_used=extension_used, no_follow_through_used=no_follow,
         regime_loss_used=regime_loss, pending=pending, invalid_data=invalid, invalid_reason=invalid_reason,
@@ -182,7 +203,7 @@ def replay_position_manager_v2(
         current_stop=current_stop, candidate_stop=candidate_stop, initial_target=trade.target_price,
         current_target=current_target, candidate_target=candidate_target, initial_risk_distance=trade.risk_distance,
         risk_eur=trade.risk_eur, bars_held=exit_bars, favorable_close_r=_favorable_close_r(trade, last.close),
-        mfe_r=mfe, mae_r=mae, current_result_r=current_result, protected=protected,
+        mfe_r=v2_mfe, mae_r=v2_mae, current_result_r=current_result, protected=protected,
         landmark_type=landmark_type, landmark_price=landmark_price, proposed_action=action,
         proposed_exit_price=None if pending else (trade.entry_price + exit_r * trade.risk_distance if trade.side is Side.BUY else trade.entry_price - exit_r * trade.risk_distance),
         proposed_exit_r=None if pending else exit_r, reason=reason, m15_regime=m15_regime, m15_direction=m15_direction,

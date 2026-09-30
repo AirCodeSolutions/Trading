@@ -198,6 +198,18 @@ type PositionManagerSnapshot = {
   initial_target: number; current_target: number; candidate_target: number | null;
   bars_held: number; mfe_r: number; mae_r: number; current_result_r: number;
   protected: boolean; proposed_action: string; reason: string;
+  m15_regime: string | null; m15_direction: number | null;
+};
+
+type PositionManagerReport = {
+  trades: number; pending: number; invalid: number;
+  baseline_total_r: number; v2_total_r: number; delta_r: number;
+  baseline_expectancy_r: number; v2_expectancy_r: number;
+  baseline_profit_factor: number; v2_profit_factor: number;
+  baseline_max_drawdown_r: number; v2_max_drawdown_r: number;
+  baseline_average_mfe_capture: number | null; v2_average_mfe_capture: number | null;
+  baseline_average_giveback_r: number; v2_average_giveback_r: number;
+  no_follow_through_count: number; extension_count: number; regime_loss_count: number;
 };
 
 type MarketStateV2 = {
@@ -1515,6 +1527,7 @@ export default function App() {
   const [opportunityStates, setOpportunityStates] = useState<OpportunityStateSnapshot[]>([]);
   const [triggerEngine, setTriggerEngine] = useState<TriggerEngineSnapshot[]>([]);
   const [positionManager, setPositionManager] = useState<PositionManagerSnapshot[]>([]);
+  const [positionManagerResearch, setPositionManagerResearch] = useState<PositionManagerReport | null>(null);
   const [blockedProbes, setBlockedProbes] = useState<BlockedProbeRuntime[]>([]);
   const [opportunityFunnel, setOpportunityFunnel] = useState<OpportunityFunnel | null>(null);
   const [probeReviewContract, setProbeReviewContract] =
@@ -1603,6 +1616,7 @@ export default function App() {
           opportunityStatesResponse,
           triggerEngineResponse,
           positionManagerResponse,
+          positionManagerResearchResponse,
           blockedProbesResponse,
           opportunityFunnelResponse,
           stopGeometryResponse,
@@ -1640,6 +1654,7 @@ export default function App() {
           fetch("/api/v1/opportunities/v2/states"),
           fetch("/api/v1/triggers/v2"),
           fetch("/api/v1/position-manager/v2"),
+          fetch("/api/v1/research/position-manager/v2?hours=168"),
           fetch("/api/v1/shadow/blocked-probes"),
           fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           fetch("/api/v1/research/stop-geometry?hours=168"),
@@ -1691,6 +1706,9 @@ export default function App() {
         const positionManagerPayload = positionManagerResponse.ok
           ? await positionManagerResponse.json()
           : [];
+        const positionManagerResearchPayload = positionManagerResearchResponse.ok
+          ? await positionManagerResearchResponse.json()
+          : null;
         const blockedProbesPayload = blockedProbesResponse.ok
           ? await blockedProbesResponse.json()
           : [];
@@ -1763,6 +1781,7 @@ export default function App() {
         setOpportunityStates(opportunityStatesPayload);
         setTriggerEngine(triggerEnginePayload);
         setPositionManager(positionManagerPayload);
+        setPositionManagerResearch(positionManagerResearchPayload);
         setBlockedProbes(blockedProbesPayload);
           setOpportunityFunnel(opportunityFunnelPayload);
           setStopGeometryResearch(stopGeometryPayload);
@@ -4753,6 +4772,30 @@ export default function App() {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "research"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">POSITION MANAGER RESEARCH · DESCRIPTIVE</p><h2>Position Manager Research</h2></div>
+          <p>Comparaison causale PAPER/V2 ; aucune autorité d’exécution.</p>
+        </div>
+        {positionManagerResearch ? (
+          <div className="opportunity-summary">
+            <span>COMPARED <strong>{positionManagerResearch.trades}</strong></span>
+            <span>PENDING <strong>{positionManagerResearch.pending}</strong></span>
+            <span>INVALID <strong>{positionManagerResearch.invalid}</strong></span>
+            <span>BASELINE <strong>{positionManagerResearch.baseline_total_r.toFixed(2)}R</strong></span>
+            <span>V2 <strong>{positionManagerResearch.v2_total_r.toFixed(2)}R</strong></span>
+            <span>DELTA <strong>{positionManagerResearch.delta_r.toFixed(2)}R</strong></span>
+            <span>PF <strong>{positionManagerResearch.baseline_profit_factor.toFixed(2)} / {positionManagerResearch.v2_profit_factor.toFixed(2)}</strong></span>
+            <span>DD <strong>{positionManagerResearch.baseline_max_drawdown_r.toFixed(2)} / {positionManagerResearch.v2_max_drawdown_r.toFixed(2)}</strong></span>
+            <span>MFE CAPTURE <strong>{positionManagerResearch.baseline_average_mfe_capture?.toFixed(2) ?? "—"} / {positionManagerResearch.v2_average_mfe_capture?.toFixed(2) ?? "—"}</strong></span>
+            <span>GIVEBACK <strong>{positionManagerResearch.baseline_average_giveback_r.toFixed(2)} / {positionManagerResearch.v2_average_giveback_r.toFixed(2)}</strong></span>
+            <span>NO FOLLOW <strong>{positionManagerResearch.no_follow_through_count}</strong></span>
+            <span>EXTEND <strong>{positionManagerResearch.extension_count}</strong></span>
+            <span>REGIME LOSS <strong>{positionManagerResearch.regime_loss_count}</strong></span>
+          </div>
+        ) : <p>Recherche Position Manager indisponible.</p>}
       </section>
 
       <section className="opportunity-panel" hidden={activeView !== "trading"}>

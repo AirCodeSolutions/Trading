@@ -58,6 +58,9 @@ class PositionManagerV2Snapshot(BaseModel):
     proposed_exit_price: float | None = None
     proposed_exit_r: float | None = None
     reason: str
+    m15_regime: str | None = None
+    m15_direction: int | None = None
+    maximum_added_risk_r: float = 0.0
 
 
 class PositionManagerComparison(BaseModel):
@@ -82,6 +85,8 @@ class PositionManagerComparison(BaseModel):
     no_follow_through_used: bool = False
     regime_loss_used: bool = False
     pending: bool = False
+    invalid_data: bool = False
+    invalid_reason: str | None = None
 
 
 class PositionManagerReport(BaseModel):
@@ -101,3 +106,26 @@ class PositionManagerReport(BaseModel):
     v2_average_mfe_capture: float | None = None
     baseline_average_giveback_r: float = 0.0
     v2_average_giveback_r: float = 0.0
+    baseline_profit_factor: float = 0.0
+    v2_profit_factor: float = 0.0
+    invalid: int = 0
+    no_follow_through_count: int = 0
+    extension_count: int = 0
+    regime_loss_count: int = 0
+    by_asset: dict[str, "PositionManagerAggregate"] = Field(default_factory=dict)
+    by_mechanism: dict[str, "PositionManagerAggregate"] = Field(default_factory=dict)
+
+
+class PositionManagerAggregate(BaseModel):
+    trades: int = 0
+    baseline_total_r: float = 0.0
+    v2_total_r: float = 0.0
+    delta_r: float = 0.0
+    baseline_expectancy_r: float = 0.0
+    v2_expectancy_r: float = 0.0
+    baseline_profit_factor: float = 0.0
+    v2_profit_factor: float = 0.0
+    baseline_max_drawdown_r: float = 0.0
+    v2_max_drawdown_r: float = 0.0
+    average_giveback_r: float = 0.0
+    average_mfe_capture: float | None = None

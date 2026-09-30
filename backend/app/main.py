@@ -524,7 +524,8 @@ def position_manager_v2() -> list[PositionManagerV2Snapshot]:
             continue
         trade = state.open_trade
         bars = load_closed_market_bars(_mt4_files_dir(), trade.symbol, Timeframe.M5, now)
-        snapshot, _ = replay_position_manager_v2(trade, bars)
+        bars_m15 = load_closed_market_bars(_mt4_files_dir(), trade.symbol, Timeframe.M15, now)
+        snapshot, _ = replay_position_manager_v2(trade, bars, bars_m15)
         if snapshot is not None:
             result.append(snapshot)
     return result
@@ -546,7 +547,11 @@ def position_manager_v2_research(hours: int = 168) -> PositionManagerReport:
         symbol: load_closed_market_bars(_mt4_files_dir(), symbol, Timeframe.M5, now)
         for symbol in symbols
     }
-    return build_position_manager_report(trades, bars_by_symbol, now=now, window_hours=hours)
+    bars_by_symbol_m15 = {
+        symbol: load_closed_market_bars(_mt4_files_dir(), symbol, Timeframe.M15, now)
+        for symbol in symbols
+    }
+    return build_position_manager_report(trades, bars_by_symbol, bars_by_symbol_m15=bars_by_symbol_m15, now=now, window_hours=hours)
 
 
 @app.get(

@@ -3516,8 +3516,12 @@ Position Manager V2 est un replay descriptif parallèle du moteur PAPER. Il
 réutilise `resolve_open_trade()` comme baseline et les primitives du
 `trailing_manager` pour mesurer initial risk, no-follow-through, protection,
 trailing, extension vers les landmarks capturés à l'entrée, régime opposé et
-safety timeout. Toute modification de stop est monotone et ne peut augmenter
-le risque initial.
+safety timeout. Le replay démarre sur la première M5 complète du contrat
+PAPER, reste pending avant l'horizon exact et ne fabrique pas de timeout. MFE
+et MAE utilisent les extrêmes M5 selon les conventions BUY/SELL du PAPER ; la
+baseline des trades clos est reconstruite depuis une copie OPEN et les
+divergences sont marquées invalides. Toute modification de stop est monotone
+et ne peut augmenter le risque initial.
 
 Les endpoints `/api/v1/position-manager/v2` et
 `/api/v1/research/position-manager/v2` sont en lecture seule. Le moteur PAPER,

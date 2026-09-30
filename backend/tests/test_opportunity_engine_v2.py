@@ -10,6 +10,7 @@ from app.domain.opportunity_state import OpportunityState, OpportunityStateEvent
 from app.domain.regime import MarketRegime
 from app.domain.trading import Side
 from app.services.opportunity_engine_v2 import (
+    _pullback_phase,
     _trigger_candidate,
     build_opportunity_state,
     transition_opportunity_state,
@@ -141,7 +142,7 @@ def test_break_retest_builds_real_setup_armed_triggered_lifecycle() -> None:
     regime = SimpleNamespace(regime=MarketRegime.DIRECTIONAL, direction=1)
     phases = iter(
         [(OpportunityStateEvent.SETUP_DETECTED, "breakout")]
-        + [(OpportunityStateEvent.ARMED, "retest")] * 10
+        + [(OpportunityStateEvent.ARMED, "retest")] * 17
     )
     with (
         patch("app.services.opportunity_engine_v2._regime_for", return_value=regime),
@@ -151,7 +152,7 @@ def test_break_retest_builds_real_setup_armed_triggered_lifecycle() -> None:
         ),
         patch(
             "app.services.opportunity_engine_v2._trigger_candidate",
-            side_effect=[None] * 10 + [_candidate(OpportunityMechanism.BREAK_RETEST_REACCEL, AT)],
+            side_effect=[None] * 17 + [_candidate(OpportunityMechanism.BREAK_RETEST_REACCEL, AT)],
         ),
     ):
         snapshot = build_opportunity_state(
@@ -174,9 +175,9 @@ def test_pullback_setup_can_be_invalidated_without_trigger() -> None:
     bars_m5, bars_m15 = _bars()
     directional = SimpleNamespace(regime=MarketRegime.DIRECTIONAL, direction=1)
     balanced = SimpleNamespace(regime=MarketRegime.BALANCED, direction=0)
-    regimes = iter([directional] * 9 + [directional, balanced])
+    regimes = iter([directional] * 34 + [balanced])
     phases = iter(
-        [(None, "")] * 9 + [(OpportunityStateEvent.SETUP_DETECTED, "first pullback"), (None, "")]
+        [(None, "")] * 33 + [(OpportunityStateEvent.SETUP_DETECTED, "first pullback"), (None, "")]
     )
     with (
         patch(
@@ -203,7 +204,7 @@ def test_setup_can_expire_on_the_bar_ending_its_native_window() -> None:
     bars_m5, bars_m15 = _bars()
     bars_m5 = bars_m5[:30]
     regime = SimpleNamespace(regime=MarketRegime.DIRECTIONAL, direction=1)
-    phases = iter([(OpportunityStateEvent.SETUP_DETECTED, "breakout")] + [(None, "")] * 4)
+    phases = iter([(None, "")] * 7 + [(OpportunityStateEvent.SETUP_DETECTED, "breakout")] + [(None, "")] * 4)
     with (
         patch("app.services.opportunity_engine_v2._regime_for", return_value=regime),
         patch(
@@ -261,3 +262,102 @@ def test_api_snapshot_serializes_and_has_no_broker_authority() -> None:
     assert payload["state"] == "none"
     assert "execution_proposal" not in payload
     assert "command" not in payload
+
+
+def _pullback_bars(first: str, second: str, confirmation: str | None = None) -> list[MarketBar]:
+    bars, _ = _bars()
+    def set_bar(index: int, open_: float, close: float, high: float, low: float) -> None:
+        bars[index] = bars[index].model_copy(update={
+            "open": open_, "close": close, "high": high, "low": low,
+        })
+    set_bar(25, 100.0, 99.0, 100.2, 98.8)
+    set_bar(26, 99.0, 98.0, 99.2, 97.8)
+    if confirmation == "valid":
+        set_bar(27, 98.0, 100.0, 100.5, 97.9)
+    elif confirmation == "invalid":
+        set_bar(27, 98.0, 98.5, 99.0, 97.9)
+    elif confirmation == "third_countertrend":
+        set_bar(27, 98.0, 97.0, 98.2, 96.8)
+    return bars
+
+
+def test_pullback_phase_uses_current_close_and_previous_bar() -> None:
+    bars = _pullback_bars("counter", "counter")
+    regime = SimpleNamespace(regime=MarketRegime.DIRECTIONAL, direction=1)
+    setup, _ = _pullback_phase(bars, 25, regime)
+    armed, _ = _pullback_phase(bars, 26, regime)
+    assert setup is OpportunityStateEvent.SETUP_DETECTED
+    assert armed is OpportunityStateEvent.ARMED
+
+
+def test_real_pullback_lifecycle_has_exact_setup_armed_trigger_timestamps() -> None:
+    bars = _pullback_bars("counter", "counter", "valid")
+    _, m15 = _bars()
+    regime = SimpleNamespace(regime=MarketRegime.DIRECTIONAL, direction=1)
+    with patch("app.services.opportunity_engine_v2._regime_for", return_value=regime):
+        snapshot = build_opportunity_state(
+            symbol="XAUUSD", bars_m5=bars[:28], bars_m15=m15,
+            mechanism=OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
+            evaluated_at=bars[27].timestamp + timedelta(minutes=5),
+        )
+    assert snapshot.state is OpportunityState.TRIGGERED
+    assert [item.state for item in snapshot.provenance[-3:]] == [
+        OpportunityState.SETUP, OpportunityState.ARMED, OpportunityState.TRIGGERED
+    ]
+    assert [item.at for item in snapshot.provenance[-3:]] == [
+        bars[25].timestamp + timedelta(minutes=5),
+        bars[26].timestamp + timedelta(minutes=5),
+        bars[27].timestamp + timedelta(minutes=5),
+    ]
+    assert snapshot.first_seen_at == bars[25].timestamp + timedelta(minutes=5)
+
+
+def test_invalid_pullback_confirmation_expires_current_lifecycle() -> None:
+    bars = _pullback_bars("counter", "counter", "invalid")
+    _, m15 = _bars()
+    regime = SimpleNamespace(regime=MarketRegime.DIRECTIONAL, direction=1)
+    with patch("app.services.opportunity_engine_v2._regime_for", return_value=regime):
+        snapshot = build_opportunity_state(
+            symbol="XAUUSD", bars_m5=bars[:28], bars_m15=m15,
+            mechanism=OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
+            evaluated_at=bars[27].timestamp + timedelta(minutes=5),
+        )
+    assert snapshot.state is OpportunityState.EXPIRED
+
+
+def test_third_countertrend_rolls_to_a_new_pullback_lifecycle() -> None:
+    bars = _pullback_bars("counter", "counter", "third_countertrend")
+    _, m15 = _bars()
+    regime = SimpleNamespace(regime=MarketRegime.DIRECTIONAL, direction=1)
+    with patch("app.services.opportunity_engine_v2._regime_for", return_value=regime):
+        snapshot = build_opportunity_state(
+            symbol="XAUUSD", bars_m5=bars[:28], bars_m15=m15,
+            mechanism=OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
+            evaluated_at=bars[27].timestamp + timedelta(minutes=5),
+        )
+    assert snapshot.state is OpportunityState.ARMED
+    assert snapshot.first_seen_at == bars[26].timestamp + timedelta(minutes=5)
+
+
+def test_real_break_retest_lifecycle_uses_shared_trigger_without_future_bars() -> None:
+    bars, m15 = _bars()
+    def update(index: int, open_: float, high: float, low: float, close: float) -> None:
+        bars[index] = bars[index].model_copy(update={
+            "open": open_, "high": high, "low": low, "close": close,
+        })
+    update(22, 100.0, 102.2, 99.8, 102.0)
+    update(23, 102.0, 102.3, 101.8, 102.1)
+    update(24, 102.1, 102.2, 100.9, 100.5)
+    update(25, 100.5, 102.2, 100.9, 101.8)
+    regime = SimpleNamespace(regime=MarketRegime.DIRECTIONAL, direction=1)
+    with patch("app.services.opportunity_engine_v2._regime_for", return_value=regime):
+        snapshot = build_opportunity_state(
+            symbol="XAUUSD", bars_m5=bars[:26], bars_m15=m15,
+            mechanism=OpportunityMechanism.BREAK_RETEST_REACCEL,
+            evaluated_at=bars[25].timestamp + timedelta(minutes=5),
+        )
+    assert snapshot.state is OpportunityState.TRIGGERED
+    assert [item.state for item in snapshot.provenance[-3:]] == [
+        OpportunityState.SETUP, OpportunityState.ARMED, OpportunityState.TRIGGERED
+    ]
+    assert snapshot.provenance[-3].at < snapshot.provenance[-2].at <= snapshot.provenance[-1].at

@@ -130,21 +130,26 @@ def _pullback_phase(
     if (
         getattr(regime, "regime", None) is not MarketRegime.DIRECTIONAL
         or getattr(regime, "direction", 0) == 0
-        or index < 2
+        or index < 1
     ):
         return None, "no causal pullback context"
-    first, second = bars[index - 2], bars[index - 1]
-    first_counter = first.close < first.open if regime.direction > 0 else first.close > first.open
-    second_counter = (
-        second.close < second.open if regime.direction > 0 else second.close > second.open
+    previous = bars[index - 1]
+    current = bars[index]
+    previous_counter = (
+        previous.close < previous.open
+        if regime.direction > 0
+        else previous.close > previous.open
     )
-    if not first_counter:
+    current_counter = (
+        current.close < current.open
+        if regime.direction > 0
+        else current.close > current.open
+    )
+    if not current_counter:
         return None, "no first counter-trend pullback"
-    return (
-        (OpportunityStateEvent.ARMED, "two causal pullback bars are closed")
-        if second_counter
-        else (OpportunityStateEvent.SETUP_DETECTED, "first counter-trend pullback is closed")
-    )
+    if previous_counter:
+        return OpportunityStateEvent.ARMED, "two causal pullback bars are closed"
+    return OpportunityStateEvent.SETUP_DETECTED, "first counter-trend pullback is closed"
 
 
 def _snapshot_from_events(
@@ -208,8 +213,9 @@ def build_opportunity_state(
     lifecycle: list[tuple[OpportunityStateEvent, datetime, datetime, str, Side | None]] = []
     state = OpportunityState.NONE
     active_index: int | None = None
+    minimum_index = 18 if mechanism is OpportunityMechanism.BREAK_RETEST_REACCEL else 1
     for index, bar in enumerate(bars_m5):
-        if index < 25:
+        if index < minimum_index:
             continue
         closed_at = _closed_at(bar)
         regime = _regime_for(close_times, regimes, closed_at)
@@ -258,7 +264,32 @@ def build_opportunity_state(
             OpportunityState.SETUP,
             OpportunityState.ARMED,
         ):
-            if state is OpportunityState.NONE:
+            if (
+                mechanism is OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION
+                and phase in (
+                    OpportunityStateEvent.SETUP_DETECTED,
+                    OpportunityStateEvent.ARMED,
+                )
+                and state is not OpportunityState.NONE
+                and active_index != index - 1
+            ):
+                lifecycle = []
+                state = OpportunityState.NONE
+                active_index = None
+            if state is OpportunityState.NONE and phase is OpportunityStateEvent.ARMED:
+                setup_closed_at = _closed_at(bars_m5[index - 1])
+                lifecycle.append(
+                    (
+                        OpportunityStateEvent.SETUP_DETECTED,
+                        setup_closed_at,
+                        setup_closed_at,
+                        "first counter-trend pullback is closed",
+                        side,
+                    )
+                )
+                state = OpportunityState.SETUP
+                active_index = index - 1
+            elif state is OpportunityState.NONE:
                 lifecycle.append(
                     (OpportunityStateEvent.SETUP_DETECTED, closed_at, closed_at, phase_reason, side)
                 )

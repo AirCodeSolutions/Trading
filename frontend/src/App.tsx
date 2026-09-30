@@ -188,6 +188,7 @@ type TriggerEngineSnapshot = {
   m1_status: string;
   side_aligned_tick_imbalance: number | null;
   directional_tick_samples: number | null;
+  geometry_5m: { bars: number; signed_move: number; range_price: number; path_efficiency: number } | null;
   reason: string;
 };
 
@@ -4712,6 +4713,9 @@ export default function App() {
               </small>
               <small>
                 Early {item.early_trigger_at ? new Date(item.early_trigger_at).toLocaleTimeString("fr-FR") : "—"} · V1 {item.v1_trigger_at ? new Date(item.v1_trigger_at).toLocaleTimeString("fr-FR") : "—"} · lead {item.lead_minutes?.toFixed(2) ?? "—"} min
+              </small>
+              <small>
+                G5 {item.geometry_5m ? `${item.geometry_5m.bars} bars · move ${item.geometry_5m.signed_move.toFixed(3)} · eff ${item.geometry_5m.path_efficiency.toFixed(2)}` : "—"} · saved ATR {item.move_saved_vs_v1_atr?.toFixed(3) ?? "—"}
               </small>
             </article>
           ))}

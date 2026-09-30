@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.opportunity_state import OpportunityState
 from app.domain.trading import Side
+from app.domain.xau_microbar import XauMicrobarGeometry
 
 
 class TriggerEngineState(StrEnum):
@@ -45,5 +46,6 @@ class TriggerEngineV2Snapshot(BaseModel):
     m1_signed_move: float | None = None
     m1_close_location: float | None = None
     m1_average_spread: float | None = None
+    geometry_5m: XauMicrobarGeometry | None = None
+    geometry_15m: XauMicrobarGeometry | None = None
     reason: str
-

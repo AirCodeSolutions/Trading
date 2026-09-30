@@ -3502,3 +3502,10 @@ exposés pour la recherche, sans influencer l'Opportunity Engine, l'Entry Zone,
 le sizing, l'admission ou l'exécution. `GET /api/v1/triggers/v2` est en lecture
 seule et ne possède aucune autorité broker. Le support logiciel des cinq actifs
 ne constitue pas une preuve de disponibilité M1 runtime.
+
+La correction #182 sélectionne le premier M1 causal valide après ARMED, dans
+l'ordre chronologique, et limite la recherche au trigger V1 lorsqu'il existe.
+L'ATR de comparaison est celui disponible à ARMED ; le prix V1 est le close de
+sa M5 source. Les géométries M1 5m/15m sont calculées uniquement avec les
+microbars closes au plus tard au trigger. La fraîcheur live suit la cadence de
+clôture M1 ; les reconstructions historiques sont marquées `historical`.

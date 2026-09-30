@@ -2088,3 +2088,10 @@ Cette évolution mesure le timing (`lead_minutes`, `move_saved_vs_v1_atr`) et le
 tick pressure sans créer de règle d'entrée. Aucun ordre, PAPER trade,
 proposition, admission, changement de risque ou autorité DEMO ne peut provenir
 du Trigger Engine V2.
+
+La correction #182 sélectionne la première microbar valide sans dépendre de
+l'ordre d'entrée du ledger. Les critères break/retest incluent la
+close-location M1 avec les bornes V1 existantes, tandis que le pullback
+réutilise le niveau de la seconde M5 causale connue à ARMED. La référence V1 et
+l'ATR ARMED sont exposés pour comparaison ; aucune métrique ne pilote une
+ décision de trading.

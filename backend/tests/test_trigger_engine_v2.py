@@ -114,6 +114,42 @@ def test_non_representative_mechanism_is_not_applicable():
     assert result.state is TriggerEngineState.NOT_APPLICABLE
 
 
+def test_first_valid_m1_is_kept_and_input_order_is_irrelevant():
+    snapshot = armed_snapshot(Side.BUY)
+    invalid = row(START + timedelta(minutes=11), close=102).model_copy(update={"mid_open": 102.2})
+    first = row(START + timedelta(minutes=12), close=104)
+    later = row(START + timedelta(minutes=13), close=105)
+    ordered = build_trigger_engine_snapshot(snapshot=snapshot, microbars=[invalid, first, later], evaluated_at=START + timedelta(minutes=14), bars_m5=pullback_bars())
+    shuffled = build_trigger_engine_snapshot(snapshot=snapshot, microbars=[later, invalid, first], evaluated_at=START + timedelta(minutes=14), bars_m5=pullback_bars())
+    assert ordered.early_trigger_at == START + timedelta(minutes=13)
+    assert shuffled.early_trigger_at == ordered.early_trigger_at
+    assert ordered.early_trigger_price == first.ask_close
+
+
+def break_bars() -> list[MarketBar]:
+    bars = []
+    for index in range(18):
+        at = START + timedelta(minutes=index * 5)
+        close = 101 if index >= 15 else 100
+        bars.append(MarketBar(symbol="XAUUSD", timeframe=Timeframe.M5, timestamp=at, open=100, high=max(100.2, close), low=99.8, close=close))
+    return bars
+
+
+def break_snapshot(side: Side) -> OpportunityStateSnapshot:
+    armed_at = START + timedelta(minutes=90)
+    transition = OpportunityStateTransition(state=OpportunityState.ARMED, at=armed_at, source_closed_at=armed_at, event=OpportunityStateEvent.ARMED, reason="armed")
+    return OpportunityStateSnapshot(symbol="XAUUSD", mechanism=OpportunityMechanism.BREAK_RETEST_REACCEL, side=side, state=OpportunityState.ARMED, updated_at=armed_at, provenance=[transition], reason="test")
+
+
+def test_break_retest_early_trigger_uses_close_location():
+    valid = row(START + timedelta(minutes=91), close=102)
+    result = build_trigger_engine_snapshot(snapshot=break_snapshot(Side.BUY), microbars=[valid], evaluated_at=START + timedelta(minutes=92), bars_m5=break_bars())
+    assert result.state is TriggerEngineState.EARLY_TRIGGERED
+    low_location = valid.model_copy(update={"mid_low": 99.0, "mid_high": 105.0, "ask_low": 99.01, "ask_high": 105.01})
+    rejected = build_trigger_engine_snapshot(snapshot=break_snapshot(Side.BUY), microbars=[low_location], evaluated_at=START + timedelta(minutes=92), bars_m5=break_bars())
+    assert rejected.state is TriggerEngineState.WAITING
+
+
 def test_trigger_endpoint_returns_five_assets_and_two_mechanisms(monkeypatch, tmp_path):
     from fastapi.testclient import TestClient
 

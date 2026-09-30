@@ -849,6 +849,38 @@ h1 {
   background: rgba(13, 24, 35, 0.72);
 }
 
+.trigger-engine-panel {
+  margin-top: 14px;
+  padding: 24px;
+  border: 1px solid #1c2b3a;
+  border-radius: 18px;
+  background: rgba(13, 24, 35, 0.72);
+}
+
+.trigger-engine-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.trigger-engine-card {
+  min-height: 120px;
+  padding: 14px;
+  border: 1px solid #223446;
+  border-radius: 12px;
+  background: rgba(18, 32, 46, 0.72);
+}
+
+.trigger-engine-card p,
+.trigger-engine-card small {
+  display: block;
+  margin: 8px 0 0;
+  color: #9cabbc;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .market-state-panel {
   margin-top: 14px;
   padding: 24px;

@@ -171,6 +171,26 @@ type OpportunityStateSnapshot = {
   age_seconds: number | null;
 };
 
+type TriggerEngineSnapshot = {
+  symbol: string;
+  mechanism: string;
+  side: "buy" | "sell" | null;
+  opportunity_state: string;
+  state: string;
+  evaluated_at: string;
+  early_trigger_at: string | null;
+  v1_trigger_at: string | null;
+  lead_minutes: number | null;
+  early_trigger_price: number | null;
+  v1_reference_price: number | null;
+  move_saved_vs_v1_atr: number | null;
+  m1_available: boolean;
+  m1_status: string;
+  side_aligned_tick_imbalance: number | null;
+  directional_tick_samples: number | null;
+  reason: string;
+};
+
 type MarketStateV2 = {
   symbol: string;
   evaluated_at: string;
@@ -1484,6 +1504,7 @@ export default function App() {
   const [shadow, setShadow] = useState<ShadowDiagnostic | null>(null);
   const [opportunities, setOpportunities] = useState<ShadowDiagnostic[]>([]);
   const [opportunityStates, setOpportunityStates] = useState<OpportunityStateSnapshot[]>([]);
+  const [triggerEngine, setTriggerEngine] = useState<TriggerEngineSnapshot[]>([]);
   const [blockedProbes, setBlockedProbes] = useState<BlockedProbeRuntime[]>([]);
   const [opportunityFunnel, setOpportunityFunnel] = useState<OpportunityFunnel | null>(null);
   const [probeReviewContract, setProbeReviewContract] =
@@ -1570,6 +1591,7 @@ export default function App() {
           preflightResponse,
           opportunitiesResponse,
           opportunityStatesResponse,
+          triggerEngineResponse,
           blockedProbesResponse,
           opportunityFunnelResponse,
           stopGeometryResponse,
@@ -1605,6 +1627,7 @@ export default function App() {
           fetch("/api/v1/session/preflight"),
           fetch("/api/v1/shadow/overview"),
           fetch("/api/v1/opportunities/v2/states"),
+          fetch("/api/v1/triggers/v2"),
           fetch("/api/v1/shadow/blocked-probes"),
           fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           fetch("/api/v1/research/stop-geometry?hours=168"),
@@ -1649,6 +1672,9 @@ export default function App() {
           : [];
         const opportunityStatesPayload = opportunityStatesResponse.ok
           ? await opportunityStatesResponse.json()
+          : [];
+        const triggerEnginePayload = triggerEngineResponse.ok
+          ? await triggerEngineResponse.json()
           : [];
         const blockedProbesPayload = blockedProbesResponse.ok
           ? await blockedProbesResponse.json()
@@ -1720,6 +1746,7 @@ export default function App() {
         setPreflight(preflightPayload);
         setOpportunities(opportunitiesPayload);
         setOpportunityStates(opportunityStatesPayload);
+        setTriggerEngine(triggerEnginePayload);
         setBlockedProbes(blockedProbesPayload);
           setOpportunityFunnel(opportunityFunnelPayload);
           setStopGeometryResearch(stopGeometryPayload);
@@ -4655,6 +4682,36 @@ export default function App() {
                 {item.first_seen_at && item.age_seconds != null
                   ? `Âge ${Math.max(0, Math.round(item.age_seconds / 60))} min`
                   : "Aucun setup détecté"}
+              </small>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="trigger-engine-panel" hidden={activeView !== "trading"}>
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">TRIGGER ENGINE V2 · RESEARCH ONLY</p>
+            <h2>Trigger Engine V2</h2>
+          </div>
+          <p>M1 fermé causalement, sans ordre ni autorité broker.</p>
+        </div>
+        <div className="trigger-engine-grid">
+          {triggerEngine.map((item) => (
+            <article className="trigger-engine-card" key={`${item.symbol}:${item.mechanism}`}>
+              <div className="opportunity-state-card-heading">
+                <strong>{item.symbol}</strong>
+                <span className="opportunity-state-badge">{item.state.toUpperCase()}</span>
+              </div>
+              <span className="opportunity-state-mechanism">
+                {item.mechanism.replaceAll("_", " ")} · {item.side?.toUpperCase() ?? "—"}
+              </span>
+              <p>{item.reason}</p>
+              <small>
+                M1 {item.m1_status} · ticks {item.directional_tick_samples ?? "—"} · imbalance {item.side_aligned_tick_imbalance?.toFixed(3) ?? "—"}
+              </small>
+              <small>
+                Early {item.early_trigger_at ? new Date(item.early_trigger_at).toLocaleTimeString("fr-FR") : "—"} · V1 {item.v1_trigger_at ? new Date(item.v1_trigger_at).toLocaleTimeString("fr-FR") : "—"} · lead {item.lead_minutes?.toFixed(2) ?? "—"} min
               </small>
             </article>
           ))}

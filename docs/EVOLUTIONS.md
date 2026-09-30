@@ -2074,3 +2074,17 @@ un trigger valide d'un prix encore économiquement exploitable. Les stops sont
 résolus avec les règles shadow existantes et `size_position()` ; le garde
 spread/stop, le risque, le plafond 5 lots et la politique de marge restent
 inchangés. Aucun champ ou chemin de commande broker n'est exposé.
+
+## Étape 4 — Trigger Engine V2 M1/M5
+
+Le nouveau endpoint read-only `/api/v1/triggers/v2` compare, lorsque les
+conditions causales sont disponibles, une reprise M1 après `ARMED` avec le
+trigger M5 V1. Les microbars proviennent exclusivement du ledger
+`<SYMBOL>_micro_m1.jsonl`; `current_bar` n'est jamais utilisé. Les mécanismes
+non représentatifs restent `NOT_APPLICABLE`, et l'absence ou l'ancienneté du
+ledger M1 est explicitement exposée.
+
+Cette évolution mesure le timing (`lead_minutes`, `move_saved_vs_v1_atr`) et le
+tick pressure sans créer de règle d'entrée. Aucun ordre, PAPER trade,
+proposition, admission, changement de risque ou autorité DEMO ne peut provenir
+du Trigger Engine V2.

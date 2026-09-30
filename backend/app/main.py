@@ -55,6 +55,7 @@ from app.domain.shadow_paper import ShadowPaperSummary
 from app.domain.stop_geometry import StopGeometryResearchReport
 from app.domain.trading_intelligence import TradingIntelligenceOverview
 from app.domain.trailing_shadow import TrailingShadowSummary
+from app.domain.trigger_engine import TriggerEngineV2Snapshot
 from app.domain.xau_feasible_pullback_shadow import XauFeasiblePullbackSummary
 from app.domain.xau_microbar import (
     UnseenTickPressureResearchSummary,
@@ -142,6 +143,7 @@ from app.services.trading_intelligence import (
     load_trading_intelligence,
 )
 from app.services.trailing_shadow import load_trailing_shadow_summary
+from app.services.trigger_engine_v2 import build_trigger_engine_snapshot
 from app.services.xau_auction_precursor_shadow import (
     load_xau_auction_precursor_shadow_summary,
 )
@@ -154,6 +156,8 @@ from app.services.xau_feasible_pullback_shadow import (
 from app.services.xau_microbar import (
     load_all_market_microbar_summaries,
     load_xau_microbar_summary,
+    load_xau_microbars,
+    microbar_ledger_file,
 )
 from app.services.xau_unseen_transition_capture import (
     load_all_unseen_tick_pressure_summaries,
@@ -477,6 +481,24 @@ def entry_zones_v2() -> list[ExecutableEntryZoneV2]:
         for mechanism in REPRESENTATIVE_MECHANISMS:
             opportunity = build_opportunity_state(symbol=symbol, bars_m5=bars_m5, bars_m15=bars_m15, mechanism=mechanism, evaluated_at=evaluated_at)
             result.append(build_entry_zone(snapshot=opportunity, market_state=state, bars_m5=bars_m5, bars_m15=bars_m15, quote=quotes.get(symbol), spec=specs.get(symbol), capital=capital))
+    return result
+
+
+@app.get(
+    f"{settings.api_prefix}/triggers/v2",
+    response_model=list[TriggerEngineV2Snapshot],
+)
+def triggers_v2() -> list[TriggerEngineV2Snapshot]:
+    evaluated_at = datetime.now(tz=_server_timezone())
+    files_dir = _mt4_files_dir()
+    result: list[TriggerEngineV2Snapshot] = []
+    for symbol in settings.session_watch_symbols:
+        bars_m5 = load_closed_market_bars(files_dir, symbol, Timeframe.M5, evaluated_at)
+        bars_m15 = load_closed_market_bars(files_dir, symbol, Timeframe.M15, evaluated_at)
+        microbars = load_xau_microbars(settings.shadow_ledger_dir / microbar_ledger_file(symbol))
+        for mechanism in REPRESENTATIVE_MECHANISMS:
+            opportunity = build_opportunity_state(symbol=symbol, bars_m5=bars_m5, bars_m15=bars_m15, mechanism=mechanism, evaluated_at=evaluated_at)
+            result.append(build_trigger_engine_snapshot(snapshot=opportunity, microbars=microbars, evaluated_at=evaluated_at, bars_m5=bars_m5))
     return result
 
 

@@ -3529,3 +3529,15 @@ risque initial.
 Les endpoints `/api/v1/position-manager/v2` et
 `/api/v1/research/position-manager/v2` sont en lecture seule. Le moteur PAPER,
 les writers DEMO/MT4 et les commandes broker restent inchangés.
+
+## Étape 6 — Asset Specialization V2
+
+La registry `AssetSpecialization` décrit les hypothèses PRIMARY, SECONDARY et
+la baseline générique pour BTCUSD, EURUSD, GBPUSD, XAUUSD et XAGUSD. Elle
+assemble admission historique, qualification PAPER prospective et dernier
+diagnostic shadow dans une matrice descriptive. XAGUSD reste explicitement en
+VIABILITY RESEARCH. Les compatibilités sont affichées sans désactiver de
+collector ni bloquer de signal ; aucune priorité de playbook ne modifie
+l'allocation, l'admission ou l'autorité broker. Le GET
+`/api/v1/asset-specialization/v2` est léger et le POST de recherche réutilise
+le portefeuille générique avant d'annoter les rôles.

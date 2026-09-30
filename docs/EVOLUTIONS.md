@@ -2109,3 +2109,13 @@ capturé. `protected` représente le stop réellement protégé et les actions o
 candidates ne persistent pas d'une barre à l'autre. Le stop initial n'est
 jamais élargi et aucune divergence baseline n'est masquée. Aucun writer, ordre,
 PAPER state, sizing, risque ou autorité DEMO n'est modifié.
+
+## Étape 6 — Asset Specialization V2
+
+Ajout d'une registry descriptive des playbooks BTCUSD, EURUSD, GBPUSD, XAUUSD
+et XAGUSD. Les rôles PRIMARY, SECONDARY et GENERIC_BASELINE sont des hypothèses
+recherche-only ; ils ne filtrent aucune collecte et ne changent ni admission,
+ni portfolio selection, ni autorité broker. La matrice fusionne les admissions
+historiques, la qualification PAPER et le dernier shadow state. XAGUSD est
+présenté comme VIABILITY RESEARCH. Le GET live est léger et l'évaluation POST
+réutilise l'univers générique avant annotation.

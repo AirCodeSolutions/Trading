@@ -7,6 +7,11 @@ from fastapi import FastAPI, HTTPException
 from app.core.config import settings
 from app.domain.admission import AdmissionDecision, StrategyEvidence
 from app.domain.approval import ExecutionProposal, ExecutionProposalRequest
+from app.domain.asset_specialization import (
+    AssetSpecializationResearchRequest,
+    AssetSpecializationResearchResult,
+    AssetSpecializationSnapshot,
+)
 from app.domain.blocked_probe import BlockedProbeRuntime
 from app.domain.broker import (
     BrokerSymbolSpec,
@@ -69,6 +74,10 @@ from app.services.admission import (
     assess_strategy,
 )
 from app.services.approval_gate import ApprovalGate
+from app.services.asset_specialization import (
+    build_asset_specialization_snapshots,
+    evaluate_asset_specialization,
+)
 from app.services.blocked_probe_registry import load_blocked_probe_registry
 from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
 from app.services.capital_risk import size_position
@@ -903,6 +912,25 @@ def mt4_portfolio_research(
             result,
         )
         return result
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get(
+    f"{settings.api_prefix}/asset-specialization/v2",
+    response_model=list[AssetSpecializationSnapshot],
+)
+def asset_specialization_v2() -> list[AssetSpecializationSnapshot]:
+    return build_asset_specialization_snapshots(settings.shadow_ledger_dir, datetime.now(tz=_server_timezone()))
+
+
+@app.post(
+    f"{settings.api_prefix}/research/asset-specialization/v2/evaluate",
+    response_model=AssetSpecializationResearchResult,
+)
+def asset_specialization_v2_evaluate(request: AssetSpecializationResearchRequest) -> AssetSpecializationResearchResult:
+    try:
+        return evaluate_asset_specialization(_mt4_files_dir(), request)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

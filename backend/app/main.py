@@ -42,6 +42,7 @@ from app.domain.opportunity_funnel import OpportunityFunnel
 from app.domain.opportunity_state import OpportunityStateSnapshot
 from app.domain.performance_attribution import PerformanceAttributionReport
 from app.domain.portfolio import MarketUniverseAsset, TradingOverview
+from app.domain.position_manager import PositionManagerReport, PositionManagerV2Snapshot
 from app.domain.precursor_execution_shadow import PrecursorExecutionShadowSummary
 from app.domain.precursor_forward_research import PrecursorForwardResearchReport
 from app.domain.probe_review import ProbeReviewContract, ProbeReviewPack, ProbeReviewRequest
@@ -112,6 +113,10 @@ from app.services.opportunity_funnel import build_opportunity_funnel
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.performance_attribution import build_performance_attribution_report
 from app.services.portfolio_overview import build_trading_overview
+from app.services.position_manager_v2 import (
+    build_position_manager_report,
+    replay_position_manager_v2,
+)
 from app.services.precursor_forward_research import build_precursor_forward_research
 from app.services.probe_review import (
     build_probe_review_pack,
@@ -135,7 +140,11 @@ from app.services.session_landmark_research import build_session_landmark_report
 from app.services.session_preflight import build_session_preflight
 from app.services.shadow_collector import collect_btc_break_retest_once
 from app.services.shadow_overview import load_shadow_overview
-from app.services.shadow_paper import load_shadow_paper_summary
+from app.services.shadow_paper import (
+    load_closed_trades,
+    load_shadow_paper_state,
+    load_shadow_paper_summary,
+)
 from app.services.stop_geometry_research import build_stop_geometry_report
 from app.services.trading_intelligence import (
     INTELLIGENCE_FILE,
@@ -500,6 +509,44 @@ def triggers_v2() -> list[TriggerEngineV2Snapshot]:
             opportunity = build_opportunity_state(symbol=symbol, bars_m5=bars_m5, bars_m15=bars_m15, mechanism=mechanism, evaluated_at=evaluated_at)
             result.append(build_trigger_engine_snapshot(snapshot=opportunity, microbars=microbars, evaluated_at=evaluated_at, bars_m5=bars_m5))
     return result
+
+
+@app.get(
+    f"{settings.api_prefix}/position-manager/v2",
+    response_model=list[PositionManagerV2Snapshot],
+)
+def position_manager_v2() -> list[PositionManagerV2Snapshot]:
+    now = datetime.now(tz=_server_timezone())
+    result: list[PositionManagerV2Snapshot] = []
+    for state_path in settings.shadow_ledger_dir.glob("*_paper_state.json"):
+        state = load_shadow_paper_state(state_path)
+        if state.open_trade is None:
+            continue
+        trade = state.open_trade
+        bars = load_closed_market_bars(_mt4_files_dir(), trade.symbol, Timeframe.M5, now)
+        snapshot, _ = replay_position_manager_v2(trade, bars)
+        if snapshot is not None:
+            result.append(snapshot)
+    return result
+
+
+@app.get(
+    f"{settings.api_prefix}/research/position-manager/v2",
+    response_model=PositionManagerReport,
+)
+def position_manager_v2_research(hours: int = 168) -> PositionManagerReport:
+    if hours < 1 or hours > 168:
+        raise HTTPException(status_code=422, detail="hours must be between 1 and 168")
+    now = datetime.now(tz=_server_timezone())
+    trades = []
+    for trades_path in settings.shadow_ledger_dir.glob("*_paper_trades.jsonl"):
+        trades.extend(load_closed_trades(trades_path))
+    symbols = sorted({trade.symbol for trade in trades})
+    bars_by_symbol = {
+        symbol: load_closed_market_bars(_mt4_files_dir(), symbol, Timeframe.M5, now)
+        for symbol in symbols
+    }
+    return build_position_manager_report(trades, bars_by_symbol, now=now, window_hours=hours)
 
 
 @app.get(

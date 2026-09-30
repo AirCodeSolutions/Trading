@@ -192,6 +192,14 @@ type TriggerEngineSnapshot = {
   reason: string;
 };
 
+type PositionManagerSnapshot = {
+  trade_id: string; symbol: string; mechanism: string; side: "buy" | "sell";
+  state: string; entry_price: number; current_stop: number; candidate_stop: number | null;
+  initial_target: number; current_target: number; candidate_target: number | null;
+  bars_held: number; mfe_r: number; mae_r: number; current_result_r: number;
+  protected: boolean; proposed_action: string; reason: string;
+};
+
 type MarketStateV2 = {
   symbol: string;
   evaluated_at: string;
@@ -1506,6 +1514,7 @@ export default function App() {
   const [opportunities, setOpportunities] = useState<ShadowDiagnostic[]>([]);
   const [opportunityStates, setOpportunityStates] = useState<OpportunityStateSnapshot[]>([]);
   const [triggerEngine, setTriggerEngine] = useState<TriggerEngineSnapshot[]>([]);
+  const [positionManager, setPositionManager] = useState<PositionManagerSnapshot[]>([]);
   const [blockedProbes, setBlockedProbes] = useState<BlockedProbeRuntime[]>([]);
   const [opportunityFunnel, setOpportunityFunnel] = useState<OpportunityFunnel | null>(null);
   const [probeReviewContract, setProbeReviewContract] =
@@ -1593,6 +1602,7 @@ export default function App() {
           opportunitiesResponse,
           opportunityStatesResponse,
           triggerEngineResponse,
+          positionManagerResponse,
           blockedProbesResponse,
           opportunityFunnelResponse,
           stopGeometryResponse,
@@ -1629,6 +1639,7 @@ export default function App() {
           fetch("/api/v1/shadow/overview"),
           fetch("/api/v1/opportunities/v2/states"),
           fetch("/api/v1/triggers/v2"),
+          fetch("/api/v1/position-manager/v2"),
           fetch("/api/v1/shadow/blocked-probes"),
           fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           fetch("/api/v1/research/stop-geometry?hours=168"),
@@ -1676,6 +1687,9 @@ export default function App() {
           : [];
         const triggerEnginePayload = triggerEngineResponse.ok
           ? await triggerEngineResponse.json()
+          : [];
+        const positionManagerPayload = positionManagerResponse.ok
+          ? await positionManagerResponse.json()
           : [];
         const blockedProbesPayload = blockedProbesResponse.ok
           ? await blockedProbesResponse.json()
@@ -1748,6 +1762,7 @@ export default function App() {
         setOpportunities(opportunitiesPayload);
         setOpportunityStates(opportunityStatesPayload);
         setTriggerEngine(triggerEnginePayload);
+        setPositionManager(positionManagerPayload);
         setBlockedProbes(blockedProbesPayload);
           setOpportunityFunnel(opportunityFunnelPayload);
           setStopGeometryResearch(stopGeometryPayload);
@@ -4717,6 +4732,24 @@ export default function App() {
               <small>
                 G5 {item.geometry_5m ? `${item.geometry_5m.bars} bars · move ${item.geometry_5m.signed_move.toFixed(3)} · eff ${item.geometry_5m.path_efficiency.toFixed(2)}` : "—"} · saved ATR {item.move_saved_vs_v1_atr?.toFixed(3) ?? "—"}
               </small>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "trading"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">POSITION MANAGER V2 · DESCRIPTIVE</p><h2>Position Manager V2</h2></div>
+          <p>Replay parallèle, sans modification PAPER ni commande broker.</p>
+        </div>
+        <div className="position-manager-grid">
+          {positionManager.length === 0 ? <p>Aucun trade PAPER ouvert.</p> : positionManager.map((item) => (
+            <article className="position-manager-card" key={item.trade_id}>
+              <div className="opportunity-state-card-heading"><strong>{item.symbol}</strong><span>{item.state.toUpperCase()}</span></div>
+              <small>{item.mechanism.replaceAll("_", " ")} · {item.side.toUpperCase()} · {item.protected ? "PROTECTED" : "UNPROTECTED"}</small>
+              <p>Entry {item.entry_price} · SL {item.current_stop} → {item.candidate_stop ?? "—"} · TP {item.current_target} → {item.candidate_target ?? "—"}</p>
+              <small>R {item.current_result_r.toFixed(2)} · MFE {item.mfe_r.toFixed(2)} · MAE {item.mae_r.toFixed(2)} · {item.proposed_action}</small>
+              <p>{item.reason}</p>
             </article>
           ))}
         </div>

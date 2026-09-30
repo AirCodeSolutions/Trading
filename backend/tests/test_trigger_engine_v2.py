@@ -14,7 +14,7 @@ from app.domain.opportunity_state import (
 from app.domain.trading import Side
 from app.domain.trigger_engine import TriggerEngineState
 from app.domain.xau_microbar import XauMicrobarM1
-from app.services.trigger_engine_v2 import build_trigger_engine_snapshot
+from app.services.trigger_engine_v2 import _reference, build_trigger_engine_snapshot
 
 START = datetime(2026, 9, 30, 10, tzinfo=ZoneInfo("Europe/Athens"))
 
@@ -148,6 +148,62 @@ def test_break_retest_early_trigger_uses_close_location():
     low_location = valid.model_copy(update={"mid_low": 99.0, "mid_high": 105.0, "ask_low": 99.01, "ask_high": 105.01})
     rejected = build_trigger_engine_snapshot(snapshot=break_snapshot(Side.BUY), microbars=[low_location], evaluated_at=START + timedelta(minutes=92), bars_m5=break_bars())
     assert rejected.state is TriggerEngineState.WAITING
+
+
+def distinct_break_bars(side: Side) -> list[MarketBar]:
+    bars = []
+    for index in range(18):
+        at = START + timedelta(minutes=index * 5)
+        if side is Side.BUY:
+            close = 102 if index >= 15 else 100 + index * 0.01
+            high = 100.5 + index * 0.1
+            low = 99.5 + index * 0.01
+        else:
+            close = 98 if index >= 15 else 100 - index * 0.01
+            high = 100.5 - index * 0.01
+            low = 99.5 - index * 0.1
+        bars.append(MarketBar(symbol="XAUUSD", timeframe=Timeframe.M5, timestamp=at, open=100, high=max(high, 100, close), low=min(low, 100, close), close=close))
+    return bars
+
+
+@pytest.mark.parametrize("side", [Side.BUY, Side.SELL])
+def test_breakout_level_matches_v1_slice_with_distinct_levels(side):
+    bars = distinct_break_bars(side)
+    armed_at = START + timedelta(minutes=90)
+    expected_slice = bars[17 - 15 : 17 - 3]
+    expected = max(bar.high for bar in expected_slice) if side is Side.BUY else min(bar.low for bar in expected_slice)
+    assert _reference(bars, OpportunityMechanism.BREAK_RETEST_REACCEL, side, armed_at) == expected
+
+
+def test_break_retest_sell_early_trigger_uses_bid_and_close_location():
+    bars = distinct_break_bars(Side.SELL)
+    snapshot = break_snapshot(Side.SELL)
+    valid = row(START + timedelta(minutes=91), side=Side.SELL, close=96, up=1, down=4).model_copy(update={"mid_low": 95.5, "mid_high": 99.0, "bid_low": 95.49, "bid_high": 99.01})
+    result = build_trigger_engine_snapshot(snapshot=snapshot, microbars=[valid], evaluated_at=START + timedelta(minutes=92), bars_m5=bars)
+    assert result.state is TriggerEngineState.EARLY_TRIGGERED
+    assert result.early_trigger_price == valid.bid_close
+
+
+@pytest.mark.parametrize("location,expected", [(0.60, TriggerEngineState.EARLY_TRIGGERED), (0.599, TriggerEngineState.WAITING)])
+def test_break_retest_buy_close_location_boundary(location, expected):
+    span = 2.0
+    low = 100.0
+    close = low + span * location
+    high = low + span
+    valid = row(START + timedelta(minutes=91), close=close).model_copy(update={"mid_low": low, "mid_high": high, "ask_low": low + 0.01, "ask_high": high + 0.01})
+    result = build_trigger_engine_snapshot(snapshot=break_snapshot(Side.BUY), microbars=[valid], evaluated_at=START + timedelta(minutes=92), bars_m5=break_bars())
+    assert result.state is expected
+
+
+@pytest.mark.parametrize("location,expected", [(0.40, TriggerEngineState.EARLY_TRIGGERED), (0.401, TriggerEngineState.WAITING)])
+def test_break_retest_sell_close_location_boundary(location, expected):
+    high = 105.0
+    span = 12.0
+    low = high - span
+    close = low + span * location
+    valid = row(START + timedelta(minutes=91), side=Side.SELL, close=close, up=1, down=4).model_copy(update={"mid_low": low, "mid_high": high, "bid_low": low - 0.01, "bid_high": high - 0.01})
+    result = build_trigger_engine_snapshot(snapshot=break_snapshot(Side.SELL), microbars=[valid], evaluated_at=START + timedelta(minutes=92), bars_m5=distinct_break_bars(Side.SELL))
+    assert result.state is expected
 
 
 def test_pullback_sell_move_saved_is_side_aligned():

@@ -56,7 +56,7 @@ def _reference(bars: Sequence[MarketBar], mechanism: OpportunityMechanism, side:
         return (causal[-1].high if side is Side.BUY else causal[-1].low) if causal else None
     if len(causal) < 15:
         return None
-    base = causal[-15:-3]
+    base = causal[-16:-4]
     if not base:
         return None
     return max(bar.high for bar in base) if side is Side.BUY else min(bar.low for bar in base)

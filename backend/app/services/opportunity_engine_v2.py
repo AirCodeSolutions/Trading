@@ -13,9 +13,11 @@ from app.domain.regime import MarketRegime
 from app.domain.trading import Side
 from app.services.opportunity_strategies import (
     _atr_series,
-    _break_retest_candidate,
-    _directional_pullback_resumption_candidate,
     _regime_timeline,
+)
+from app.services.opportunity_triggers import (
+    inspect_break_retest_trigger,
+    inspect_directional_pullback_trigger,
 )
 
 REPRESENTATIVE_MECHANISMS = (
@@ -82,17 +84,9 @@ def _trigger_candidate(
     mechanism: OpportunityMechanism,
     regime: object,
 ):
-    if index + 1 < len(bars):
-        entry_bars = bars
-    else:
-        last = bars[-1]
-        entry_bars = [
-            *bars,
-            last.model_copy(update={"timestamp": last.timestamp + timedelta(minutes=5)}),
-        ]
     if mechanism is OpportunityMechanism.BREAK_RETEST_REACCEL:
-        return _break_retest_candidate(entry_bars, atr, index, regime)
-    return _directional_pullback_resumption_candidate(entry_bars, atr, index, regime)
+        return inspect_break_retest_trigger(bars[: index + 1], atr[: index + 1], regime)
+    return inspect_directional_pullback_trigger(bars[: index + 1], atr[: index + 1], regime)
 
 
 def _break_phase(
@@ -213,7 +207,7 @@ def build_opportunity_state(
     close_times, regimes = _regime_timeline(bars_m15)
     lifecycle: list[tuple[OpportunityStateEvent, datetime, datetime, str, Side | None]] = []
     state = OpportunityState.NONE
-    active_at: datetime | None = None
+    active_index: int | None = None
     for index, bar in enumerate(bars_m5):
         if index < 25:
             continue
@@ -236,27 +230,7 @@ def build_opportunity_state(
         )
         if trigger is not None:
             if state is OpportunityState.NONE:
-                setup_at = _closed_at(bars_m5[max(0, index - 2)])
-                lifecycle.append(
-                    (
-                        OpportunityStateEvent.SETUP_DETECTED,
-                        setup_at,
-                        setup_at,
-                        "causal setup preceding V1 trigger",
-                        trigger.side,
-                    )
-                )
-                state = OpportunityState.SETUP
-                lifecycle.append(
-                    (
-                        OpportunityStateEvent.ARMED,
-                        closed_at,
-                        closed_at,
-                        "V1 retest conditions are closed",
-                        trigger.side,
-                    )
-                )
-                state = OpportunityState.ARMED
+                continue
             elif state is OpportunityState.SETUP:
                 lifecycle.append(
                     (
@@ -278,7 +252,7 @@ def build_opportunity_state(
                 )
             )
             state = OpportunityState.TRIGGERED
-            active_at = closed_at
+            active_index = index
         elif phase is not None and state in (
             OpportunityState.NONE,
             OpportunityState.SETUP,
@@ -294,7 +268,8 @@ def build_opportunity_state(
                     (OpportunityStateEvent.ARMED, closed_at, closed_at, phase_reason, side)
                 )
                 state = OpportunityState.ARMED
-            active_at = closed_at
+            if state is OpportunityState.SETUP:
+                active_index = index
         elif (
             state in (OpportunityState.SETUP, OpportunityState.ARMED)
             and getattr(regime, "regime", None) is not MarketRegime.DIRECTIONAL
@@ -309,11 +284,15 @@ def build_opportunity_state(
                 )
             )
             state = OpportunityState.INVALIDATED
-            active_at = None
+            active_index = None
         elif (
-            active_at is not None
-            and closed_at - active_at > timedelta(minutes=15)
+            active_index is not None
             and state in (OpportunityState.SETUP, OpportunityState.ARMED)
+            and (
+                mechanism is OpportunityMechanism.BREAK_RETEST_REACCEL
+                and index - active_index >= 4
+                or mechanism is OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION
+            )
         ):
             lifecycle.append(
                 (
@@ -325,7 +304,7 @@ def build_opportunity_state(
                 )
             )
             state = OpportunityState.EXPIRED
-            active_at = None
+            active_index = None
         if (
             state
             in (OpportunityState.TRIGGERED, OpportunityState.INVALIDATED, OpportunityState.EXPIRED)

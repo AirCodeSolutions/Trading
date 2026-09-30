@@ -22,6 +22,10 @@ from app.services.opportunity_strategies import (
     _structural_displacement_sequence_signal,
     _structural_persistence_sequence_signal,
 )
+from app.services.opportunity_triggers import (
+    inspect_break_retest_trigger,
+    inspect_directional_pullback_trigger,
+)
 from app.services.regime import shock_bar_metrics
 from app.services.replay import RegimeReplay
 from app.services.session_continuity import reopen_warmup_remaining
@@ -368,57 +372,8 @@ def _directional_pullback_resumption_signal(
     atr: Sequence[float],
     regime: RegimeSnapshot,
 ):
-    if len(bars) < 3 or regime.regime != MarketRegime.DIRECTIONAL or regime.direction == 0:
-        return None
-
-    index = len(bars) - 1
-    value = atr[index]
-    if value <= 0:
-        return None
-
-    first_pullback = bars[index - 2]
-    second_pullback = bars[index - 1]
-    confirmation = bars[index]
-    side = Side.BUY if regime.direction > 0 else Side.SELL
-    bar_range = confirmation.high - confirmation.low
-    close_location = (confirmation.close - confirmation.low) / bar_range if bar_range > 0 else None
-
-    if side == Side.BUY:
-        if not (
-            first_pullback.close < first_pullback.open
-            and second_pullback.close < second_pullback.open
-            and confirmation.close > confirmation.open
-            and confirmation.close > second_pullback.high
-        ):
-            return None
-        swing = min(first_pullback.low, second_pullback.low)
-        raw_stop = swing - 0.10 * value
-    else:
-        if not (
-            first_pullback.close > first_pullback.open
-            and second_pullback.close > second_pullback.open
-            and confirmation.close < confirmation.open
-            and confirmation.close < second_pullback.low
-        ):
-            return None
-        swing = max(first_pullback.high, second_pullback.high)
-        raw_stop = swing + 0.10 * value
-
-    if raw_stop <= 0:
-        return None
-
-    return (
-        side,
-        raw_stop,
-        2.0,
-        12,
-        0.0,
-        None,
-        None,
-        None,
-        close_location,
-        "directional M15 with two-bar M5 pullback and local-swing resumption",
-    )
+    inspection = inspect_directional_pullback_trigger(bars, atr, regime)
+    return inspection
 
 
 def _directional_transition_signal(
@@ -463,68 +418,7 @@ def _break_retest_signal(
     atr: Sequence[float],
     regime: RegimeSnapshot,
 ):
-    if regime.regime != MarketRegime.DIRECTIONAL or regime.direction == 0:
-        return None
-
-    index = len(bars) - 1
-    bar = bars[index]
-    value = atr[index]
-    base = bars[index - 15 : index - 3]
-    recent = bars[index - 3 : index]
-    if value <= 0 or not base or not recent:
-        return None
-
-    prior_high = max(item.high for item in base)
-    prior_low = min(item.low for item in base)
-    bar_range = bar.high - bar.low
-    if bar_range <= 0:
-        return None
-    close_location = (bar.close - bar.low) / bar_range
-
-    if regime.direction > 0:
-        breakout = max(item.close for item in recent) > prior_high + 0.05 * value
-        retest = (
-            bar.low <= prior_high + 0.30 * value
-            and bar.close > prior_high
-            and bar.close > bar.open
-            and close_location >= 0.60
-        )
-        if not (breakout and retest):
-            return None
-        return (
-            Side.BUY,
-            bar.low - 0.10 * value,
-            1.8,
-            18,
-            0.65 * value,
-            (max(item.close for item in recent) - prior_high) / value,
-            (prior_high - bar.low) / value,
-            (bar.close - prior_high) / value,
-            close_location,
-            "directional M15 with M5 break, retest and re-acceleration",
-        )
-
-    breakout = min(item.close for item in recent) < prior_low - 0.05 * value
-    retest = (
-        bar.high >= prior_low - 0.30 * value
-        and bar.close < prior_low
-        and bar.close < bar.open
-        and close_location <= 0.40
-    )
-    if not (breakout and retest):
-        return None
-    return (
-        Side.SELL,
-        bar.high + 0.10 * value,
-        1.8,
-        18,
-        0.65 * value,
-        (prior_low - min(item.close for item in recent)) / value,
-        (bar.high - prior_low) / value,
-        (prior_low - bar.close) / value,
-        close_location,
-        "directional M15 with M5 break, retest and re-acceleration",
-    )
+    return inspect_break_retest_trigger(bars, atr, regime)
 
 
 def _failed_auction_signal(

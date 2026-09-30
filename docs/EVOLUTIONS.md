@@ -2048,3 +2048,8 @@ seconde barre de pullback pour `directional_pullback_resumption`. Le passage à
 `TRIGGERED` réutilise les constructeurs de candidats V1 ; les fenêtres natives
 produisent `INVALIDATED` ou `EXPIRED`, puis l'état courant revient à `NONE`.
 Chaque transition conserve l'instant de clôture qui la rend connaissable.
+
+La décision `TRIGGERED` partage désormais une primitive de prédicat entre le
+scanner shadow, le générateur de candidats V1 et le moteur V2. Elle ne crée
+aucune barre d'entrée synthétique : l'entrée économique reste construite par
+V1 uniquement lorsqu'une barre réelle suivante existe.

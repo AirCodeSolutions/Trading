@@ -10,6 +10,7 @@ from app.domain.opportunity_state import OpportunityState, OpportunityStateEvent
 from app.domain.regime import MarketRegime
 from app.domain.trading import Side
 from app.services.opportunity_engine_v2 import (
+    _trigger_candidate,
     build_opportunity_state,
     transition_opportunity_state,
 )
@@ -232,6 +233,20 @@ def test_future_bar_cannot_create_a_state() -> None:
             evaluated_at=AT,
         )
     assert snapshot.state is OpportunityState.NONE
+
+
+def test_v2_trigger_inspection_never_receives_a_synthetic_future_bar() -> None:
+    bars_m5, _ = _bars()
+    regime = SimpleNamespace(regime=MarketRegime.DIRECTIONAL, direction=1)
+    atr = [1.0] * len(bars_m5)
+    with patch("app.services.opportunity_engine_v2.inspect_break_retest_trigger", return_value=None) as inspect:
+        _trigger_candidate(
+            bars_m5, atr, len(bars_m5) - 1,
+            OpportunityMechanism.BREAK_RETEST_REACCEL, regime,
+        )
+    inspected_bars = inspect.call_args.args[0]
+    assert inspected_bars[-1].timestamp == bars_m5[-1].timestamp
+    assert max(bar.timestamp for bar in inspected_bars) <= bars_m5[-1].timestamp
 
 
 def test_api_snapshot_serializes_and_has_no_broker_authority() -> None:

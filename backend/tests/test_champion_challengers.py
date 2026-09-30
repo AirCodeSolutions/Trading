@@ -27,7 +27,7 @@ def report(rows):
 
 def test_one_baseline_and_three_single_axis_challengers_per_family():
     result = build_champion_challenger_report(build_asset_specialization_snapshots(Path("/tmp/empty"), NOW))
-    assert result.family_count == 40
+    assert result.family_count == 33
     assert all(family.champion.variant_id == "BASELINE_V1" for family in result.families)
     assert all(len(family.challengers) == 3 for family in result.families)
     assert all(len({challenger.economic_axis for challenger in family.challengers}) == 3 for family in result.families)

@@ -82,6 +82,8 @@ def build_champion_challenger_report(
     families: list[ChampionChallengerFamilyReport] = []
     for asset in asset_snapshots:
         for evidence in asset.mechanism_evidence:
+            if not evidence.compatible:
+                continue
             rows = _pm_rows(position_manager_report, asset.symbol, evidence.mechanism)
             baseline = ChampionReport(
                 historical_state=evidence.historical_state.value if evidence.historical_state else None,

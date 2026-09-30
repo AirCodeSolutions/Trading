@@ -84,6 +84,7 @@ def test_evidence_alignment_covers_conflicts_and_prospective_only():
     assert _alignment(AdmissionState.ACTIVE, "failed", True, 20) is EvidenceAlignment.CONFLICTED
     assert _alignment(AdmissionState.ACTIVE, "collecting", False, 0) is EvidenceAlignment.HISTORICAL_ONLY
     assert _alignment(None, "supports_demo", True, 20) is EvidenceAlignment.PROSPECTIVE_ONLY
+    assert _alignment(None, "failed", True, 20) is EvidenceAlignment.PROSPECTIVE_ONLY
     assert _alignment(None, "collecting", True, 0) is EvidenceAlignment.PROSPECTIVE_COLLECTING
 
 

@@ -92,7 +92,7 @@ def _alignment(historical: AdmissionState | None, prospective: str | None, paper
     if historical == AdmissionState.ACTIVE and prospective == "failed":
         return EvidenceAlignment.CONFLICTED
     if historical is None:
-        return EvidenceAlignment.PROSPECTIVE_ONLY if prospective == "supports_demo" else EvidenceAlignment.PROSPECTIVE_COLLECTING
+        return EvidenceAlignment.PROSPECTIVE_COLLECTING if prospective == "collecting" else EvidenceAlignment.PROSPECTIVE_ONLY
     return EvidenceAlignment.HISTORICAL_AND_PROSPECTIVE
 
 

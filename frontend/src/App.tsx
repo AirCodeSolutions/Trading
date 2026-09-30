@@ -217,6 +217,38 @@ type PositionManagerReport = {
   }>;
 };
 
+type PositionManagerAggregate = {
+  pm_trades: number;
+  pm_delta_r: number;
+  pm_baseline_giveback_r: number | null;
+  pm_v2_giveback_r: number | null;
+  pm_baseline_mfe_capture: number | null;
+  pm_v2_mfe_capture: number | null;
+};
+
+function aggregatePositionManagerComparisons(
+  comparisons: PositionManagerReport["comparisons"] = [],
+): Map<string, PositionManagerAggregate> {
+  const groups = new Map<string, PositionManagerReport["comparisons"]>();
+  for (const comparison of comparisons) {
+    if (comparison.pending || comparison.invalid_data || comparison.delta_r === null) continue;
+    const key = `${comparison.symbol}:${comparison.mechanism}`;
+    groups.set(key, [...(groups.get(key) ?? []), comparison]);
+  }
+  const average = (values: Array<number | null>) => {
+    const available = values.filter((value): value is number => value !== null);
+    return available.length ? available.reduce((sum, value) => sum + value, 0) / available.length : null;
+  };
+  return new Map([...groups.entries()].map(([key, rows]) => [key, {
+    pm_trades: rows.length,
+    pm_delta_r: rows.reduce((sum, row) => sum + (row.delta_r ?? 0), 0),
+    pm_baseline_giveback_r: average(rows.map((row) => row.baseline_giveback_r)),
+    pm_v2_giveback_r: average(rows.map((row) => row.v2_giveback_r)),
+    pm_baseline_mfe_capture: average(rows.map((row) => row.baseline_mfe_capture)),
+    pm_v2_mfe_capture: average(rows.map((row) => row.v2_mfe_capture)),
+  }]));
+}
+
 type AssetSpecializationSnapshot = {
   symbol: string;
   profile_status: string;
@@ -1549,6 +1581,10 @@ export default function App() {
   const [positionManager, setPositionManager] = useState<PositionManagerSnapshot[]>([]);
   const [positionManagerResearch, setPositionManagerResearch] = useState<PositionManagerReport | null>(null);
   const [assetSpecialization, setAssetSpecialization] = useState<AssetSpecializationSnapshot[]>([]);
+  const positionManagerAggregates = useMemo(
+    () => aggregatePositionManagerComparisons(positionManagerResearch?.comparisons),
+    [positionManagerResearch?.comparisons],
+  );
   const [blockedProbes, setBlockedProbes] = useState<BlockedProbeRuntime[]>([]);
   const [opportunityFunnel, setOpportunityFunnel] = useState<OpportunityFunnel | null>(null);
   const [probeReviewContract, setProbeReviewContract] =
@@ -4847,7 +4883,7 @@ export default function App() {
               <div className="opportunity-row" key={`${asset.symbol}:${row.mechanism}`}>
                 <strong>{asset.symbol}</strong><span>{row.mechanism.replaceAll("_", " ")}</span><span>{row.compatible ? row.role.replaceAll("_", " ") : "NOT COMPATIBLE"}</span>
                 <span>{row.historical_state ?? "—"} · {row.weakest_historical_expectancy_r?.toFixed(2) ?? "—"} / {row.historical_worst_drawdown_r?.toFixed(2) ?? "—"}</span><span>{row.prospective_state ?? "—"}</span><span>{row.paper_n}</span>
-                <span>{row.paper_expectancy_r?.toFixed(2) ?? "—"} / {row.paper_profit_factor?.toFixed(2) ?? "—"} / {row.paper_max_drawdown_r?.toFixed(2) ?? "—"}</span><span>{(() => { const pm = positionManagerResearch?.comparisons.find((item) => item.symbol === asset.symbol && item.mechanism === row.mechanism && !item.pending && !item.invalid_data && item.delta_r !== null); return pm ? `${pm.delta_r!.toFixed(2)}R` : "—"; })()}</span><span>{row.shadow_state ?? "—"}</span><span>{row.evidence_alignment.replaceAll("_", " ")}</span>
+                <span>{row.paper_expectancy_r?.toFixed(2) ?? "—"} / {row.paper_profit_factor?.toFixed(2) ?? "—"} / {row.paper_max_drawdown_r?.toFixed(2) ?? "—"}</span><span>{positionManagerAggregates.get(`${asset.symbol}:${row.mechanism}`)?.pm_delta_r.toFixed(2) ?? "—"}</span><span>{row.shadow_state ?? "—"}</span><span>{row.evidence_alignment.replaceAll("_", " ")}</span>
               </div>
             )))}
           </div>

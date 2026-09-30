@@ -4,10 +4,17 @@ from zoneinfo import ZoneInfo
 import pytest
 from fastapi.testclient import TestClient
 
+from app.domain.broker import BrokerSymbolSpec
 from app.domain.entry_zone import EntryZoneState
+from app.domain.live_market import LiveMarketQuote, MarketFeedStatus
 from app.domain.market_state import MarketStateV2
 from app.domain.opportunity import OpportunityMechanism
-from app.domain.opportunity_state import OpportunityState, OpportunityStateSnapshot
+from app.domain.opportunity_state import (
+    OpportunityState,
+    OpportunityStateEvent,
+    OpportunityStateSnapshot,
+    OpportunityStateTransition,
+)
 from app.domain.runtime_capital import RuntimeCapitalSnapshot, RuntimeCapitalSource
 from app.domain.trading import Side
 from app.services.entry_zone import _stop_for, build_entry_zone
@@ -52,3 +59,29 @@ def test_entry_zone_api_returns_two_descriptive_states_per_asset(monkeypatch, tm
     assert {row["symbol"] for row in payload} == {"BTCUSD", "EURUSD", "GBPUSD", "XAUUSD", "XAGUSD"}
     assert all(row["state"] == "not_applicable" for row in payload)
     assert all(not any(key in row for key in ("order", "command", "proposal", "approved_for_demo")) for row in payload)
+
+
+def test_unsupported_mechanism_is_not_routed_to_pullback():
+    snapshot = OpportunityStateSnapshot(symbol="XAUUSD", mechanism=OpportunityMechanism.FAILED_AUCTION_REVERSAL, state=OpportunityState.TRIGGERED, triggered_at=NOW, updated_at=NOW, reason="test")
+    zone = build_entry_zone(snapshot=snapshot, market_state=market_state(), bars_m5=[], bars_m15=[], quote=None, spec=None, capital=RuntimeCapitalSnapshot(source=RuntimeCapitalSource.UNAVAILABLE))
+    assert zone.state is EntryZoneState.NOT_APPLICABLE
+    assert zone.reason == "mechanism not supported by Entry Zone V2"
+
+
+def test_research_capital_is_rejected_even_when_non_null(monkeypatch):
+    transition = OpportunityStateTransition(state=OpportunityState.TRIGGERED, at=NOW, source_closed_at=NOW, event=OpportunityStateEvent.TRIGGERED, reason="test")
+    snapshot = OpportunityStateSnapshot(symbol="XAUUSD", mechanism=OpportunityMechanism.BREAK_RETEST_REACCEL, state=OpportunityState.TRIGGERED, triggered_at=NOW, updated_at=NOW, reason="test", provenance=[transition])
+    monkeypatch.setattr("app.services.entry_zone._trigger_for", lambda *args: (None, None, None, []))
+    quote = LiveMarketQuote(symbol="XAUUSD", as_of=NOW, bid=100, ask=101, mid=100.5, spread=1, spread_pct=1, digits=2, age_seconds=0, status=MarketFeedStatus.LIVE)
+    spec = BrokerSymbolSpec(symbol="XAUUSD", bid=100, ask=101, tick_size=1, tick_value=1, min_lot=0.1, max_lot=10, lot_step=0.1)
+    zone = build_entry_zone(snapshot=snapshot, market_state=market_state(), bars_m5=[], bars_m15=[], quote=quote, spec=spec, capital=RuntimeCapitalSnapshot(capital_eur=400, source=RuntimeCapitalSource.RESEARCH_FALLBACK, is_demo=True))
+    assert zone.state is EntryZoneState.DATA_UNAVAILABLE
+    assert "research fallback" in zone.reason
+
+
+def test_trigger_provenance_keeps_trigger_and_source_close_distinct():
+    from app.domain.opportunity_state import OpportunityStateEvent, OpportunityStateTransition
+    trigger_at = NOW
+    source_closed_at = NOW.replace(minute=55)
+    snapshot = OpportunityStateSnapshot(symbol="XAUUSD", mechanism=OpportunityMechanism.BREAK_RETEST_REACCEL, state=OpportunityState.TRIGGERED, triggered_at=trigger_at, updated_at=NOW, reason="test", provenance=[OpportunityStateTransition(state=OpportunityState.TRIGGERED, at=trigger_at, source_closed_at=source_closed_at, event=OpportunityStateEvent.TRIGGERED, reason="test")])
+    assert snapshot.triggered_at != snapshot.provenance[0].source_closed_at

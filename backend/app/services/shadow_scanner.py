@@ -30,6 +30,7 @@ from app.services.regime import shock_bar_metrics
 from app.services.replay import RegimeReplay
 from app.services.session_continuity import reopen_warmup_remaining
 from app.services.session_landmarks import build_session_landmark_context
+from app.services.stop_geometry import resolve_trigger_structural_stop
 
 VOLATILITY_PERCENTILE_LOOKBACK = 500
 MAX_SNAPSHOT_AGE = timedelta(minutes=10)
@@ -142,16 +143,6 @@ def scan_shadow_opportunity(
         else:
             structural_stop = entry + stop_atr + spec.spread
             stop_source = StopGeometrySource.ATR_DISTANCE_WITH_SPREAD
-    elif mechanism in {
-        OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
-        OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL,
-    }:
-        if side == Side.BUY:
-            structural_stop = raw_stop
-            stop_source = StopGeometrySource.RAW_STRUCTURE
-        else:
-            structural_stop = raw_stop + spec.spread
-            stop_source = StopGeometrySource.RAW_STRUCTURE_WITH_SPREAD
     elif side == Side.BUY:
         structural_stop = min(raw_stop, entry - stop_atr)
         stop_source = (
@@ -166,6 +157,21 @@ def scan_shadow_opportunity(
             if raw_stop + spec.spread >= entry + stop_atr
             else StopGeometrySource.ATR_DISTANCE
         )
+
+    if mechanism in {
+        OpportunityMechanism.BREAK_RETEST_REACCEL,
+        OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
+        OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL,
+    }:
+        structural_stop = resolve_trigger_structural_stop(
+            mechanism, side, raw_stop, entry, stop_atr, spec.spread
+        )
+        if mechanism is not OpportunityMechanism.BREAK_RETEST_REACCEL:
+            stop_source = (
+                StopGeometrySource.RAW_STRUCTURE
+                if side is Side.BUY
+                else StopGeometrySource.RAW_STRUCTURE_WITH_SPREAD
+            )
 
     atr_m5_value = atr_m5[-1] if atr_m5 else None
     structural_stop_distance = abs(entry - structural_stop)

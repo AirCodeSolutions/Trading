@@ -111,7 +111,8 @@ def _runtime_admission_report():
     )
 
 
-def test_runtime_admission_preview_endpoint(monkeypatch) -> None:
+def test_runtime_admission_preview_endpoint(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("app.main._mt4_files_dir", lambda: tmp_path)
     monkeypatch.setattr(
         "app.main.preview_runtime_admissions",
         lambda *args, **kwargs: _runtime_admission_report(),
@@ -126,7 +127,9 @@ def test_runtime_admission_preview_endpoint(monkeypatch) -> None:
 
 def test_runtime_admission_refresh_endpoint_returns_controlled_report(
     monkeypatch,
+    tmp_path,
 ) -> None:
+    monkeypatch.setattr("app.main._mt4_files_dir", lambda: tmp_path)
     report = _runtime_admission_report().model_copy(update={"applied": True})
     monkeypatch.setattr(
         "app.main.refresh_runtime_admissions",
@@ -139,7 +142,10 @@ def test_runtime_admission_refresh_endpoint_returns_controlled_report(
 
 def test_runtime_admission_refresh_endpoint_returns_409_when_guard_blocks(
     monkeypatch,
+    tmp_path,
 ) -> None:
+    monkeypatch.setattr("app.main._mt4_files_dir", lambda: tmp_path)
+
     def blocked(*args, **kwargs):
         raise ValueError("runtime admission refresh apply blocked: runtime drain must be ON")
 

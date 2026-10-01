@@ -2349,3 +2349,16 @@ the operational gate and admission diff.
 The shadow worker never runs this heavy refresh automatically. The dashboard
 offers PREVIEW only; there is no UI apply action and no automatic promotion to
 broker authority.
+
+
+## 2026-10-01 — P1-B cron alignment with runtime admission contract
+
+The scheduled research-admission job no longer performs an implicit standalone
+research refresh. It now calls the controlled runtime-admission service in
+PREVIEW mode by default, which resolves capital from actual MT4 DEMO
+equity/balance and reuses the frozen split.
+
+An APPLY requires the explicit `--apply` flag and remains fail-closed behind
+drain ON, Trading-New BOOK_FLAT and zero skipped active symbols. This removes
+the last path where a scheduled runtime admission calculation could silently
+fall back to research capital.

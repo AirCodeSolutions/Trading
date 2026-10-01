@@ -160,3 +160,9 @@ Current evidence:
 - no merge/pull/restart while Trading-New deployment book is not flat.
 - drain ON -> BOOK_FLAT -> deploy -> postflight -> drain OFF.
 - research/PAPER changes never imply broker authority.
+
+
+P1-B operational cadence correction:
+- the installed 05:43 daily cron invokes the admission refresh script in PREVIEW mode only;
+- PREVIEW now reuses the same runtime service as the API, therefore sizing capital is actual MT4 DEMO equity first, DEMO balance fallback, never the research fallback;
+- APPLY requires the explicit `--apply` flag and still fails closed unless drain is ON, Trading-New BOOK_FLAT is proven and all active symbols were evaluated.

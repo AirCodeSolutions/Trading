@@ -3727,3 +3727,11 @@ P1-B is implemented:
 - no worker polling and no broker authority change.
 
 Targeted service/API tests: 13 passed. Frontend production build: green.
+
+
+## 2026-10-01 — P1-B controlled admission refresh
+
+P1-B is implemented. The daily admission cron is PREVIEW-only and uses the
+same actual-MT4-DEMO-capital service as the API. Explicit APPLY is guarded by
+drain ON + Trading-New BOOK_FLAT + complete active-symbol replay, with atomic
+registry/receipt writes and an old/new admission diff.

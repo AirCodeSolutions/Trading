@@ -3,89 +3,67 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from app.domain.opportunity import (
-    OpportunityMechanism,
-    PortfolioResearchRequest,
-    ResearchSplit,
+from app.services.runtime_admission_refresh import (
+    preview_runtime_admissions,
+    refresh_runtime_admissions,
 )
-from app.services.opportunity_matrix import run_mt4_portfolio_research
-from app.services.runtime_admission_registry import save_research_admissions
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description=(
+            "Preview or explicitly apply the Trading-New runtime admission "
+            "refresh using actual MT4 DEMO equity/balance and the frozen split."
+        )
+    )
     parser.add_argument("--files-dir", type=Path, required=True)
     parser.add_argument("--runtime-dir", type=Path, required=True)
     parser.add_argument("--timezone", default="Europe/Athens")
-    parser.add_argument("--train-end", default="2026-07-01T00:00:00")
-    parser.add_argument("--validation-end", default="2026-09-01T00:00:00")
     parser.add_argument(
-        "--macro-events",
-        type=Path,
-        default=Path("config/macro_events_2026.json"),
-    )
-    parser.add_argument(
-        "--research-execution-model",
-        type=Path,
-        default=Path("config/research_execution_model.json"),
-    )
-    parser.add_argument(
-        "--capital-eur",
-        type=float,
-        default=None,
-        help="Explicit research sizing capital; defaults to configured fallback.",
-    )
-    parser.add_argument(
-        "--symbol",
-        action="append",
-        dest="symbols",
-        help="Limit refresh to one symbol; repeat for multiple symbols.",
-    )
-    parser.add_argument(
-        "--mechanism",
-        action="append",
-        type=OpportunityMechanism,
-        dest="mechanisms",
-        help="Limit refresh to one mechanism; repeat for multiple mechanisms.",
-    )
-    parser.add_argument(
-        "--merge",
+        "--apply",
         action="store_true",
-        help="Merge refreshed admissions into the existing registry.",
+        help=(
+            "Apply the refresh. Fails closed unless drain is ON, "
+            "Trading-New BOOK_FLAT is proven and no active symbol was skipped. "
+            "Without this flag the command is PREVIEW-only."
+        ),
     )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    timezone = ZoneInfo(args.timezone)
-    split = ResearchSplit(
-        train_end=datetime.fromisoformat(args.train_end).replace(tzinfo=timezone),
-        validation_end=datetime.fromisoformat(args.validation_end).replace(
-            tzinfo=timezone
-        ),
-    )
-    request_kwargs: dict[str, object] = {
-        "split": split,
-        "capital_eur": args.capital_eur,
-    }
-    if args.symbols:
-        request_kwargs["symbols"] = args.symbols
-    if args.mechanisms:
-        request_kwargs["mechanisms"] = args.mechanisms
+    now = datetime.now(tz=ZoneInfo(args.timezone))
+    if args.apply:
+        report = refresh_runtime_admissions(
+            args.files_dir,
+            args.runtime_dir,
+            now=now,
+        )
+    else:
+        report = preview_runtime_admissions(
+            args.files_dir,
+            args.runtime_dir,
+            now=now,
+        )
 
-    result = run_mt4_portfolio_research(
-        args.files_dir,
-        PortfolioResearchRequest.model_validate(request_kwargs),
-        macro_events_path=args.macro_events,
-        research_execution_model_path=args.research_execution_model,
-    )
-    path = args.runtime_dir / "strategy_admissions.json"
-    save_research_admissions(path, result, merge=args.merge)
+    mode = "APPLY" if report.applied else "PREVIEW"
     print(
-        f"saved {len(result.results)} research admissions to {path}; "
-        f"qualified={result.qualified_strategy_id}"
+        f"{mode} runtime admissions; capital={report.capital_eur:.2f} "
+        f"source={report.capital_source}; evaluated={report.evaluated_results}; "
+        f"added={report.added}; changed={report.changed}; "
+        f"removed={report.removed}; unchanged={report.unchanged}; "
+        f"apply_allowed={report.apply_allowed}"
     )
+    if report.apply_blockers:
+        print("blockers=" + " | ".join(report.apply_blockers))
+    for change in report.changes:
+        if change.change_type.value == "unchanged":
+            continue
+        print(
+            f"{change.strategy_id}: {change.change_type.value} "
+            f"{change.before_state or 'none'} -> {change.after_state or 'none'}"
+        )
 
 
 if __name__ == "__main__":

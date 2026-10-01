@@ -3452,3 +3452,23 @@ Aucun signal, guard, stop, target, sizing, admission ou exécution n'utilise ces
 champs. La collecte `POST_SHOCK_CONSUMED_MOVE_V1` doit atteindre au moins 10
 observations avant un checkpoint descriptif et 20 observations résolues avant
 toute première évaluation économique.
+
+## Market State V2 — contexte causal descriptif
+
+L'étape 2 compose `RegimeReplay` M15, les barres M5 closes, les quotes, les
+landmarks #171 et le macro structuré existant dans `MarketStateV2`. Elle expose
+des mesures continues de persistence, momentum normalisé par ATR, accélération,
+efficacité, extension, distance à la structure récente, expansion de range et
+proxy d'exhaustion. Les états de fraîcheur M5/M15 sont explicites et les
+données absentes restent indisponibles.
+
+`GET /api/v1/market-state/v2` et le panneau Market State sont en lecture seule.
+Le snapshot ne participe à aucune décision de signal, admission, sizing,
+spread guard, stop, target ou exécution.
+
+La quote possède une provenance et un statut explicites (`fresh`, `stale`,
+`future`, `unavailable`) ; seules les quotes fraîches et non futures alimentent
+le prix courant et les ratios de spread. Une quote stale/future conserve son
+diagnostic mais déclenche un fallback vers le dernier close M5 causal. Le
+macro indique séparément sa disponibilité et son blackout éventuel. En régime
+neutre, les landmarks n'inventent aucune distance side-aligned.

@@ -171,6 +171,42 @@ type OpportunityStateSnapshot = {
   age_seconds: number | null;
 };
 
+type MarketStateV2 = {
+  symbol: string;
+  evaluated_at: string;
+  latest_closed_m5_at: string | null;
+  latest_closed_m15_at: string | null;
+  latest_m5_bar_at: string | null;
+  latest_m5_closed_at: string | null;
+  latest_m15_bar_at: string | null;
+  latest_m15_closed_at: string | null;
+  m5_freshness: string;
+  m15_freshness: string;
+  regime: string | null;
+  regime_direction: number | null;
+  regime_confidence: number | null;
+  atr_m15: number | null;
+  atr_ratio_m15: number | null;
+  efficiency_m15: number | null;
+  atr_m5: number | null;
+  m5_direction: number | null;
+  persistence: number | null;
+  momentum_atr: number | null;
+  acceleration_atr: number | null;
+  efficiency_m5: number | null;
+  extension_atr: number | null;
+  distance_to_recent_structure_atr: number | null;
+  range_expansion_ratio: number | null;
+  exhaustion_proxy: number | null;
+  session_context: { active_session: string; nearest_landmark_type: string | null; nearest_landmark_distance_atr_m15: number | null } | null;
+  macro: { available: boolean; blocked: boolean | null; next_event_name: string | null };
+  quote: { available: boolean; status: string; age_seconds: number | null; spread: number | null };
+  spread: number | null;
+  spread_atr_m5: number | null;
+  spread_atr_m15: number | null;
+  m1: { available: boolean; pressure: number | null };
+};
+
 type PaperTrade = {
   trade_id: string;
   side: "buy" | "sell";
@@ -1480,6 +1516,7 @@ export default function App() {
   const [quotes, setQuotes] = useState<MarketQuote[]>([]);
   const [universe, setUniverse] = useState<MarketUniverseAsset[]>([]);
   const [marketBrief, setMarketBrief] = useState<DailyMarketBrief | null>(null);
+  const [marketStates, setMarketStates] = useState<MarketStateV2[]>([]);
   const [marketQuality, setMarketQuality] = useState<MarketQualitySnapshot[]>([]);
   const [overview, setOverview] = useState<TradingOverview | null>(null);
   const [costs, setCosts] = useState<CostSummary>({});
@@ -1513,6 +1550,7 @@ export default function App() {
           paperResponse,
           universeResponse,
           marketBriefResponse,
+          marketStateResponse,
           qualityResponse,
           overviewResponse,
           costsResponse,
@@ -1546,6 +1584,7 @@ export default function App() {
           fetch("/api/v1/shadow/mt4/btc/break-retest/paper"),
           fetch("/api/v1/market/mt4/universe"),
           fetch("/api/v1/research/market-brief"),
+          fetch("/api/v1/market-state/v2"),
           fetch("/api/v1/market/mt4/quality"),
           fetch("/api/v1/portfolio/overview"),
           fetch("/api/v1/market/mt4/costs"),
@@ -1583,6 +1622,7 @@ export default function App() {
         const paperPayload = paperResponse.ok ? await paperResponse.json() : null;
         const universePayload = universeResponse.ok ? await universeResponse.json() : [];
         const marketBriefPayload = marketBriefResponse.ok ? await marketBriefResponse.json() : null;
+        const marketStatePayload = marketStateResponse.ok ? await marketStateResponse.json() : [];
         const qualityPayload = qualityResponse.ok ? await qualityResponse.json() : [];
         const overviewPayload = overviewResponse.ok ? await overviewResponse.json() : null;
         const costsPayload = costsResponse.ok ? await costsResponse.json() : {};
@@ -1657,6 +1697,7 @@ export default function App() {
         setPaper(paperPayload);
         setUniverse(universePayload);
         setMarketBrief(marketBriefPayload);
+        setMarketStates(marketStatePayload);
         setMarketQuality(qualityPayload);
         setOverview(overviewPayload);
         setCosts(costsPayload);
@@ -2234,6 +2275,32 @@ export default function App() {
               <div className="market-brief-card-head"><strong>{asset.symbol}</strong><span className={asset.readiness === "READY" ? "positive-text" : "negative-text"}>{asset.readiness}</span></div>
               <strong className="market-brief-price">{asset.bid == null ? "—" : asset.bid.toFixed(asset.symbol.includes("USD") && !asset.symbol.startsWith("BTC") ? 5 : 2)} / {asset.ask == null ? "—" : asset.ask.toFixed(asset.symbol.includes("USD") && !asset.symbol.startsWith("BTC") ? 5 : 2)}</strong>
               <div className="market-brief-lines"><span>Session <b>{asset.session ?? "—"}</b></span><span>Régime <b>{asset.regime ?? "—"}</b></span><span>Spread <b>{asset.spread == null ? "—" : asset.spread}</b></span><span>Volatilité <b>{asset.volatility_percentile == null ? "—" : `${Math.round(asset.volatility_percentile * 100)} %`}</b></span><span>Landmark <b>{asset.nearest_landmark ?? "—"} {asset.nearest_distance_atr_m15 == null ? "" : `(${asset.nearest_distance_atr_m15.toFixed(2)} ATR15)`}</b></span><span>Macro <b className={asset.macro_blocked ? "negative-text" : ""}>{asset.macro_blocked ? "BLOCK" : asset.next_event ? `${asset.next_event.name} · ${asset.next_event_time_until_display}` : "—"}</b></span></div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="market-state-panel" hidden={activeView !== "trading"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">MARKET STATE V2 · DESCRIPTIVE</p><h2>Market State</h2></div>
+          <p>Contexte causal des barres closes. Aucune recommandation ni autorité de trading.</p>
+        </div>
+        <div className="market-state-grid">
+          {marketStates.map((item) => (
+            <article className="market-state-card" key={item.symbol}>
+              <div className="market-state-card-heading"><strong>{item.symbol}</strong><span>{item.m5_freshness}/{item.m15_freshness}</span></div>
+              <div className="market-state-primary"><b>{item.regime ?? "—"}</b><span>{item.regime_direction === 1 ? "direction +" : item.regime_direction === -1 ? "direction −" : "direction —"}</span></div>
+              <div className="market-state-metrics">
+                <span>ATR5 <b>{item.atr_m5?.toFixed(4) ?? "—"}</b></span>
+                <span>Eff. <b>{item.efficiency_m5?.toFixed(2) ?? "—"}</b></span>
+                <span>Persist. <b>{item.persistence?.toFixed(2) ?? "—"}</b></span>
+                <span>Mom. <b>{item.momentum_atr?.toFixed(2) ?? "—"}</b></span>
+                <span>Accel. <b>{item.acceleration_atr?.toFixed(2) ?? "—"}</b></span>
+                <span>Ext. <b>{item.extension_atr?.toFixed(2) ?? "—"}</b></span>
+                <span>Exhaust. <b>{item.exhaustion_proxy?.toFixed(2) ?? "—"}</b></span>
+                <span>Spread/ATR5 <b>{item.spread_atr_m5?.toFixed(3) ?? "—"}</b></span>
+              </div>
+              <small>Session {item.session_context?.active_session ?? "—"} · Landmark {item.session_context?.nearest_landmark_type ?? "—"} · Macro {!item.macro.available ? "unavailable" : item.macro.blocked ? "BLOCK" : "clear"} · Quote {item.quote.status} · M1 {item.m1.available ? "available" : "unavailable"}</small>
             </article>
           ))}
         </div>

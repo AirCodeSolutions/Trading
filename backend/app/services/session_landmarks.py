@@ -37,7 +37,7 @@ def build_session_landmark_context(
     bars_m5: Sequence[MarketBar],
     signal_at: datetime,
     signal_price: float,
-    side: Side,
+    side: Side | None,
     *,
     atr_m5: float | None = None,
     atr_m15: float | None = None,
@@ -120,7 +120,7 @@ def build_session_landmark_context(
         nearest_landmark_distance_atr_m15=(distance / atr_m15 if distance is not None and atr_m15 and atr_m15 > 0 else None),
         side_aligned_distance_to_nearest_landmark=(
             (nearest_price - signal_price) if side == Side.BUY and nearest_price is not None
-            else (signal_price - nearest_price) if nearest_price is not None else None
+            else (signal_price - nearest_price) if side == Side.SELL and nearest_price is not None else None
         ),
         active_session_high=active_high,
         active_session_low=active_low,

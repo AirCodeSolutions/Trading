@@ -849,6 +849,48 @@ h1 {
   background: rgba(13, 24, 35, 0.72);
 }
 
+.market-state-panel {
+  margin-top: 14px;
+  padding: 24px;
+  border: 1px solid #1c2b3a;
+  border-radius: 18px;
+  background: rgba(13, 24, 35, 0.72);
+}
+
+.market-state-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.market-state-card {
+  padding: 14px;
+  border: 1px solid #223446;
+  border-radius: 12px;
+  background: rgba(18, 32, 46, 0.72);
+}
+
+.market-state-card-heading,
+.market-state-primary {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.market-state-card-heading span,
+.market-state-primary span,
+.market-state-card small {
+  color: #718297;
+  font-size: 11px;
+}
+
+.market-state-primary { margin-top: 10px; color: #78d8c7; }
+.market-state-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin: 12px 0; font-size: 11px; color: #9cabbc; }
+.market-state-metrics span { display: flex; justify-content: space-between; gap: 6px; }
+.market-state-metrics b { color: #dce8f2; }
+
 .opportunity-state-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

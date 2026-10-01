@@ -2119,3 +2119,14 @@ ni portfolio selection, ni autorité broker. La matrice fusionne les admissions
 historiques, la qualification PAPER et le dernier shadow state. XAGUSD est
 présenté comme VIABILITY RESEARCH. Le GET live est léger et l'évaluation POST
 réutilise l'univers générique avant annotation.
+
+## Étape 7 — Champion / Challengers V2
+
+Ajout d'une couche research-only de comparaison par famille
+`symbol × mechanism`. `BASELINE_V1` est toujours le champion de référence ; les
+challengers ont un axe économique unique et ne peuvent jamais être promus
+automatiquement. Les comparaisons PM réutilisent les outcomes appariés existants
+sans nouveau replay ni changement d'autorité. Les triggers M1/M5 et Entry Zone
+restent sans evidence outcome tant qu'une population appariée n'est pas
+collectée. Aucune admission, sélection portefeuille, exécution, règle de
+risque ou commande broker n'est modifiée.

@@ -264,6 +264,16 @@ type AssetSpecializationSnapshot = {
   }>;
 };
 
+type ChampionChallengerReport = {
+  family_count: number; champion_count: number; challengers_collecting: number;
+  challengers_reviewable: number; challengers_does_not_support_review: number; challengers_conflicted: number;
+  families: Array<{
+    family_id: string; symbol: string; mechanism: string; asset_role: string;
+    champion: { paper_expectancy_r: number | null; paper_profit_factor: number | null; paper_max_drawdown_r: number | null };
+    challengers: Array<{ variant_id: string; economic_axis: string; paired_n: number; evidence_state: string; delta_total_r: number | null; baseline_metrics: { expectancy_r: number | null; profit_factor: number | null; max_drawdown_r: number | null }; challenger_metrics: { expectancy_r: number | null; profit_factor: number | null; max_drawdown_r: number | null }; evidence: { human_review_required: boolean } }>;
+  }>;
+};
+
 type MarketStateV2 = {
   symbol: string;
   evaluated_at: string;
@@ -1581,6 +1591,7 @@ export default function App() {
   const [positionManager, setPositionManager] = useState<PositionManagerSnapshot[]>([]);
   const [positionManagerResearch, setPositionManagerResearch] = useState<PositionManagerReport | null>(null);
   const [assetSpecialization, setAssetSpecialization] = useState<AssetSpecializationSnapshot[]>([]);
+  const [championChallengers, setChampionChallengers] = useState<ChampionChallengerReport | null>(null);
   const positionManagerAggregates = useMemo(
     () => aggregatePositionManagerComparisons(positionManagerResearch?.comparisons),
     [positionManagerResearch?.comparisons],
@@ -1675,6 +1686,7 @@ export default function App() {
           positionManagerResponse,
           positionManagerResearchResponse,
           assetSpecializationResponse,
+          championChallengersResponse,
           blockedProbesResponse,
           opportunityFunnelResponse,
           stopGeometryResponse,
@@ -1714,6 +1726,7 @@ export default function App() {
           fetch("/api/v1/position-manager/v2"),
           fetch("/api/v1/research/position-manager/v2?hours=168"),
           fetch("/api/v1/asset-specialization/v2"),
+          fetch("/api/v1/research/champion-challengers/v2?hours=168"),
           fetch("/api/v1/shadow/blocked-probes"),
           fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           fetch("/api/v1/research/stop-geometry?hours=168"),
@@ -1771,6 +1784,9 @@ export default function App() {
         const assetSpecializationPayload = assetSpecializationResponse.ok
           ? await assetSpecializationResponse.json()
           : [];
+        const championChallengersPayload = championChallengersResponse.ok
+          ? await championChallengersResponse.json()
+          : null;
         const blockedProbesPayload = blockedProbesResponse.ok
           ? await blockedProbesResponse.json()
           : [];
@@ -1845,6 +1861,7 @@ export default function App() {
         setPositionManager(positionManagerPayload);
         setPositionManagerResearch(positionManagerResearchPayload);
         setAssetSpecialization(assetSpecializationPayload);
+        setChampionChallengers(championChallengersPayload);
         setBlockedProbes(blockedProbesPayload);
           setOpportunityFunnel(opportunityFunnelPayload);
           setStopGeometryResearch(stopGeometryPayload);
@@ -4888,6 +4905,18 @@ export default function App() {
             )))}
           </div>
         )}
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "research"}>
+        <div className="section-heading"><div><p className="eyebrow">RESEARCH GOVERNANCE · DESCRIPTIVE</p><h2>Champion / Challengers V2</h2></div><p>BASELINE_V1 reste la référence ; revue humaine obligatoire.</p></div>
+        {championChallengers ? <>
+          <div className="opportunity-summary">
+            <span>FAMILIES <strong>{championChallengers.family_count}</strong></span><span>CHAMPIONS <strong>{championChallengers.champion_count}</strong></span><span>COLLECTING <strong>{championChallengers.challengers_collecting}</strong></span><span>REVIEWABLE <strong>{championChallengers.challengers_reviewable}</strong></span><span>NO SUPPORT <strong>{championChallengers.challengers_does_not_support_review}</strong></span><span>CONFLICTED <strong>{championChallengers.challengers_conflicted}</strong></span>
+          </div>
+          <div className="opportunity-table"><div className="opportunity-row opportunity-head"><span>Family</span><span>Champion</span><span>Challenger</span><span>Axis</span><span>N</span><span>Baseline Exp/PF/DD</span><span>Challenger Exp/PF/DD</span><span>ΔR</span><span>State</span></div>
+            {championChallengers.families.flatMap((family) => family.challengers.map((challenger) => <div className="opportunity-row" key={`${family.family_id}:${challenger.variant_id}`}><strong>{family.family_id}</strong><span>BASELINE_V1</span><span>{challenger.variant_id}</span><span>{challenger.economic_axis}</span><span>{challenger.paired_n}</span><span>{challenger.baseline_metrics.expectancy_r?.toFixed(2) ?? "—"} / {challenger.baseline_metrics.profit_factor?.toFixed(2) ?? "—"} / {challenger.baseline_metrics.max_drawdown_r?.toFixed(2) ?? "—"}</span><span>{challenger.challenger_metrics.expectancy_r?.toFixed(2) ?? "—"} / {challenger.challenger_metrics.profit_factor?.toFixed(2) ?? "—"} / {challenger.challenger_metrics.max_drawdown_r?.toFixed(2) ?? "—"}</span><span>{challenger.delta_total_r?.toFixed(2) ?? "—"}</span><span>{challenger.evidence_state.replaceAll("_", " ")} · REVIEW</span></div>))}
+          </div>
+        </> : <p>Champion / Challengers research indisponible.</p>}
       </section>
 
       <section className="opportunity-panel" hidden={activeView !== "trading"}>

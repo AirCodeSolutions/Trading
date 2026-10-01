@@ -3541,3 +3541,15 @@ collector ni bloquer de signal ; aucune priorité de playbook ne modifie
 l'allocation, l'admission ou l'autorité broker. Le GET
 `/api/v1/asset-specialization/v2` est léger et le POST de recherche réutilise
 le portefeuille générique avant d'annoter les rôles.
+
+## Étape 7 — Champion / Challengers V2
+
+La gouvernance descriptive définit une famille comme `symbol × mechanism` et
+utilise exactement un champion `BASELINE_V1`. Trois challengers au maximum sont
+exposés, chacun avec un seul axe économique : `TRIGGER_V2` pour le timing,
+`ENTRY_ZONE_V2` pour l'exécution d'entrée et `POSITION_MANAGER_V2` pour la
+sortie. Le PM est comparé sur la population appariée existante ; Trigger et
+Entry Zone restent collecting/no evidence tant qu'aucun outcome apparié n'est
+disponible. Les états reviewable utilisent uniquement les seuils prospectifs
+existants. Toute promotion automatique est interdite et la revue humaine reste
+obligatoire.

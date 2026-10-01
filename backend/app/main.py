@@ -20,6 +20,10 @@ from app.domain.broker import (
     PositionSizeRequest,
     PositionSizeResult,
 )
+from app.domain.champion_challengers import (
+    ChampionChallengerReport,
+    ChampionChallengerResearchRequest,
+)
 from app.domain.daily_report import DailyTradingReport
 from app.domain.demo_execution import DemoCloseCommand, DemoExecutionStatus, DemoOrderCommand
 from app.domain.economic_feasibility import EconomicFeasibilityReport
@@ -81,6 +85,7 @@ from app.services.asset_specialization import (
 from app.services.blocked_probe_registry import load_blocked_probe_registry
 from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
 from app.services.capital_risk import size_position
+from app.services.champion_challengers import build_champion_challenger_report
 from app.services.daily_report import (
     build_daily_trading_report,
     load_daily_trading_report,
@@ -561,6 +566,36 @@ def position_manager_v2_research(hours: int = 168) -> PositionManagerReport:
         for symbol in symbols
     }
     return build_position_manager_report(trades, bars_by_symbol, bars_by_symbol_m15=bars_by_symbol_m15, now=now, window_hours=hours)
+
+
+@app.get(
+    f"{settings.api_prefix}/research/champion-challengers/v2",
+    response_model=ChampionChallengerReport,
+)
+def champion_challengers_v2(hours: int = 168) -> ChampionChallengerReport:
+    if hours < 1 or hours > 168:
+        raise HTTPException(status_code=422, detail="hours must be between 1 and 168")
+    now = datetime.now(tz=_server_timezone())
+    asset_snapshots = build_asset_specialization_snapshots(settings.shadow_ledger_dir, now)
+    trades = []
+    for trades_path in settings.shadow_ledger_dir.glob("*_paper_trades.jsonl"):
+        trades.extend(load_closed_trades(trades_path))
+    symbols = sorted({trade.symbol for trade in trades})
+    bars_by_symbol = {symbol: load_closed_market_bars(_mt4_files_dir(), symbol, Timeframe.M5, now) for symbol in symbols}
+    bars_by_symbol_m15 = {symbol: load_closed_market_bars(_mt4_files_dir(), symbol, Timeframe.M15, now) for symbol in symbols}
+    position_manager = build_position_manager_report(trades, bars_by_symbol, bars_by_symbol_m15=bars_by_symbol_m15, now=now, window_hours=hours)
+    return build_champion_challenger_report(asset_snapshots, position_manager)
+
+
+@app.post(
+    f"{settings.api_prefix}/research/champion-challengers/v2/evaluate",
+    response_model=AssetSpecializationResearchResult,
+)
+def champion_challengers_v2_evaluate(request: ChampionChallengerResearchRequest) -> AssetSpecializationResearchResult:
+    try:
+        return evaluate_asset_specialization(_mt4_files_dir(), AssetSpecializationResearchRequest(split=request.split, symbols=request.symbols))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get(

@@ -210,6 +210,58 @@ type PositionManagerReport = {
   baseline_average_mfe_capture: number | null; v2_average_mfe_capture: number | null;
   baseline_average_giveback_r: number; v2_average_giveback_r: number;
   no_follow_through_count: number; extension_count: number; regime_loss_count: number;
+  comparisons: Array<{
+    symbol: string; mechanism: string; pending: boolean; invalid_data: boolean;
+    delta_r: number | null; baseline_giveback_r: number | null; v2_giveback_r: number | null;
+    baseline_mfe_capture: number | null; v2_mfe_capture: number | null;
+  }>;
+};
+
+type PositionManagerAggregate = {
+  pm_trades: number;
+  pm_delta_r: number;
+  pm_baseline_giveback_r: number | null;
+  pm_v2_giveback_r: number | null;
+  pm_baseline_mfe_capture: number | null;
+  pm_v2_mfe_capture: number | null;
+};
+
+function aggregatePositionManagerComparisons(
+  comparisons: PositionManagerReport["comparisons"] = [],
+): Map<string, PositionManagerAggregate> {
+  const groups = new Map<string, PositionManagerReport["comparisons"]>();
+  for (const comparison of comparisons) {
+    if (comparison.pending || comparison.invalid_data || comparison.delta_r === null) continue;
+    const key = `${comparison.symbol}:${comparison.mechanism}`;
+    groups.set(key, [...(groups.get(key) ?? []), comparison]);
+  }
+  const average = (values: Array<number | null>) => {
+    const available = values.filter((value): value is number => value !== null);
+    return available.length ? available.reduce((sum, value) => sum + value, 0) / available.length : null;
+  };
+  return new Map([...groups.entries()].map(([key, rows]) => [key, {
+    pm_trades: rows.length,
+    pm_delta_r: rows.reduce((sum, row) => sum + (row.delta_r ?? 0), 0),
+    pm_baseline_giveback_r: average(rows.map((row) => row.baseline_giveback_r)),
+    pm_v2_giveback_r: average(rows.map((row) => row.v2_giveback_r)),
+    pm_baseline_mfe_capture: average(rows.map((row) => row.baseline_mfe_capture)),
+    pm_v2_mfe_capture: average(rows.map((row) => row.v2_mfe_capture)),
+  }]));
+}
+
+type AssetSpecializationSnapshot = {
+  symbol: string;
+  profile_status: string;
+  primary_mechanisms: string[];
+  secondary_mechanisms: string[];
+  evidence_reason: string;
+  mechanism_evidence: Array<{
+    mechanism: string; role: string; compatible: boolean;
+    historical_state: string | null; weakest_historical_expectancy_r: number | null; historical_worst_drawdown_r: number | null; prospective_state: string | null;
+    paper_n: number; paper_expectancy_r: number | null; paper_profit_factor: number | null;
+    paper_max_drawdown_r: number | null; pm_delta_r: number | null;
+    shadow_state: string | null; evidence_alignment: string;
+  }>;
 };
 
 type MarketStateV2 = {
@@ -1528,6 +1580,11 @@ export default function App() {
   const [triggerEngine, setTriggerEngine] = useState<TriggerEngineSnapshot[]>([]);
   const [positionManager, setPositionManager] = useState<PositionManagerSnapshot[]>([]);
   const [positionManagerResearch, setPositionManagerResearch] = useState<PositionManagerReport | null>(null);
+  const [assetSpecialization, setAssetSpecialization] = useState<AssetSpecializationSnapshot[]>([]);
+  const positionManagerAggregates = useMemo(
+    () => aggregatePositionManagerComparisons(positionManagerResearch?.comparisons),
+    [positionManagerResearch?.comparisons],
+  );
   const [blockedProbes, setBlockedProbes] = useState<BlockedProbeRuntime[]>([]);
   const [opportunityFunnel, setOpportunityFunnel] = useState<OpportunityFunnel | null>(null);
   const [probeReviewContract, setProbeReviewContract] =
@@ -1617,6 +1674,7 @@ export default function App() {
           triggerEngineResponse,
           positionManagerResponse,
           positionManagerResearchResponse,
+          assetSpecializationResponse,
           blockedProbesResponse,
           opportunityFunnelResponse,
           stopGeometryResponse,
@@ -1655,6 +1713,7 @@ export default function App() {
           fetch("/api/v1/triggers/v2"),
           fetch("/api/v1/position-manager/v2"),
           fetch("/api/v1/research/position-manager/v2?hours=168"),
+          fetch("/api/v1/asset-specialization/v2"),
           fetch("/api/v1/shadow/blocked-probes"),
           fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           fetch("/api/v1/research/stop-geometry?hours=168"),
@@ -1709,6 +1768,9 @@ export default function App() {
         const positionManagerResearchPayload = positionManagerResearchResponse.ok
           ? await positionManagerResearchResponse.json()
           : null;
+        const assetSpecializationPayload = assetSpecializationResponse.ok
+          ? await assetSpecializationResponse.json()
+          : [];
         const blockedProbesPayload = blockedProbesResponse.ok
           ? await blockedProbesResponse.json()
           : [];
@@ -1782,6 +1844,7 @@ export default function App() {
         setTriggerEngine(triggerEnginePayload);
         setPositionManager(positionManagerPayload);
         setPositionManagerResearch(positionManagerResearchPayload);
+        setAssetSpecialization(assetSpecializationPayload);
         setBlockedProbes(blockedProbesPayload);
           setOpportunityFunnel(opportunityFunnelPayload);
           setStopGeometryResearch(stopGeometryPayload);
@@ -4796,6 +4859,35 @@ export default function App() {
             <span>REGIME LOSS <strong>{positionManagerResearch.regime_loss_count}</strong></span>
           </div>
         ) : <p>Recherche Position Manager indisponible.</p>}
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "research"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">ASSET SPECIALIZATION V2 · DESCRIPTIVE</p><h2>Asset Playbooks V2</h2></div>
+          <p>Hypothèses par actif ; la baseline générique reste collectée.</p>
+        </div>
+        <div className="opportunity-summary">
+          {assetSpecialization.map((asset) => {
+            const evidence = asset.mechanism_evidence.filter((row) => row.paper_n > 0 || row.historical_state !== null);
+            return (
+              <span key={asset.symbol}>
+                <strong>{asset.symbol}</strong> · {asset.profile_status === "viability_research" ? "VIABILITY RESEARCH" : `${asset.primary_mechanisms.length} PRIMARY`} · {evidence.length} evidence
+              </span>
+            );
+          })}
+        </div>
+        {assetSpecialization.length > 0 && (
+          <div className="opportunity-table">
+            <div className="opportunity-row opportunity-head"><span>Asset</span><span>Mechanism</span><span>Role</span><span>Historical / weak / DD</span><span>Prospective</span><span>N</span><span>Exp / PF / DD</span><span>PM ΔR</span><span>Shadow</span><span>Alignment</span></div>
+            {assetSpecialization.flatMap((asset) => asset.mechanism_evidence.map((row) => (
+              <div className="opportunity-row" key={`${asset.symbol}:${row.mechanism}`}>
+                <strong>{asset.symbol}</strong><span>{row.mechanism.replaceAll("_", " ")}</span><span>{row.compatible ? row.role.replaceAll("_", " ") : "NOT COMPATIBLE"}</span>
+                <span>{row.historical_state ?? "—"} · {row.weakest_historical_expectancy_r?.toFixed(2) ?? "—"} / {row.historical_worst_drawdown_r?.toFixed(2) ?? "—"}</span><span>{row.prospective_state ?? "—"}</span><span>{row.paper_n}</span>
+                <span>{row.paper_expectancy_r?.toFixed(2) ?? "—"} / {row.paper_profit_factor?.toFixed(2) ?? "—"} / {row.paper_max_drawdown_r?.toFixed(2) ?? "—"}</span><span>{positionManagerAggregates.get(`${asset.symbol}:${row.mechanism}`)?.pm_delta_r.toFixed(2) ?? "—"}</span><span>{row.shadow_state ?? "—"}</span><span>{row.evidence_alignment.replaceAll("_", " ")}</span>
+              </div>
+            )))}
+          </div>
+        )}
       </section>
 
       <section className="opportunity-panel" hidden={activeView !== "trading"}>

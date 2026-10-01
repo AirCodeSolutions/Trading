@@ -430,3 +430,23 @@ in validation and holdout, but the paired replay degraded both windows
 structural-displacement target remains 1.5R. No broker/PAPER/admission/risk/sizing
 change is authorized. The next P2-B hypothesis, if any, must be one conditional
 causal exit variation only; do not retry fixed 2.0R.
+
+## 2026-10-01 — P2-B hypothesis #2 checkpoint
+
+`xau_sd_extend_2r_if_prior_3_m5_directional_v1` is complete and rejected in
+Research. It extended 1.5R to 2.0R only when the three prior fully closed M5
+closes were directional. Validation delta -1.954R; holdout delta -1.500R. Do
+not deploy this rule and do not retry it. Canonical XAU structural displacement
+remains fixed 1.5R. Next P2-B work, if continued, must test one different causal
+feature only. Runtime drain remains operator-blocked ON from #205 deployment.
+
+## 2026-10-01 — P2-B closed after hypothesis #3
+
+Hypothesis `xau_sd_target_nearest_frozen_landmark_beyond_1_5r_v1` is complete
+and rejected in Research. Validation delta -0.208R; holdout delta -1.979R. It
+qualified too broadly and converted target winners into timeouts. Together with
+failed fixed-2R and three-directional-M5 extensions, P2-B is COMPLETE with no
+promoted exit challenger. Canonical XAU structural displacement remains fixed
+1.5R. Next PnL work must focus on selection/admission quality rather than further
+target stretching. Runtime drain remains ON from the #205 deployment gate until
+an operator-safe OFF action is available.

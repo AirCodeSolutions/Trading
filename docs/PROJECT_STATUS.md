@@ -3780,3 +3780,29 @@ entry, structural stop, sizing, execution-cost model and 12-M5 horizon are
 identical. Validation delta is -0.163R and holdout delta is -0.977R, so 2.0R is
 rejected and the 1.5R champion remains unchanged. The dashboard Research tab
 exposes the paired negative result. No authority effect.
+
+## 2026-10-01 — P2-B conditional extension hypothesis #2
+
+A second family-specific exit hypothesis is complete in Research and rejected.
+The pre-registered rule extends XAU structural displacement from the canonical
+1.5R target to 2.0R only when, at the first 1.5R touch, the previous three fully
+closed M5 bars have strictly directional closes in trade direction. The rule
+reuses the frozen Position Manager structure window of 3; no threshold was fit
+from outcome data.
+
+Actual-equity paired replay: validation N=25, 4 extensions qualified, delta
+-1.954R; holdout N=14, 3 extensions qualified, delta -1.500R. PF also degraded
+in both windows. The rule is rejected and 1.5R remains the XAU structural-
+displacement champion. No broker/PAPER/admission/risk/sizing change is allowed.
+
+## 2026-10-01 — P2-B closed after landmark challenger #3
+
+The third pre-registered XAU structural-displacement exit challenger is rejected.
+`xau_sd_target_nearest_frozen_landmark_beyond_1_5r_v1` uses the nearest
+side-aligned landmark already known at entry only when it lies beyond the fixed
+1.5R champion target. No landmark-distance threshold is tuned.
+
+Actual-equity paired replay: validation N25, qualified 21, delta -0.208R; holdout
+N14, qualified 11, delta -1.979R. The challenger converts too many target exits
+into timeouts. P2-B is now COMPLETE with no promoted challenger; fixed 1.5R
+remains canonical. Next PnL work moves to selection/admission quality.

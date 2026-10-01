@@ -318,9 +318,9 @@ type ExecutionCostStressReport = {
 };
 
 type FamilyExitChallengerReport = {
-  generated_at: string; symbol: string; strategy_id: string; hypothesis_id: string; change_axis: string; champion_target_r: number; challenger_target_r: number; max_holding_bars: number; capital_eur: number; capital_source: string; authority_effect: boolean; human_review_required: boolean; limitations: string[];
-  validation: { paired_trades: number; champion_total_r: number; challenger_total_r: number; delta_total_r: number; champion_expectancy_r: number; challenger_expectancy_r: number; champion_profit_factor: number; challenger_profit_factor: number; champion_max_drawdown_r: number; challenger_max_drawdown_r: number; champion_targets: number; challenger_targets: number; champion_stops: number; challenger_stops: number; champion_timeouts: number; challenger_timeouts: number };
-  holdout: { paired_trades: number; champion_total_r: number; challenger_total_r: number; delta_total_r: number; champion_expectancy_r: number; challenger_expectancy_r: number; champion_profit_factor: number; challenger_profit_factor: number; champion_max_drawdown_r: number; challenger_max_drawdown_r: number; champion_targets: number; challenger_targets: number; champion_stops: number; challenger_stops: number; champion_timeouts: number; challenger_timeouts: number };
+  generated_at: string; symbol: string; strategy_id: string; hypothesis_id: string; change_axis: string; champion_target_r: number; challenger_target_r: number; max_holding_bars: number; capital_eur: number; capital_source: string; authority_effect: boolean; human_review_required: boolean; qualification_rule?: string | null; limitations: string[];
+  validation: { paired_trades: number; champion_total_r: number; challenger_total_r: number; delta_total_r: number; champion_expectancy_r: number; challenger_expectancy_r: number; champion_profit_factor: number; challenger_profit_factor: number; champion_max_drawdown_r: number; challenger_max_drawdown_r: number; champion_targets: number; challenger_targets: number; champion_stops: number; challenger_stops: number; champion_timeouts: number; challenger_timeouts: number; extension_qualified?: number };
+  holdout: { paired_trades: number; champion_total_r: number; challenger_total_r: number; delta_total_r: number; champion_expectancy_r: number; challenger_expectancy_r: number; champion_profit_factor: number; challenger_profit_factor: number; champion_max_drawdown_r: number; challenger_max_drawdown_r: number; champion_targets: number; challenger_targets: number; champion_stops: number; challenger_stops: number; champion_timeouts: number; challenger_timeouts: number; extension_qualified?: number };
 };
 
 type PortfolioAllocatorReport = {
@@ -1688,6 +1688,8 @@ export default function App() {
   const [regimeSessionAttribution, setRegimeSessionAttribution] = useState<RegimeSessionAttributionReport | null>(null);
   const [executionCostStress, setExecutionCostStress] = useState<ExecutionCostStressReport | null>(null);
   const [familyExitChallenger, setFamilyExitChallenger] = useState<FamilyExitChallengerReport | null>(null);
+  const [conditionalExitChallenger, setConditionalExitChallenger] = useState<FamilyExitChallengerReport | null>(null);
+  const [landmarkExitChallenger, setLandmarkExitChallenger] = useState<FamilyExitChallengerReport | null>(null);
   const positionManagerAggregates = useMemo(
     () => aggregatePositionManagerComparisons(positionManagerResearch?.comparisons),
     [positionManagerResearch?.comparisons],
@@ -1930,6 +1932,8 @@ export default function App() {
           regimeSessionAttributionResponse,
           executionCostStressResponse,
           familyExitChallengerResponse,
+          conditionalExitChallengerResponse,
+          landmarkExitChallengerResponse,
           blockedProbesResponse,
           opportunityFunnelResponse,
           stopGeometryResponse,
@@ -1958,6 +1962,8 @@ export default function App() {
           () => fetch("/api/v1/research/xau-structural-displacement/regime-session-attribution"),
           () => fetch("/api/v1/research/xau-structural-displacement/execution-cost-stress"),
           () => fetch("/api/v1/research/xau-structural-displacement/family-exit-challenger"),
+          () => fetch("/api/v1/research/xau-structural-displacement/conditional-exit-challenger"),
+          () => fetch("/api/v1/research/xau-structural-displacement/landmark-exit-challenger"),
           () => fetch("/api/v1/shadow/blocked-probes"),
           () => fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           () => fetch("/api/v1/research/stop-geometry?hours=168"),
@@ -1987,6 +1993,8 @@ export default function App() {
         setRegimeSessionAttribution(regimeSessionAttributionResponse.ok ? await regimeSessionAttributionResponse.json() : null);
         setExecutionCostStress(executionCostStressResponse.ok ? await executionCostStressResponse.json() : null);
         setFamilyExitChallenger(familyExitChallengerResponse.ok ? await familyExitChallengerResponse.json() : null);
+        setConditionalExitChallenger(conditionalExitChallengerResponse.ok ? await conditionalExitChallengerResponse.json() : null);
+        setLandmarkExitChallenger(landmarkExitChallengerResponse.ok ? await landmarkExitChallengerResponse.json() : null);
         setBlockedProbes(blockedProbesResponse.ok ? await blockedProbesResponse.json() : []);
         setOpportunityFunnel(opportunityFunnelResponse.ok ? await opportunityFunnelResponse.json() : null);
         setStopGeometryResearch(stopGeometryResponse.ok ? await stopGeometryResponse.json() : null);
@@ -5223,6 +5231,58 @@ export default function App() {
           </div>
           {familyExitChallenger.limitations.map((item) => <small key={item}>• {item}</small>)}
         </> : <p>Challenger de sortie P2-B indisponible.</p>}
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "research"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">P2-B · CONDITIONAL EXIT CHALLENGER · READ ONLY</p><h2>XAU Structural Displacement · conditional 2.0R</h2></div>
+          <p>Extension 2.0R uniquement si les 3 M5 entièrement closes avant le toucher 1.5R ont des clôtures strictement directionnelles.</p>
+        </div>
+        {conditionalExitChallenger ? <>
+          <div className="opportunity-summary">
+            <span>HYPOTHESIS <strong>{conditionalExitChallenger.hypothesis_id}</strong></span>
+            <span>VAL QUALIFIED <strong>{conditionalExitChallenger.validation.extension_qualified ?? 0}</strong></span>
+            <span>VAL Δ <strong>{conditionalExitChallenger.validation.delta_total_r.toFixed(3)}R</strong></span>
+            <span>HOLD QUALIFIED <strong>{conditionalExitChallenger.holdout.extension_qualified ?? 0}</strong></span>
+            <span>HOLD Δ <strong>{conditionalExitChallenger.holdout.delta_total_r.toFixed(3)}R</strong></span>
+            <span>AUTHORITY EFFECT <strong>{conditionalExitChallenger.authority_effect ? "YES" : "NO"}</strong></span>
+          </div>
+          <p>{conditionalExitChallenger.qualification_rule ?? "—"}</p>
+          <div className="opportunity-table">
+            <div className="opportunity-row opportunity-head"><span>Window</span><span>N</span><span>Qualified</span><span>1.5R total / exp / PF</span><span>Conditional total / exp / PF</span><span>ΔR</span><span>DD 1.5 / cond.</span><span>Stops / timeouts cond.</span></div>
+            {[['VALIDATION', conditionalExitChallenger.validation], ['HOLDOUT', conditionalExitChallenger.holdout]].map(([label, row]) => {
+              const metrics = row as FamilyExitChallengerReport['validation'];
+              return <div className="opportunity-row" key={label as string}><strong>{label as string}</strong><span>{metrics.paired_trades}</span><span>{metrics.extension_qualified ?? 0}</span><span>{metrics.champion_total_r.toFixed(3)} / {metrics.champion_expectancy_r.toFixed(3)} / {metrics.champion_profit_factor.toFixed(2)}</span><span>{metrics.challenger_total_r.toFixed(3)} / {metrics.challenger_expectancy_r.toFixed(3)} / {metrics.challenger_profit_factor.toFixed(2)}</span><span>{metrics.delta_total_r.toFixed(3)}R</span><span>{metrics.champion_max_drawdown_r.toFixed(2)} / {metrics.challenger_max_drawdown_r.toFixed(2)}</span><span>{metrics.challenger_stops} / {metrics.challenger_timeouts}</span></div>;
+            })}
+          </div>
+          {conditionalExitChallenger.limitations.map((item) => <small key={item}>• {item}</small>)}
+        </> : <p>Challenger conditionnel P2-B indisponible.</p>}
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "research"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">P2-B · FROZEN LANDMARK EXIT · READ ONLY</p><h2>XAU Structural Displacement · nearest landmark beyond 1.5R</h2></div>
+          <p>Le landmark est figé à l'entrée à partir de barres déjà closes. S'il n'existe pas au-delà de 1.5R, le champion reste inchangé.</p>
+        </div>
+        {landmarkExitChallenger ? <>
+          <div className="opportunity-summary">
+            <span>HYPOTHESIS <strong>{landmarkExitChallenger.hypothesis_id}</strong></span>
+            <span>VAL QUALIFIED <strong>{landmarkExitChallenger.validation.extension_qualified ?? 0}</strong></span>
+            <span>VAL Δ <strong>{landmarkExitChallenger.validation.delta_total_r.toFixed(3)}R</strong></span>
+            <span>HOLD QUALIFIED <strong>{landmarkExitChallenger.holdout.extension_qualified ?? 0}</strong></span>
+            <span>HOLD Δ <strong>{landmarkExitChallenger.holdout.delta_total_r.toFixed(3)}R</strong></span>
+            <span>AUTHORITY EFFECT <strong>{landmarkExitChallenger.authority_effect ? "YES" : "NO"}</strong></span>
+          </div>
+          <p>{landmarkExitChallenger.qualification_rule ?? "—"}</p>
+          <div className="opportunity-table">
+            <div className="opportunity-row opportunity-head"><span>Window</span><span>N</span><span>Qualified</span><span>1.5R total / exp / PF</span><span>Landmark total / exp / PF</span><span>ΔR</span><span>DD 1.5 / landmark</span><span>Targets / timeouts landmark</span></div>
+            {[['VALIDATION', landmarkExitChallenger.validation], ['HOLDOUT', landmarkExitChallenger.holdout]].map(([label, row]) => {
+              const metrics = row as FamilyExitChallengerReport['validation'];
+              return <div className="opportunity-row" key={label as string}><strong>{label as string}</strong><span>{metrics.paired_trades}</span><span>{metrics.extension_qualified ?? 0}</span><span>{metrics.champion_total_r.toFixed(3)} / {metrics.champion_expectancy_r.toFixed(3)} / {metrics.champion_profit_factor.toFixed(2)}</span><span>{metrics.challenger_total_r.toFixed(3)} / {metrics.challenger_expectancy_r.toFixed(3)} / {metrics.challenger_profit_factor.toFixed(2)}</span><span>{metrics.delta_total_r.toFixed(3)}R</span><span>{metrics.champion_max_drawdown_r.toFixed(2)} / {metrics.challenger_max_drawdown_r.toFixed(2)}</span><span>{metrics.challenger_targets} / {metrics.challenger_timeouts}</span></div>;
+            })}
+          </div>
+          {landmarkExitChallenger.limitations.map((item) => <small key={item}>• {item}</small>)}
+        </> : <p>Challenger landmark P2-B indisponible.</p>}
       </section>
 
       <section className="position-manager-panel" hidden={activeView !== "research"}>

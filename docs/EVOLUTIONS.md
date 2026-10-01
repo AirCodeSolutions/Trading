@@ -2429,3 +2429,28 @@ signal cohort. It failed: validation lost 0.163R and holdout lost 0.977R versus
 The negative result is versioned and visible in Research so it is not retested
 as if unknown. Broker authority, PAPER admission, risk, sizing, spread guard and
 5-lot cap are untouched.
+
+## 2026-10-01 — P2-B conditional 2R extension rejected
+
+Hypothesis `xau_sd_extend_2r_if_prior_3_m5_directional_v1` tested one causal
+exit change only: keep the fixed 1.5R champion unless the previous three fully
+closed M5 bars are strictly directional when price first reaches 1.5R; only then
+hold for 2.0R. Cohort selection remains frozen to the 1.5R champion, with the
+same entry, structural stop, sizing, execution costs and 12-M5 horizon.
+
+The rule qualified 4 validation trades and 3 holdout trades. It reduced total R
+by 1.954R in validation and 1.500R in holdout, so it is rejected. This confirms
+that simple M5 close momentum at the target is not sufficient to identify the
+true extenders. The negative result is retained in Research and must not be
+promoted to PAPER or broker authority.
+
+## 2026-10-01 — P2-B landmark extension rejected; exit work closed
+
+The nearest frozen side-aligned session landmark beyond 1.5R was tested as the
+only changed exit axis for XAU structural displacement. Landmarks are causal:
+previous-day and session-so-far levels are computed only from M5 bars fully
+closed before entry. Validation changed by -0.208R and holdout by -1.979R.
+The rule qualified 21/25 and 11/14 trades respectively, causing target counts to
+fall sharply and timeouts to rise. It is rejected and cannot alter PAPER or
+broker authority. After fixed 2R, directional conditional 2R and landmark target
+all failed, P2-B is closed and the 1.5R champion remains unchanged.

@@ -320,3 +320,43 @@ Rapporter au minimum :
 ## 19. Consigne courte pour tout agent
 
 > Lis PROJECT_CONTEXT.md avant toute action. Réconcilie ensuite main, les docs canoniques et le runtime live. Respecte flatness/drain, ne touche jamais aux positions externes, conserve le hard cap 5 lots et max_spread_to_stop=0.15, n'ajoute aucun threshold sur petit échantillon, et ne confonds jamais recherche descriptive avec autorité trading. Une hypothèse économique à la fois, tests avant merge, déploiement seulement book Trading-New flat.
+
+
+## 20. Reconstruction Trading-New V2 — directive 2026-09-29, état 2026-10-01
+
+Le plan directeur V2 est versionné dans :
+- `context.md`
+- `TRADING_NEW_V2_PLAN.md`
+
+Ordre directeur :
+1. Opportunity Engine V2 ;
+2. Market State V2 ;
+3. Executable Entry Zone ;
+4. Trigger Engine M1/M5 ;
+5. Position Manager V2 ;
+6. spécialisation par actif ;
+7. Champion / Challengers ;
+8. Portfolio Opportunity Allocator ;
+9. simplification ;
+10. validation économique et déploiement V2.
+
+Au 2026-10-01, les dix étapes sont implémentées et mergées (#179 à #188). La suite du chantier est économique et prospective : convertir les briques V2 en meilleures décisions de trading sans ajouter de filtres opportunistes ni diminuer les garde-fous.
+
+Correctifs post-plan déployés :
+- #189 sépare PAPER collection et broker DEMO : `SUPPORTS_DEMO` est requis pour toute nouvelle autorité broker ;
+- #190 permet à une admission SHADOW d’accéder à PAPER lorsque ses probes prospectifs atteignent les seuils existants, mais interdit toute promotion probe → broker et toute promotion REJECTED → PAPER.
+
+### Gouvernance des agents
+
+- ChatGPT conserve la maîtrise du chantier : architecture, économie, risque, revue PR, merge et déploiement.
+- Codex Luna exécute uniquement des prompts bornés à l’étape/hypothèse courante quand il est utilisé.
+- Aucun agent ne modifie risque, lots, spread guard ou autorité broker sans preuve et revue.
+- Une hypothèse économique à la fois.
+
+### Dashboard transversal
+
+Toute évolution backend V2 doit conserver un contrat de visibilité dashboard. PAPER, research probes et broker DEMO doivent rester distingués visuellement et sémantiquement.
+
+### Suivi de chantier obligatoire
+
+À chaque chat Trading-New, rapporter : HEAD main, PR/CI, étape ou hypothèse active, dashboard, runtime/drain/flatness, changements économiques, research-only, blocages, prochaine action et prompt Codex si pertinent.

@@ -2454,3 +2454,10 @@ The rule qualified 21/25 and 11/14 trades respectively, causing target counts to
 fall sharply and timeouts to rise. It is rejected and cannot alter PAPER or
 broker authority. After fixed 2R, directional conditional 2R and landmark target
 all failed, P2-B is closed and the 1.5R champion remains unchanged.
+
+## 2026-10-01 — P2-C authority-recovery evidence gate
+
+Added a read-only recovery contract for rejected XAU structural-displacement
+1.5R probes. It deliberately reuses the 20-observation prospective governance
+gate. Current N=1 (-1.0R) is insufficient, so the report cannot grant PAPER or
+broker authority and explicitly returns supports_demo=false.

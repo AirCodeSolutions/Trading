@@ -242,3 +242,19 @@ P1-B operational cadence correction:
 - the installed 05:43 daily cron invokes the admission refresh script in PREVIEW mode only;
 - PREVIEW now reuses the same runtime service as the API, therefore sizing capital is actual MT4 DEMO equity first, DEMO balance fallback, never the research fallback;
 - APPLY requires the explicit `--apply` flag and still fails closed unless drain is ON, Trading-New BOOK_FLAT is proven and all active symbols were evaluated.
+
+### P2-C — Opportunity Recovery / Authority Selection
+
+Status: ACTIVE — hypothesis 1 insufficient evidence
+
+Hypothesis 1 is pre-registered as
+`recover_rejected_xau_structural_displacement_1_5r_v1`: among executable
+unqualified probes, consider only `XAUUSD:structural_displacement_sequence`
+using its unchanged 1.5R contract. The family choice comes from prior independent
+validation/holdout and execution-cost robustness, not from rejected-probe outcomes.
+The existing prospective governance minimum of 20 resolved observations applies.
+
+Current 168h prospective cohort: N=1, 0 wins / 1 loss, -1.0R, PF 0.0. Evidence
+state is `INSUFFICIENT_EVIDENCE`; 19 additional resolved observations are needed.
+`supports_demo=false`, `authority_effect=false`, human review remains mandatory.
+No authority change is justified.

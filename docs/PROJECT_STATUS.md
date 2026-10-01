@@ -3806,3 +3806,11 @@ Actual-equity paired replay: validation N25, qualified 21, delta -0.208R; holdou
 N14, qualified 11, delta -1.979R. The challenger converts too many target exits
 into timeouts. P2-B is now COMPLETE with no promoted challenger; fixed 1.5R
 remains canonical. Next PnL work moves to selection/admission quality.
+
+## 2026-10-01 — P2-C authority recovery #1 collecting
+
+The first authority-recovery hypothesis is implemented Research-only. It isolates
+rejected executable XAU structural-displacement probes because that family has
+independent robust 1.5R evidence. Current prospective evidence is only N=1 and
+-1.0R. State: INSUFFICIENT_EVIDENCE, 19 more resolved observations required.
+No SUPPORTS_DEMO or broker/PAPER authority change.

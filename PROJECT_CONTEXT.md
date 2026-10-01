@@ -450,3 +450,13 @@ promoted exit challenger. Canonical XAU structural displacement remains fixed
 1.5R. Next PnL work must focus on selection/admission quality rather than further
 target stretching. Runtime drain remains ON from the #205 deployment gate until
 an operator-safe OFF action is available.
+
+## 2026-10-01 — P2-C checkpoint #1
+
+P2-C Opportunity Recovery is active. Hypothesis
+`recover_rejected_xau_structural_displacement_1_5r_v1` isolates only executable
+unqualified XAU structural-displacement 1.5R probes, based on prior independent
+family robustness. Current prospective cohort N=1, result -1.0R; 19 more resolved
+observations are required before review-ready. supports_demo=false and no authority
+change. Next P2-C hypothesis may test one different pre-existing causal selector
+across the larger rejected population; do not loosen authority globally.

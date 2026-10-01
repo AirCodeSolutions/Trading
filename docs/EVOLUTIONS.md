@@ -2095,3 +2095,17 @@ close-location M1 avec les bornes V1 existantes, tandis que le pullback
 réutilise le niveau de la seconde M5 causale connue à ARMED. La référence V1 et
 l'ATR ARMED sont exposés pour comparaison ; aucune métrique ne pilote une
  décision de trading.
+
+## Étape 5 — Position Manager V2
+
+Ajout d'un replay parallèle de gestion de position pour comparer le comportement
+PAPER existant à une machine descriptive : `INITIAL_RISK`,
+`NO_FOLLOW_THROUGH`, `PROTECT`, `TRAIL`, `EXTEND`, sorties de régime opposé et
+`SAFETY_TIMEOUT`. Le replay suit la première M5 complète du PAPER, reste
+pending avant l'horizon exact, calcule MFE/MAE sur les extrêmes et reconstruit
+la baseline depuis une copie OPEN des trades clos. L'extension est décidée à
+la clôture et devient active à la barre suivante, uniquement vers un landmark
+capturé. `protected` représente le stop réellement protégé et les actions ou
+candidates ne persistent pas d'une barre à l'autre. Le stop initial n'est
+jamais élargi et aucune divergence baseline n'est masquée. Aucun writer, ordre,
+PAPER state, sizing, risque ou autorité DEMO n'est modifié.

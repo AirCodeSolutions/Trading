@@ -3509,3 +3509,23 @@ L'ATR de comparaison est celui disponible à ARMED ; le prix V1 est le close de
 sa M5 source. Les géométries M1 5m/15m sont calculées uniquement avec les
 microbars closes au plus tard au trigger. La fraîcheur live suit la cadence de
 clôture M1 ; les reconstructions historiques sont marquées `historical`.
+
+## Étape 5 — Position Manager V2
+
+Position Manager V2 est un replay descriptif parallèle du moteur PAPER. Il
+réutilise `resolve_open_trade()` comme baseline et les primitives du
+`trailing_manager` pour mesurer initial risk, no-follow-through, protection,
+trailing, extension vers les landmarks capturés à l'entrée, régime opposé et
+safety timeout. Le replay démarre sur la première M5 complète du contrat
+PAPER, reste pending avant l'horizon exact et ne fabrique pas de timeout. MFE
+et MAE utilisent les extrêmes M5 selon les conventions BUY/SELL du PAPER ; la
+baseline des trades clos est reconstruite depuis une copie OPEN et les
+divergences sont marquées invalides. `protected` est dérivé du stop réellement
+déplacé jusqu'au break-even, les actions et candidates sont des événements de
+la clôture courante, et l'extension landmark-only devient active à la barre
+suivante. Toute modification de stop est monotone et ne peut augmenter le
+risque initial.
+
+Les endpoints `/api/v1/position-manager/v2` et
+`/api/v1/research/position-manager/v2` sont en lecture seule. Le moteur PAPER,
+les writers DEMO/MT4 et les commandes broker restent inchangés.

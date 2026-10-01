@@ -85,7 +85,10 @@ from app.services.asset_specialization import (
     evaluate_asset_specialization,
 )
 from app.services.blocked_probe_registry import load_blocked_probe_registry
-from app.services.broker_history import summarize_trading_new_closed_tickets
+from app.services.broker_history import (
+    summarize_trading_new_closed_tickets,
+    summarize_trading_new_closed_tickets_window,
+)
 from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
 from app.services.capital_risk import size_position
 from app.services.champion_challengers import build_champion_challenger_report
@@ -678,6 +681,14 @@ def economic_validation_v2(hours: int = 168) -> EconomicValidationReport:
         magic_number=settings.demo_magic_number,
         report_date=now.date(),
     )
+    window_start = now - timedelta(hours=hours)
+    broker_window = summarize_trading_new_closed_tickets_window(
+        files_dir,
+        runtime_dir / AUDIT_FILE,
+        magic_number=settings.demo_magic_number,
+        start_at=window_start,
+        end_at=now,
+    )
     return build_economic_validation_report(
         now=now,
         window_hours=hours,
@@ -686,12 +697,19 @@ def economic_validation_v2(hours: int = 168) -> EconomicValidationReport:
         funnel=funnel,
         position_manager=position_manager,
         champions=champions,
-        execution_quality=build_execution_quality_summary(runtime_dir / AUDIT_FILE),
+        execution_quality=build_execution_quality_summary(
+            runtime_dir / AUDIT_FILE,
+            start_at=window_start,
+            end_at=now,
+        ),
         allocator=allocator,
         demo=demo,
         drain_enabled=drain.enabled,
         broker_realized_pnl_eur_today=broker_closed.realized_pnl_eur,
-        broker_history_complete=broker_closed.complete,
+        broker_closed_trades_window=broker_window.trades,
+        broker_realized_pnl_eur_window=broker_window.realized_pnl_eur,
+        broker_missing_tickets_window=broker_window.missing_tickets,
+        broker_history_complete=broker_closed.complete and broker_window.complete,
     )
 
 

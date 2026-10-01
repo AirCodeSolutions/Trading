@@ -287,7 +287,9 @@ type EconomicValidationV2 = {
   economic_state: string; capital_eur: number; capital_source: string;
   paper: { trades: number; wins: number; losses: number; total_r: number; expectancy_r: number | null; profit_factor: number | null; win_rate: number | null; max_drawdown_r: number; total_pnl_eur: number };
   paper_open_positions: number; paper_open_risk_eur: number; bridge_open_positions: number; bridge_unrealized_pnl_eur: number;
-  broker_realized_pnl_eur_today: number | null; broker_history_complete: boolean;
+  broker_realized_pnl_eur_today: number | null; broker_closed_trades_window: number;
+  broker_realized_pnl_eur_window: number | null; broker_missing_tickets_window: number[];
+  broker_history_complete: boolean;
   signal_rows: number; executable_signal_rows: number; blocked_signal_rows: number;
   unqualified_probe_trades: number; unqualified_probe_total_r: number; blocked_probe_trades: number; blocked_probe_total_r: number;
   pm_paired_trades: number; pm_baseline_total_r: number; pm_v2_total_r: number; pm_delta_r: number;
@@ -295,6 +297,7 @@ type EconomicValidationV2 = {
   families_supporting_demo: number; families_failed: number; families_collecting: number;
   v2_authority_cutover_supported: boolean; v2_authority_gaps: string[];
   deployment: { drain_enabled: boolean; paper_open_positions: number; bridge_open_positions: number; pending_open_command: boolean; pending_close_command: boolean; book_flat: boolean; research_stack_deploy_ready: boolean; reason: string };
+  families: Array<{ strategy_id: string; symbol: string; mechanism: string; evidence_state: string; paper: { trades: number; total_r: number; expectancy_r: number | null; profit_factor: number | null; max_drawdown_r: number; total_pnl_eur: number }; signal_rows: number; executable_signal_rows: number; blocked_signal_rows: number; unqualified_probe_total_r: number; blocked_probe_total_r: number; pm_paired_trades: number; pm_delta_r: number | null; reviewable_challengers: string[] }>;
   limitations: string[];
 };
 
@@ -4939,7 +4942,9 @@ export default function App() {
             <span>EXP <strong>{economicValidation.paper.expectancy_r?.toFixed(3) ?? "—"}R</strong></span>
             <span>PF <strong>{economicValidation.paper.profit_factor?.toFixed(2) ?? "—"}</strong></span>
             <span>DD <strong>{economicValidation.paper.max_drawdown_r.toFixed(2)}R</strong></span>
-            <span>PNL <strong>{economicValidation.paper.total_pnl_eur.toFixed(2)} €</strong></span>
+            <span>PNL PAPER <strong>{economicValidation.paper.total_pnl_eur.toFixed(2)} €</strong></span>
+            <span>BROKER 168H <strong>{economicValidation.broker_realized_pnl_eur_window?.toFixed(2) ?? "—"} € / {economicValidation.broker_closed_trades_window} trades {economicValidation.broker_history_complete ? "" : "· PARTIAL"}</strong></span>
+            <span>BROKER TODAY <strong>{economicValidation.broker_realized_pnl_eur_today?.toFixed(2) ?? "—"} €</strong></span>
             <span>SIGNALS <strong>{economicValidation.signal_rows}</strong></span>
             <span>EXEC <strong>{economicValidation.executable_signal_rows}</strong></span>
             <span>BLOCKED <strong>{economicValidation.blocked_signal_rows}</strong></span>
@@ -4956,7 +4961,23 @@ export default function App() {
             <span>RESEARCH DEPLOY <strong>{economicValidation.deployment.research_stack_deploy_ready ? "READY" : "BLOCKED"}</strong></span>
           </div>
           <p>{economicValidation.deployment.reason}</p>
+          {!economicValidation.broker_history_complete && <small>• Broker history partial · missing tickets: {economicValidation.broker_missing_tickets_window.join(", ") || "unknown"}</small>}
           {economicValidation.v2_authority_gaps.map((gap) => <small key={gap}>• {gap}</small>)}
+          <div className="opportunity-table">
+            <div className="opportunity-row opportunity-head"><span>Family</span><span>N</span><span>R / Exp / PF / DD</span><span>PnL €</span><span>Signals / Exec / Blocked</span><span>Probe R</span><span>PM ΔR</span><span>State</span></div>
+            {economicValidation.families.filter((family) => family.paper.trades > 0 || family.signal_rows > 0 || family.pm_paired_trades > 0).map((family) => (
+              <div className="opportunity-row" key={family.strategy_id}>
+                <strong>{family.strategy_id}</strong>
+                <span>{family.paper.trades}</span>
+                <span>{family.paper.total_r.toFixed(2)} / {family.paper.expectancy_r?.toFixed(2) ?? "—"} / {family.paper.profit_factor?.toFixed(2) ?? "—"} / {family.paper.max_drawdown_r.toFixed(2)}</span>
+                <span>{family.paper.total_pnl_eur.toFixed(2)}</span>
+                <span>{family.signal_rows} / {family.executable_signal_rows} / {family.blocked_signal_rows}</span>
+                <span>{(family.unqualified_probe_total_r + family.blocked_probe_total_r).toFixed(2)}</span>
+                <span>{family.pm_delta_r?.toFixed(2) ?? "—"}</span>
+                <span>{family.evidence_state.replaceAll("_", " ")}</span>
+              </div>
+            ))}
+          </div>
         </> : <p>Validation économique indisponible.</p>}
       </section>
 

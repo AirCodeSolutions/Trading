@@ -2164,3 +2164,12 @@ déploiement. Le cutover d'autorité V2 exige des outcomes appariés reviewable
 pour Trigger, Entry Zone et Position Manager dans une même famille ; aucune
 preuve n'est déduite d'un simple lead ou état executable. Le déploiement de la
 pile research reste distinct et exige drain ON + BOOK_FLAT Trading-New.
+
+### Correctif de cohérence temporelle — Economic Validation V2
+
+Les métriques d'exécution sont désormais bornées exactement à la fenêtre du
+rapport au lieu d'agréger tout l'historique d'audit. Le rapport expose aussi le
+PnL broker Trading-New sur la même fenêtre, séparément du PnL du jour. Si
+l'historique MT4 est incomplet, le rapport reste explicitement PARTIAL et expose
+les tickets manquants au lieu de présenter un PnL partiel comme exhaustif. La
+vue Research affiche désormais la ventilation économique par famille.

@@ -175,3 +175,88 @@ def _parse_iso_datetime(value) -> datetime | None:
         return datetime.fromisoformat(value)
     except ValueError:
         return None
+
+
+def summarize_trading_new_closed_tickets_window(
+    files_dir: Path,
+    audit_path: Path,
+    *,
+    magic_number: int,
+    start_at: datetime,
+    end_at: datetime,
+) -> BrokerClosedSummary:
+    explicitly_closed = _closed_tickets_from_audit_window(
+        audit_path,
+        start_at,
+        end_at,
+    )
+    opened_by_trading_new = _opened_tickets_from_audit(audit_path)
+    owned_tickets = explicitly_closed | opened_by_trading_new
+    if not owned_tickets:
+        return BrokerClosedSummary(trades=0, realized_pnl_eur=0.0)
+
+    start_wall = start_at.replace(tzinfo=None)
+    end_wall = end_at.replace(tzinfo=None)
+    history = _load_all_history(files_dir)
+    matched = [
+        trade
+        for ticket in sorted(owned_tickets)
+        if (trade := history.get(ticket)) is not None
+        and trade.magic_number == magic_number
+        and start_wall
+        <= trade.close_at.replace(tzinfo=None)
+        <= end_wall
+    ]
+    found_tickets = {trade.ticket for trade in matched}
+    missing = sorted(explicitly_closed - found_tickets)
+    observed_or_expected = found_tickets | explicitly_closed
+    return BrokerClosedSummary(
+        trades=len(observed_or_expected),
+        realized_pnl_eur=sum(trade.profit_eur for trade in matched),
+        complete=not missing,
+        missing_tickets=missing,
+        closed_trades=matched,
+    )
+
+
+def _closed_tickets_from_audit_window(
+    path: Path,
+    start_at: datetime,
+    end_at: datetime,
+) -> set[int]:
+    if not path.is_file():
+        return set()
+    start_wall = start_at.replace(tzinfo=None)
+    end_wall = end_at.replace(tzinfo=None)
+    close_commands: dict[str, int] = {}
+    closed_tickets: set[int] = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        command_id = str(payload.get("command_id", ""))
+        event_type = payload.get("event_type")
+        if event_type == "close_command":
+            try:
+                ticket = int(payload.get("ticket", 0) or 0)
+            except (TypeError, ValueError):
+                ticket = 0
+            if command_id and ticket > 0:
+                close_commands[command_id] = ticket
+            continue
+        if event_type != "bridge_result" or command_id not in close_commands:
+            continue
+        if str(payload.get("status", "")).lower() != "filled":
+            continue
+        at = _parse_iso_datetime(payload.get("at"))
+        if at is None:
+            continue
+        at_wall = at.replace(tzinfo=None)
+        if start_wall <= at_wall <= end_wall:
+            closed_tickets.add(close_commands[command_id])
+    return closed_tickets

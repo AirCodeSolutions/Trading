@@ -80,6 +80,9 @@ class EconomicValidationReport(BaseModel):
     bridge_open_positions: int = Field(ge=0)
     bridge_unrealized_pnl_eur: float
     broker_realized_pnl_eur_today: float | None = None
+    broker_closed_trades_window: int = Field(default=0, ge=0)
+    broker_realized_pnl_eur_window: float | None = None
+    broker_missing_tickets_window: list[int] = Field(default_factory=list)
     broker_history_complete: bool
     signal_rows: int = Field(ge=0)
     executable_signal_rows: int = Field(ge=0)

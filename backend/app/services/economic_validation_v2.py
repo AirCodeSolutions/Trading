@@ -158,6 +158,9 @@ def build_economic_validation_report(
     demo: DemoExecutionStatus,
     drain_enabled: bool,
     broker_realized_pnl_eur_today: float | None,
+    broker_closed_trades_window: int,
+    broker_realized_pnl_eur_window: float | None,
+    broker_missing_tickets_window: list[int],
     broker_history_complete: bool,
 ) -> EconomicValidationReport:
     family_trades: dict[str, list[ShadowPaperTrade]] = {}
@@ -313,6 +316,9 @@ def build_economic_validation_report(
         bridge_open_positions=len(demo.bridge_positions),
         bridge_unrealized_pnl_eur=sum(item.profit for item in demo.bridge_positions),
         broker_realized_pnl_eur_today=broker_realized_pnl_eur_today,
+        broker_closed_trades_window=broker_closed_trades_window,
+        broker_realized_pnl_eur_window=broker_realized_pnl_eur_window,
+        broker_missing_tickets_window=broker_missing_tickets_window,
         broker_history_complete=broker_history_complete,
         signal_rows=funnel.signal_rows,
         executable_signal_rows=funnel.executable_signal_rows,

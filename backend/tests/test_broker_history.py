@@ -1,8 +1,11 @@
 import json
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
-from app.services.broker_history import summarize_trading_new_closed_tickets
+from app.services.broker_history import (
+    summarize_trading_new_closed_tickets,
+    summarize_trading_new_closed_tickets_window,
+)
 
 
 def write_audit(path: Path, *, ticket: int = 123, command_id: str = "close-1") -> None:
@@ -180,3 +183,46 @@ def test_broker_history_counts_native_sl_close_from_trading_new_open(
     assert summary.trades == 1
     assert summary.realized_pnl_eur == -7374.5
     assert summary.closed_trades[0].ticket == 185357042
+
+
+def test_broker_history_window_uses_exact_wall_clock_bounds(tmp_path: Path) -> None:
+    audit = tmp_path / "demo_execution_audit.jsonl"
+    write_audit(audit)
+    write_history(tmp_path / "mt4_history_BTCUSD.json")
+
+    inside = summarize_trading_new_closed_tickets_window(
+        tmp_path,
+        audit,
+        magic_number=560619,
+        start_at=datetime.fromisoformat("2026-09-23T09:00:00+03:00"),
+        end_at=datetime.fromisoformat("2026-09-23T12:00:00+03:00"),
+    )
+    assert inside.complete is True
+    assert inside.trades == 1
+    assert inside.realized_pnl_eur == 2.64
+
+    outside = summarize_trading_new_closed_tickets_window(
+        tmp_path,
+        audit,
+        magic_number=560619,
+        start_at=datetime.fromisoformat("2026-09-23T12:01:00+03:00"),
+        end_at=datetime.fromisoformat("2026-09-24T12:00:00+03:00"),
+    )
+    assert outside.trades == 0
+    assert outside.realized_pnl_eur == 0.0
+
+
+def test_broker_history_window_reports_missing_ticket(tmp_path: Path) -> None:
+    audit = tmp_path / "demo_execution_audit.jsonl"
+    write_audit(audit, ticket=456)
+    result = summarize_trading_new_closed_tickets_window(
+        tmp_path,
+        audit,
+        magic_number=560619,
+        start_at=datetime.fromisoformat("2026-09-23T09:00:00+03:00"),
+        end_at=datetime.fromisoformat("2026-09-23T12:00:00+03:00"),
+    )
+    assert result.complete is False
+    assert result.trades == 1
+    assert result.realized_pnl_eur == 0.0
+    assert result.missing_tickets == [456]

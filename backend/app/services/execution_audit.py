@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from statistics import fmean
 from uuid import uuid4
@@ -140,9 +141,20 @@ def load_execution_audit_events(path: Path) -> list[ExecutionAuditEvent]:
     return rows
 
 
-def build_execution_quality_summary(path: Path) -> ExecutionQualitySummary:
+def build_execution_quality_summary(
+    path: Path,
+    *,
+    start_at: datetime | None = None,
+    end_at: datetime | None = None,
+) -> ExecutionQualitySummary:
     events = load_execution_audit_events(path)
-    commands = [
+
+    def in_window(at: datetime) -> bool:
+        if start_at is not None and at < start_at:
+            return False
+        return not (end_at is not None and at > end_at)
+
+    all_commands = [
         event
         for event in events
         if event.event_type
@@ -151,12 +163,14 @@ def build_execution_quality_summary(path: Path) -> ExecutionQualitySummary:
             ExecutionAuditEventType.CLOSE_COMMAND,
         }
     ]
+    commands = [event for event in all_commands if in_window(event.at)]
     results = [
         event
         for event in events
         if event.event_type == ExecutionAuditEventType.BRIDGE_RESULT
+        and in_window(event.at)
     ]
-    commands_by_id = {event.command_id: event for event in commands}
+    commands_by_id = {event.command_id: event for event in all_commands}
     samples: list[ExecutionQualitySample] = []
     unpaired = 0
     for result in results:

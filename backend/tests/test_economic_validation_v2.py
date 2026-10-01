@@ -171,6 +171,9 @@ def validation_report(*, drain_enabled: bool = False, demo_status=None):
         demo=demo_status or demo(),
         drain_enabled=drain_enabled,
         broker_realized_pnl_eur_today=0,
+        broker_closed_trades_window=0,
+        broker_realized_pnl_eur_window=0,
+        broker_missing_tickets_window=[],
         broker_history_complete=True,
     )
 

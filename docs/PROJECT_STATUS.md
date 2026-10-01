@@ -3587,3 +3587,11 @@ tant que Trigger V2, Entry Zone V2 et Position Manager V2 ne disposent pas,
 dans une même famille, de preuves outcomes appariées REVIEWABLE. Le gate
 opérationnel BOOK_FLAT ignore les positions externes et regarde PAPER ouvert,
 positions bridge et commandes pending.
+
+### Economic Validation V2 — contrat de fenêtre
+
+Toutes les métriques temporelles de la validation finale utilisent maintenant
+la même fenêtre demandée : PAPER, funnel, Position Manager, execution quality
+et PnL broker. broker_history_complete=false entraîne un affichage PARTIAL
+avec les tickets manquants. Le dashboard affiche également N, R, expectancy,
+PF, DD, PnL, signaux, probes et delta PM par famille, sans score opaque.

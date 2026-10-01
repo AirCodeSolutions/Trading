@@ -14,6 +14,11 @@ from app.services.macro_gate import (
 from app.services.market_universe import build_market_universe
 from app.services.mt4_market_data import load_closed_market_bars
 from app.services.mt4_specs import get_mt4_symbol_spec
+from app.services.probe_qualification import (
+    load_research_probe_qualification,
+    paper_entry_allowed_with_probe_evidence,
+    probe_supports_paper,
+)
 from app.services.prospective_qualification import (
     assess_prospective,
     prospective_entry_allowed,
@@ -110,10 +115,25 @@ def collect_all_shadow_once(
             capture_xau_sequence_microstructure(runtime_dir, diagnostic)
             strategy_id = f"{asset.symbol}:{mechanism.value}"
             admission = admissions.get(strategy_id)
+            research_probe_qualification = load_research_probe_qualification(
+                runtime_dir,
+                prefix=prefix,
+                strategy_id=strategy_id,
+            )
+            probe_promotion = probe_supports_paper(
+                admission,
+                research_probe_qualification,
+            )
+            effective_paper_entry_allowed = (
+                paper_entry_allowed_with_probe_evidence(
+                    admission,
+                    research_probe_qualification,
+                )
+            )
             state_path = runtime_dir / f"{prefix}_paper_state.json"
             allow_new_entries = (
                 allow_paper_entries
-                and paper_entry_allowed(admission)
+                and effective_paper_entry_allowed
                 and not symbol_has_open_paper_elsewhere(
                     runtime_dir,
                     asset.symbol,
@@ -138,7 +158,10 @@ def collect_all_shadow_once(
             unqualified_state_path = (
                 runtime_dir / f"{prefix}_unqualified_probe_state.json"
             )
-            unqualified_allowed = unqualified_probe_entry_allowed(admission)
+            unqualified_allowed = (
+                unqualified_probe_entry_allowed(admission)
+                and not probe_promotion
+            )
             if should_advance_unqualified_probe(admission, unqualified_state_path):
                 advance_shadow_paper_book(
                     diagnostic=diagnostic,

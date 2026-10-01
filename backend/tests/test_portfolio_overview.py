@@ -508,3 +508,84 @@ def test_prospective_failed_shadow_is_no_longer_effectively_paper_allowed(
     assert row.qualification.state == "failed"
     assert row.paper_entry_allowed is False
     assert overview.portfolio.action == "no_trade"
+
+
+def test_probe_supported_shadow_can_start_paper_but_not_demo(
+    tmp_path: Path,
+) -> None:
+    files_dir = tmp_path / "mt4"
+    runtime_dir = tmp_path / "runtime"
+    files_dir.mkdir()
+    runtime_dir.mkdir()
+    now = datetime(2026, 10, 1, 10, 0, tzinfo=TZ)
+
+    (runtime_dir / "XAUUSD_directional_transition_paper_state.json").write_text(
+        ShadowPaperState().model_dump_json(),
+        encoding="utf-8",
+    )
+    (runtime_dir / "strategy_admissions.json").write_text(
+        json.dumps(
+            {
+                "XAUUSD:directional_transition": {
+                    "strategy_id": "XAUUSD:directional_transition",
+                    "state": "shadow",
+                    "reason": "insufficient independent validation evidence",
+                    "weakest_expectancy_r": 0.0,
+                    "worst_drawdown_r": 0.0,
+                    "paper_collection_candidate": False,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    probes = []
+    for index in range(20):
+        opened_at = now.replace(hour=8, minute=index)
+        probe = ShadowPaperTrade(
+            trade_id=f"xau-transition-probe-{index}",
+            symbol="XAUUSD",
+            mechanism=OpportunityMechanism.DIRECTIONAL_TRANSITION,
+            side=Side.BUY,
+            signal_at=opened_at,
+            entry_bar_at=opened_at,
+            opened_at=opened_at,
+            entry_price=4160.0,
+            stop_price=4156.0,
+            target_price=4166.0,
+            spread_at_entry=0.28,
+            lots=1.0,
+            risk_eur=400.0,
+            risk_distance=4.0,
+            target_r=1.5,
+            max_holding_bars=12,
+            status=PaperTradeStatus.TARGET,
+            exit_at=opened_at,
+            exit_price=4166.0,
+            result_r=1.0,
+            pnl_eur=400.0,
+            bars_held=1,
+        )
+        probes.append(probe.model_dump_json())
+    (
+        runtime_dir / "XAUUSD_directional_transition_unqualified_probes.jsonl"
+    ).write_text("\n".join(probes) + "\n", encoding="utf-8")
+
+    overview = build_trading_overview(files_dir, runtime_dir, now)
+
+    row = next(
+        item
+        for item in overview.paper_strategies
+        if item.strategy_id == "XAUUSD:directional_transition"
+    )
+    assert row.research_probe_qualification is not None
+    assert row.research_probe_qualification.state == "supports_review"
+    assert row.probe_supports_paper is True
+    assert row.paper_entry_allowed is True
+    assert row.qualification.state == "collecting"
+    assert overview.portfolio.action == "no_trade"
+    assert overview.portfolio.prospective_supports_demo is False
+    assert overview.portfolio.reason == (
+        "1 PAPER-eligible strategies are collecting prospective evidence; "
+        "broker DEMO remains locked"
+    )

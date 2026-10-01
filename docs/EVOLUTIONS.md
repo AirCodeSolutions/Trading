@@ -2243,3 +2243,36 @@ This changes research throughput only. Each family still has at most one open
 trade in its own PAPER state. Broker DEMO keeps the existing one-position-per-
 symbol protection and still requires `SUPPORTS_DEMO` before any command. Risk,
 5-lot cap, spread guard, stops, targets and admission thresholds are unchanged.
+
+
+## 2026-10-01 — Economic selection after V2 research stack
+
+The 33 compatible families were replayed with current MT4 DEMO equity
+(EUR 866,312.61), the frozen research split and the configured risk fraction.
+No family is ACTIVE under the unchanged admission contract.
+
+The strongest XAU families are still under-sampled rather than economically
+rejected:
+
+- XAU structural displacement: validation 25 trades, +0.302R expectancy,
+  PF 2.049, DD 1.742R; holdout 14 trades, +0.375R expectancy, PF 2.314,
+  DD 2.000R.
+- XAU structural persistence: validation 30 trades, +0.146R expectancy,
+  PF 1.393, DD 4.167R; holdout 23 trades, +0.027R expectancy, PF 1.060,
+  DD 2.372R.
+
+By contrast, XAU break/retest is REJECTED on independent holdout
+(-0.150R expectancy, PF 0.770) and XAU directional transition is REJECTED
+despite promising recent probes because holdout remains negative
+(-0.184R expectancy, PF 0.688, DD 16.594R).
+
+Two train-only one-state structural frequency experiments were preregistered
+and evaluated without parameter tuning on validation/holdout. The best novel
+persistence challenger (directional displacement -> structural extreme stretch
+-> structural extreme) failed validation at -0.093R expectancy / PF 0.807.
+No novel one-state variant around structural displacement satisfied the
+train-only selection contract. No new runtime mechanism was added.
+
+Runtime admissions were refreshed from the current DEMO-equity replay.
+Broker DEMO authority remains locked until a family independently reaches
+SUPPORTS_DEMO from prospective PAPER evidence.

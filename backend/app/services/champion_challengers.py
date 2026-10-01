@@ -119,7 +119,8 @@ def build_champion_challenger_report(
                 family_id=f"{asset.symbol}:{evidence.mechanism.value}", symbol=asset.symbol, mechanism=evidence.mechanism,
                 asset_profile_status=asset.profile_status, asset_role=evidence.role, compatibility=evidence.compatible,
                 evidence_alignment=evidence.evidence_alignment, champion=baseline, challengers=challengers,
-                evidence_gaps=["historical paired challenger replay unavailable"] if not rows else [],
+                evidence_gaps=["historical paired challenger replay unavailable"]
+                + ([] if rows else ["paired outcome evidence not available"]),
             ))
     counts = {state: sum(challenger.evidence_state == state for family in families for challenger in family.challengers) for state in ChallengerEvidenceState}
     return ChampionChallengerReport(

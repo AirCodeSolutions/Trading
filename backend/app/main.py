@@ -592,7 +592,10 @@ def champion_challengers_v2(hours: int = 168) -> ChampionChallengerReport:
     response_model=AssetSpecializationResearchResult,
 )
 def champion_challengers_v2_evaluate(request: ChampionChallengerResearchRequest) -> AssetSpecializationResearchResult:
-    return evaluate_asset_specialization(_mt4_files_dir(), AssetSpecializationResearchRequest(split=request.split, symbols=request.symbols))
+    try:
+        return evaluate_asset_specialization(_mt4_files_dir(), AssetSpecializationResearchRequest(split=request.split, symbols=request.symbols))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get(

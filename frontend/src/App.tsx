@@ -297,6 +297,14 @@ type AuthorityRegretReport = {
   limitations: string[];
 };
 
+type RuntimeAdmissionRefreshReport = {
+  generated_at: string; applied: boolean; apply_allowed: boolean; apply_blockers: string[];
+  capital_eur: number; capital_source: string; active_assets: string[]; evaluated_results: number; skipped_symbols: Record<string, string>;
+  drain_enabled: boolean; book_flat: boolean; paper_open_positions: number; bridge_open_positions: number; pending_open_command: boolean; pending_close_command: boolean;
+  added: number; removed: number; changed: number; unchanged: number;
+  changes: Array<{ strategy_id: string; change_type: string; before_state: string | null; after_state: string | null; before_weakest_expectancy_r: number | null; after_weakest_expectancy_r: number | null; before_worst_drawdown_r: number | null; after_worst_drawdown_r: number | null; before_paper_collection_candidate: boolean | null; after_paper_collection_candidate: boolean | null; before_reason: string | null; after_reason: string | null }>;
+};
+
 type PortfolioAllocatorReport = {
   ready: boolean; capital_eur: number | null; capital_source: string;
   max_total_open_risk_fraction: number; max_total_open_risk_eur: number | null;
@@ -1656,6 +1664,9 @@ export default function App() {
   const [championChallengers, setChampionChallengers] = useState<ChampionChallengerReport | null>(null);
   const [pairedEconomicContracts, setPairedEconomicContracts] = useState<PairedEconomicContractReport | null>(null);
   const [authorityRegret, setAuthorityRegret] = useState<AuthorityRegretReport | null>(null);
+  const [admissionRefreshPreview, setAdmissionRefreshPreview] = useState<RuntimeAdmissionRefreshReport | null>(null);
+  const [admissionRefreshBusy, setAdmissionRefreshBusy] = useState(false);
+  const [admissionRefreshMessage, setAdmissionRefreshMessage] = useState("");
   const positionManagerAggregates = useMemo(
     () => aggregatePositionManagerComparisons(positionManagerResearch?.comparisons),
     [positionManagerResearch?.comparisons],
@@ -2328,6 +2339,28 @@ export default function App() {
       await refreshExecutionState();
     } finally {
       setDrainBusy(false);
+    }
+  };
+
+  const previewAdmissionRefresh = async () => {
+    setAdmissionRefreshBusy(true);
+    setAdmissionRefreshMessage("Calcul du diff admission avec equity MT4 DEMO réelle…");
+    try {
+      const response = await fetch("/api/v1/research/runtime-admissions/preview", {
+        method: "POST"
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.detail ?? "Preview admission indisponible.");
+      }
+      setAdmissionRefreshPreview(payload as RuntimeAdmissionRefreshReport);
+      setAdmissionRefreshMessage("Preview terminé · aucune écriture effectuée.");
+    } catch (error) {
+      setAdmissionRefreshMessage(
+        error instanceof Error ? error.message : "Preview admission indisponible."
+      );
+    } finally {
+      setAdmissionRefreshBusy(false);
     }
   };
 
@@ -5088,6 +5121,46 @@ export default function App() {
           </div>
           {authorityRegret.limitations.map((item) => <small key={item}>• {item}</small>)}
         </> : <p>Authority Regret indisponible.</p>}
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "research"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">P1-B · CONTROLLED ADMISSION REFRESH</p><h2>Preview actual-equity admission diff</h2></div>
+          <p>Preview uniquement : aucun registre n'est écrit depuis ce panneau.</p>
+        </div>
+        <button type="button" disabled={admissionRefreshBusy} onClick={() => void previewAdmissionRefresh()}>
+          {admissionRefreshBusy ? "CALCUL…" : "PREVIEW REFRESH"}
+        </button>
+        {admissionRefreshMessage && <p>{admissionRefreshMessage}</p>}
+        {admissionRefreshPreview ? <>
+          <div className="opportunity-summary">
+            <span>CAPITAL <strong>{admissionRefreshPreview.capital_eur.toFixed(2)} €</strong></span>
+            <span>SOURCE <strong>{admissionRefreshPreview.capital_source.replaceAll("_", " ")}</strong></span>
+            <span>EVALUATED <strong>{admissionRefreshPreview.evaluated_results}</strong></span>
+            <span>ADDED <strong>{admissionRefreshPreview.added}</strong></span>
+            <span>CHANGED <strong>{admissionRefreshPreview.changed}</strong></span>
+            <span>REMOVED <strong>{admissionRefreshPreview.removed}</strong></span>
+            <span>UNCHANGED <strong>{admissionRefreshPreview.unchanged}</strong></span>
+            <span>DRAIN <strong>{admissionRefreshPreview.drain_enabled ? "ON" : "OFF"}</strong></span>
+            <span>BOOK FLAT <strong>{admissionRefreshPreview.book_flat ? "YES" : "NO"}</strong></span>
+            <span>APPLY ALLOWED <strong>{admissionRefreshPreview.apply_allowed ? "YES" : "NO"}</strong></span>
+          </div>
+          {admissionRefreshPreview.apply_blockers.map((item) => <small key={item}>• BLOCKER · {item}</small>)}
+          <div className="opportunity-table">
+            <div className="opportunity-row opportunity-head"><span>Strategy</span><span>Change</span><span>State</span><span>Weak Exp</span><span>Worst DD</span><span>PAPER candidate</span><span>Reason</span></div>
+            {admissionRefreshPreview.changes.filter((row) => row.change_type !== "unchanged").map((row) => (
+              <div className="opportunity-row" key={row.strategy_id}>
+                <strong>{row.strategy_id}</strong>
+                <span>{row.change_type.toUpperCase()}</span>
+                <span>{row.before_state ?? "—"} → {row.after_state ?? "—"}</span>
+                <span>{row.before_weakest_expectancy_r?.toFixed(3) ?? "—"} → {row.after_weakest_expectancy_r?.toFixed(3) ?? "—"}</span>
+                <span>{row.before_worst_drawdown_r?.toFixed(2) ?? "—"} → {row.after_worst_drawdown_r?.toFixed(2) ?? "—"}</span>
+                <span>{String(row.before_paper_collection_candidate ?? "—")} → {String(row.after_paper_collection_candidate ?? "—")}</span>
+                <span>{row.after_reason ?? row.before_reason ?? "—"}</span>
+              </div>
+            ))}
+          </div>
+        </> : <p>Aucun preview calculé.</p>}
       </section>
 
       <section className="position-manager-panel" hidden={activeView !== "research"}>

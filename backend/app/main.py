@@ -12,6 +12,7 @@ from app.domain.asset_specialization import (
     AssetSpecializationResearchResult,
     AssetSpecializationSnapshot,
 )
+from app.domain.authority_regret import AuthorityRegretSummary
 from app.domain.blocked_probe import BlockedProbeRuntime
 from app.domain.broker import (
     BrokerSymbolSpec,
@@ -84,6 +85,7 @@ from app.services.asset_specialization import (
     build_asset_specialization_snapshots,
     evaluate_asset_specialization,
 )
+from app.services.authority_regret import build_authority_regret_summary
 from app.services.blocked_probe_registry import load_blocked_probe_registry
 from app.services.broker_history import (
     summarize_trading_new_closed_tickets,
@@ -618,6 +620,20 @@ def champion_challengers_v2_evaluate(request: ChampionChallengerResearchRequest)
         return evaluate_asset_specialization(_mt4_files_dir(), AssetSpecializationResearchRequest(split=request.split, symbols=request.symbols))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get(
+    f"{settings.api_prefix}/research/authority-regret",
+    response_model=AuthorityRegretSummary,
+)
+def authority_regret(hours: int = 168) -> AuthorityRegretSummary:
+    if hours < 1 or hours > 168:
+        raise HTTPException(status_code=422, detail="hours must be between 1 and 168")
+    return build_authority_regret_summary(
+        settings.shadow_ledger_dir,
+        now=datetime.now(tz=_server_timezone()),
+        window_hours=hours,
+    )
 
 
 @app.get(

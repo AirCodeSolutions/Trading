@@ -2297,3 +2297,25 @@ Baseline fixed exits therefore remain the champion contract.
 
 This target change is not broker authority. Prospective PAPER evidence must start
 under the new target contract and broker DEMO still requires SUPPORTS_DEMO.
+
+
+## 2026-10-01 — P1 authority-regret measurement
+
+A research-only multi-open authority-regret ledger now records every executable
+opportunity even when another counterfactual trade of the same family is still
+open. At signal time it freezes historical admission, prospective qualification,
+PAPER eligibility and the strategy-level broker DEMO authority decision.
+
+Resolved counterfactuals are classified as:
+- AUTHORIZED_WINNER;
+- AUTHORIZED_LOSER;
+- LOCKED_WINNER_MISSED;
+- LOCKED_LOSS_AVOIDED.
+
+The 168-hour summary exposes missed winner R, avoided loss R and
+net_authority_regret_r. Positive net regret means locked winners outweighed
+avoided losses; negative means authority avoided more loss than gain.
+
+This measurement does not modify admission, portfolio selection, broker commands,
+risk, sizing, spread, stops, targets or the 5-lot cap. New regret probes respect
+runtime drain; already-open counterfactuals may continue resolving.

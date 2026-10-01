@@ -274,6 +274,10 @@ def test_parallel_paper_books_do_not_block_same_symbol_other_family(
         record_paper_call,
     )
     monkeypatch.setattr(
+        "app.services.multi_shadow_collector.advance_authority_regret_from_paper",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
         "app.services.multi_shadow_collector.advance_blocked_probe_book",
         lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("stop")),
     )
@@ -374,6 +378,10 @@ def test_probe_promotion_routes_signal_to_paper_and_stops_new_probe(
     monkeypatch.setattr(
         "app.services.multi_shadow_collector.advance_shadow_paper_book",
         record_paper_call,
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.advance_authority_regret_from_paper",
+        lambda *args, **kwargs: None,
     )
     monkeypatch.setattr(
         "app.services.multi_shadow_collector.advance_blocked_probe_book",

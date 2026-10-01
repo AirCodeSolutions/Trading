@@ -274,6 +274,16 @@ type ChampionChallengerReport = {
   }>;
 };
 
+type AuthorityRegretSummary = {
+  resolved: number; open_trades: number;
+  authorized_winners: number; authorized_losers: number;
+  locked_winners_missed: number; locked_losses_avoided: number;
+  authorized_total_r: number; locked_counterfactual_total_r: number;
+  missed_winner_r: number; avoided_loss_r: number;
+  net_authority_regret_r: number; broker_authority_changed: boolean;
+  by_reason: Array<{ reason: string; resolved: number; total_r: number; winners: number; losers: number }>;
+};
+
 type PortfolioAllocatorReport = {
   ready: boolean; capital_eur: number | null; capital_source: string;
   max_total_open_risk_fraction: number; max_total_open_risk_eur: number | null;
@@ -1631,6 +1641,7 @@ export default function App() {
   const [positionManagerResearch, setPositionManagerResearch] = useState<PositionManagerReport | null>(null);
   const [assetSpecialization, setAssetSpecialization] = useState<AssetSpecializationSnapshot[]>([]);
   const [championChallengers, setChampionChallengers] = useState<ChampionChallengerReport | null>(null);
+  const [authorityRegret, setAuthorityRegret] = useState<AuthorityRegretSummary | null>(null);
   const positionManagerAggregates = useMemo(
     () => aggregatePositionManagerComparisons(positionManagerResearch?.comparisons),
     [positionManagerResearch?.comparisons],
@@ -1729,6 +1740,7 @@ export default function App() {
           positionManagerResearchResponse,
           assetSpecializationResponse,
           championChallengersResponse,
+          authorityRegretResponse,
           blockedProbesResponse,
           opportunityFunnelResponse,
           stopGeometryResponse,
@@ -1770,6 +1782,7 @@ export default function App() {
           fetch("/api/v1/research/position-manager/v2?hours=168"),
           fetch("/api/v1/asset-specialization/v2"),
           fetch("/api/v1/research/champion-challengers/v2?hours=168"),
+          fetch("/api/v1/research/authority-regret?hours=168"),
           fetch("/api/v1/shadow/blocked-probes"),
           fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           fetch("/api/v1/research/stop-geometry?hours=168"),
@@ -1830,6 +1843,9 @@ export default function App() {
           : [];
         const championChallengersPayload = championChallengersResponse.ok
           ? await championChallengersResponse.json()
+          : null;
+        const authorityRegretPayload = authorityRegretResponse.ok
+          ? await authorityRegretResponse.json()
           : null;
         const blockedProbesPayload = blockedProbesResponse.ok
           ? await blockedProbesResponse.json()
@@ -1907,6 +1923,7 @@ export default function App() {
         setPositionManagerResearch(positionManagerResearchPayload);
         setAssetSpecialization(assetSpecializationPayload);
         setChampionChallengers(championChallengersPayload);
+        setAuthorityRegret(authorityRegretPayload);
         setBlockedProbes(blockedProbesPayload);
           setOpportunityFunnel(opportunityFunnelPayload);
           setStopGeometryResearch(stopGeometryPayload);
@@ -4999,6 +5016,33 @@ export default function App() {
             ))}
           </div>
         </> : <p>Validation économique indisponible.</p>}
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "research"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">P1 · AUTHORITY REGRET · READ ONLY</p><h2>Authority Regret 168h</h2></div>
+          <p>Contre-factuel figé au signal ; aucune règle d’autorité n’est modifiée.</p>
+        </div>
+        {authorityRegret ? <>
+          <div className="opportunity-summary">
+            <span>RESOLVED <strong>{authorityRegret.resolved}</strong></span>
+            <span>OPEN <strong>{authorityRegret.open_trades}</strong></span>
+            <span>AUTHORIZED W <strong>{authorityRegret.authorized_winners}</strong></span>
+            <span>AUTHORIZED L <strong>{authorityRegret.authorized_losers}</strong></span>
+            <span>MISSED W <strong>{authorityRegret.locked_winners_missed}</strong></span>
+            <span>AVOIDED L <strong>{authorityRegret.locked_losses_avoided}</strong></span>
+            <span>AUTHORIZED R <strong>{authorityRegret.authorized_total_r.toFixed(2)}R</strong></span>
+            <span>LOCKED CF R <strong>{authorityRegret.locked_counterfactual_total_r.toFixed(2)}R</strong></span>
+            <span>MISSED R <strong>{authorityRegret.missed_winner_r.toFixed(2)}R</strong></span>
+            <span>AVOIDED R <strong>{authorityRegret.avoided_loss_r.toFixed(2)}R</strong></span>
+            <span>NET REGRET <strong>{authorityRegret.net_authority_regret_r.toFixed(2)}R</strong></span>
+            <span>AUTHORITY CHANGED <strong>{authorityRegret.broker_authority_changed ? "YES" : "NO"}</strong></span>
+          </div>
+          <div className="opportunity-table">
+            <div className="opportunity-row opportunity-head"><span>Reason</span><span>N</span><span>Total R</span><span>Winners</span><span>Losers</span></div>
+            {authorityRegret.by_reason.map((row) => <div className="opportunity-row" key={row.reason}><strong>{row.reason}</strong><span>{row.resolved}</span><span>{row.total_r.toFixed(2)}</span><span>{row.winners}</span><span>{row.losers}</span></div>)}
+          </div>
+        </> : <p>Authority regret indisponible.</p>}
       </section>
 
       <section className="position-manager-panel" hidden={activeView !== "research"}>

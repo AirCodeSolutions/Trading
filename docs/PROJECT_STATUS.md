@@ -3690,3 +3690,12 @@ XAU with essentially unchanged drawdown, while the same change was not robust on
 BTC. No signal predicate, stop, sizing, spread rule, lot cap or broker admission
 changed. Existing 1.0R prospective evidence must not be mixed with the new
 contract after deployment; preserve it as legacy and start a fresh PAPER cohort.
+
+
+## 2026-10-01 — P1-A authority regret in development
+
+Authority-regret evidence is now measurable per executable signal without
+changing authority. The dashboard research view shows authorized winners/losers,
+locked winners missed, locked losses avoided, R by reason, and net regret over
+168 hours. The collector is multi-open so overlapping signals are not silently
+lost.

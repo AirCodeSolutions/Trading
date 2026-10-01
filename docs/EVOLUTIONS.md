@@ -2152,3 +2152,24 @@ consomment désormais les mêmes contrats au lieu de maintenir des copies.
 Le chargement du report Position Manager runtime est également factorisé et
 réutilisé par les endpoints PM et Champion/Challengers. Aucun prédicat
 économique, seuil, admission ou chemin d'exécution n'est modifié.
+
+
+## Étape 10 — Economic Validation V2
+
+Ajout du rapport read-only `/api/v1/research/economic-validation/v2`.
+Il sépare explicitement performance PAPER prospective, qualité des fills DEMO,
+comparaison Position Manager, opportunités exécutables/bloquées, preuves
+Champion/Challengers, allocation concurrente et gate opérationnelle de
+déploiement. Le cutover d'autorité V2 exige des outcomes appariés reviewable
+pour Trigger, Entry Zone et Position Manager dans une même famille ; aucune
+preuve n'est déduite d'un simple lead ou état executable. Le déploiement de la
+pile research reste distinct et exige drain ON + BOOK_FLAT Trading-New.
+
+### Correctif de cohérence temporelle — Economic Validation V2
+
+Les métriques d'exécution sont désormais bornées exactement à la fenêtre du
+rapport au lieu d'agréger tout l'historique d'audit. Le rapport expose aussi le
+PnL broker Trading-New sur la même fenêtre, séparément du PnL du jour. Si
+l'historique MT4 est incomplet, le rapport reste explicitement PARTIAL et expose
+les tickets manquants au lieu de présenter un PnL partiel comme exhaustif. La
+vue Research affiche désormais la ventilation économique par famille.

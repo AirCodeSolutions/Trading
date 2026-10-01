@@ -3574,3 +3574,24 @@ et le chargement runtime Position Manager. La compatibilité reste exactement
 33 familles et les règles displacement/persistence sont inchangées. Cette étape
 est un refactor de structure : elle ne supprime ni V1 ni collecte tant que la
 validation économique et le cutover de l'Étape 10 ne sont pas terminés.
+
+
+## Étape 10 — Economic Validation V2
+
+La validation finale expose R total, expectancy, PF, win rate, drawdown et PnL
+PAPER sur la fenêtre, les signaux détectés/exécutables/bloqués, les probes
+contre-factuels, le delta PM, le slippage broker et les familles
+collecting/failed/supports-demo. Elle ne contient aucun score opaque et ne
+garantit jamais la rentabilité. `v2_authority_cutover_supported` reste faux
+tant que Trigger V2, Entry Zone V2 et Position Manager V2 ne disposent pas,
+dans une même famille, de preuves outcomes appariées REVIEWABLE. Le gate
+opérationnel BOOK_FLAT ignore les positions externes et regarde PAPER ouvert,
+positions bridge et commandes pending.
+
+### Economic Validation V2 — contrat de fenêtre
+
+Toutes les métriques temporelles de la validation finale utilisent maintenant
+la même fenêtre demandée : PAPER, funnel, Position Manager, execution quality
+et PnL broker. broker_history_complete=false entraîne un affichage PARTIAL
+avec les tickets manquants. Le dashboard affiche également N, R, expectancy,
+PF, DD, PnL, signaux, probes et delta PM par famille, sans score opaque.

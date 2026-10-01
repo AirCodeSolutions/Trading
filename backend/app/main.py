@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from itertools import pairwise
 from pathlib import Path
 
@@ -27,6 +27,7 @@ from app.domain.champion_challengers import (
 from app.domain.daily_report import DailyTradingReport
 from app.domain.demo_execution import DemoCloseCommand, DemoExecutionStatus, DemoOrderCommand
 from app.domain.economic_feasibility import EconomicFeasibilityReport
+from app.domain.economic_validation_v2 import EconomicValidationReport
 from app.domain.entry_zone import ExecutableEntryZoneV2
 from app.domain.execution_audit import ExecutionQualitySummary
 from app.domain.live_market import LiveMarketQuote
@@ -84,6 +85,10 @@ from app.services.asset_specialization import (
     evaluate_asset_specialization,
 )
 from app.services.blocked_probe_registry import load_blocked_probe_registry
+from app.services.broker_history import (
+    summarize_trading_new_closed_tickets,
+    summarize_trading_new_closed_tickets_window,
+)
 from app.services.btc_break_retest_shadow import scan_btc_break_retest_shadow
 from app.services.capital_risk import size_position
 from app.services.champion_challengers import build_champion_challenger_report
@@ -102,6 +107,7 @@ from app.services.economic_feasibility import (
     ECONOMIC_FEASIBILITY_FILE,
     load_economic_feasibility_report,
 )
+from app.services.economic_validation_v2 import build_economic_validation_report
 from app.services.entry_zone import build_entry_zone
 from app.services.execution_audit import AUDIT_FILE, build_execution_quality_summary
 from app.services.execution_cost_history import summarize_execution_costs
@@ -160,6 +166,7 @@ from app.services.session_preflight import build_session_preflight
 from app.services.shadow_collector import collect_btc_break_retest_once
 from app.services.shadow_overview import load_shadow_overview
 from app.services.shadow_paper import (
+    load_closed_trades,
     load_shadow_paper_state,
     load_shadow_paper_summary,
 )
@@ -611,6 +618,99 @@ def champion_challengers_v2_evaluate(request: ChampionChallengerResearchRequest)
         return evaluate_asset_specialization(_mt4_files_dir(), AssetSpecializationResearchRequest(split=request.split, symbols=request.symbols))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get(
+    f"{settings.api_prefix}/research/economic-validation/v2",
+    response_model=EconomicValidationReport,
+)
+def economic_validation_v2(hours: int = 168) -> EconomicValidationReport:
+    if hours < 1 or hours > 168:
+        raise HTTPException(status_code=422, detail="hours must be between 1 and 168")
+    now = datetime.now(tz=_server_timezone())
+    files_dir = _mt4_files_dir()
+    runtime_dir = settings.shadow_ledger_dir
+    overview = build_trading_overview(files_dir, runtime_dir, now)
+    lower_bound = max(
+        now - timedelta(hours=hours),
+        settings.paper_evidence_cutover_at,
+    )
+    trades = [
+        trade
+        for path in runtime_dir.glob("*_paper_trades.jsonl")
+        for trade in load_closed_trades(path)
+        if trade.opened_at >= lower_bound
+    ]
+    funnel = build_opportunity_funnel(
+        runtime_dir,
+        now=now,
+        window_hours=hours,
+        symbols=settings.session_watch_symbols,
+        reference_capital_eur=overview.risk.reference_capital_eur,
+        base_risk_fraction=settings.risk_per_trade_fraction,
+        absolute_max_risk_fraction=settings.absolute_max_risk_fraction,
+    )
+    position_manager = build_runtime_position_manager_report(
+        files_dir,
+        runtime_dir,
+        now=now,
+        window_hours=hours,
+    )
+    asset_snapshots = build_asset_specialization_snapshots(runtime_dir, now)
+    champions = build_champion_challenger_report(
+        asset_snapshots,
+        position_manager,
+    )
+    drain = load_runtime_drain(runtime_dir / DRAIN_FILE)
+    demo = build_demo_status(
+        files_dir=files_dir,
+        overview=overview,
+        macro=macro_gate_status(settings.macro_events_path, now),
+        now=now,
+        drain_enabled=drain.enabled,
+    )
+    allocator = build_portfolio_opportunity_allocation(
+        overview,
+        read_demo_positions(files_dir / POSITIONS_FILE),
+        list_mt4_symbol_specs(files_dir),
+        now,
+    )
+    broker_closed = summarize_trading_new_closed_tickets(
+        files_dir,
+        runtime_dir / AUDIT_FILE,
+        magic_number=settings.demo_magic_number,
+        report_date=now.date(),
+    )
+    window_start = now - timedelta(hours=hours)
+    broker_window = summarize_trading_new_closed_tickets_window(
+        files_dir,
+        runtime_dir / AUDIT_FILE,
+        magic_number=settings.demo_magic_number,
+        start_at=window_start,
+        end_at=now,
+    )
+    return build_economic_validation_report(
+        now=now,
+        window_hours=hours,
+        trades=trades,
+        overview=overview,
+        funnel=funnel,
+        position_manager=position_manager,
+        champions=champions,
+        execution_quality=build_execution_quality_summary(
+            runtime_dir / AUDIT_FILE,
+            start_at=window_start,
+            end_at=now,
+        ),
+        allocator=allocator,
+        demo=demo,
+        drain_enabled=drain.enabled,
+        broker_realized_pnl_eur_today=broker_closed.realized_pnl_eur,
+        broker_closed_trades_window=broker_window.trades,
+        broker_realized_pnl_eur_window=broker_window.realized_pnl_eur,
+        broker_missing_tickets_window=broker_window.missing_tickets,
+        broker_history_complete=broker_closed.complete and broker_window.complete,
+    )
 
 
 @app.get(

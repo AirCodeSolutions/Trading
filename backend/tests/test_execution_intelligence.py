@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -213,3 +213,51 @@ def test_execution_quality_counts_close_fill_without_slippage_sample(
     assert summary.fills == 2
     assert summary.unpaired_results == 0
     assert len(summary.samples) == 1
+
+
+def test_execution_quality_respects_requested_window(tmp_path: Path) -> None:
+    path = tmp_path / "audit.jsonl"
+    old_at = NOW - timedelta(days=2)
+    for command_id, at in (("old", old_at), ("current", NOW)):
+        command = DemoOrderCommand(
+            command_id=command_id,
+            symbol="EURUSD",
+            side=Side.BUY,
+            lots=0.04,
+            stop_loss=1.0990,
+            take_profit=1.1020,
+            strategy_id="manual_demo:eurusd",
+            issued_at=at,
+            magic_number=560619,
+            slippage_points=20,
+            proposal_status=ProposalStatus.AUTHORIZED,
+        )
+        append_open_command_event(
+            path,
+            command,
+            reference_entry_price=1.1000,
+            reference_risk_eur=4.0,
+        )
+        append_bridge_result_if_new(
+            path,
+            DemoBridgeResult(
+                command_id=command_id,
+                status=DemoBridgeCommandStatus.FILLED,
+                ticket=123 if command_id == "old" else 124,
+                fill_price=1.1002,
+                stop_loss=1.0990,
+                take_profit=1.1020,
+                processed_at="test",
+            ),
+            at=at,
+        )
+
+    summary = build_execution_quality_summary(
+        path,
+        start_at=NOW - timedelta(hours=1),
+        end_at=NOW + timedelta(hours=1),
+    )
+    assert summary.commands == 1
+    assert summary.fills == 1
+    assert len(summary.samples) == 1
+    assert summary.samples[0].command_id == "current"

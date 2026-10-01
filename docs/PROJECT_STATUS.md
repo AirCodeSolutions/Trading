@@ -3713,3 +3713,20 @@ P1-A is implemented and validation-green:
 - no automatic authority/admission change;
 - backend complete: 523 tests passed;
 - Ruff and frontend production build green.
+
+
+## 2026-10-01 — P1-A authority regret
+
+Status: implemented and locally validated.
+
+Authority Regret is now a Research-only report and dashboard panel. It measures
+accepted outcomes, executable-but-unauthorized outcomes, and guard-blocked
+counterfactuals separately. No authority policy is modified.
+
+Validation:
+- 4 dedicated service tests;
+- API coverage including HTTP 422 for invalid window;
+- 523 backend tests passed;
+- Ruff green;
+- frontend production build green;
+- git diff --check green.

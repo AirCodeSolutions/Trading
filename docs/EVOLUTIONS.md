@@ -2332,3 +2332,29 @@ guard blocks are explicitly excluded from executable authority regret.
 Persisted PAPER/probe result R is spread-aware. Broker slippage and commissions
 are not inferred for counterfactual observations; broker-net adjustment remains
 unavailable unless an exact fill can be paired. No authority rule changed.
+
+
+## 2026-10-01 — P1-A Authority Regret Ledger
+
+Trading-New now measures authority outcomes without changing authority.
+
+The report separates:
+- PAPER-accepted resolved opportunities;
+- broker-DEMO executed PAPER trades, tagged only by exact completed PAPER trade id;
+- executable opportunities rejected from PAPER authority via unqualified probes;
+- economic-guard blocked counterfactuals, kept separate from authority regret.
+
+The headline measures are:
+- winners missed and missed positive R;
+- losses avoided and avoided negative R;
+- accepted winners/losses and total R;
+- broker-executed winners/losses and total R;
+- guard-blocked counterfactual R by reason.
+
+Cost semantics are explicit: persisted PAPER/probe R is spread-aware, but broker
+slippage/commission is never invented for a counterfactual. Broker-cost-adjusted
+R remains unavailable unless an exact broker fill is pairable.
+
+This PR is measurement-only. It does not change admission, PAPER eligibility,
+portfolio allocation, broker authority, risk, sizing, spread guards, the 5-lot
+cap, drain behavior, or LIVE status.

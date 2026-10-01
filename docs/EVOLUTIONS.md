@@ -2297,3 +2297,25 @@ Baseline fixed exits therefore remain the champion contract.
 
 This target change is not broker authority. Prospective PAPER evidence must start
 under the new target contract and broker DEMO still requires SUPPORTS_DEMO.
+
+
+## 2026-10-01 — P2 execution-cost stress
+
+A research-only execution-cost stress report replays preregistered XAU candidate
+families with actual MT4 DEMO equity and the frozen research split under three
+fixed scenarios: observed spread proxy, 1.25x spread and 1.50x spread. Slippage
+remains the existing 0.25 fraction of spread, so adverse spread also increases
+slippage mechanically.
+
+No runtime quote, spread guard, sizing, stop, target, admission or broker
+authority is modified. Edge survival reuses the existing evidence floors only:
+positive validation/holdout expectancy, PF >= 1.05 and DD <= 12R.
+
+Checkpoint with current data:
+- XAU structural displacement survives all scenarios. At 1.50x costs, validation
+  remains +0.256R expectancy / PF 1.879 and holdout +0.373R / PF 2.306.
+- XAU structural persistence survives 1.25x but fails 1.50x because holdout PF
+  falls to 1.027, below the existing 1.05 floor.
+
+The heavy evaluation is POST/on-demand and atomically cached. Dashboard refreshes
+read only the cached report.

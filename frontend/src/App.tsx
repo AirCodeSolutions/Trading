@@ -274,6 +274,20 @@ type ChampionChallengerReport = {
   }>;
 };
 
+type ExecutionCostStressReport = {
+  generated_at: string; capital_eur: number; capital_source: string; broker_authority: boolean;
+  rows: Array<{
+    strategy_id: string; symbol: string; mechanism: string;
+    scenario: { scenario_id: string; spread_multiplier: number; slippage_spread_fraction: number };
+    validation: { trades: number; expectancy_r: number; profit_factor: number; max_drawdown_r: number; average_execution_cost_r: number };
+    holdout: { trades: number; expectancy_r: number; profit_factor: number; max_drawdown_r: number; average_execution_cost_r: number };
+    admission_state: string; edge_survives: boolean;
+    validation_expectancy_delta_vs_observed: number;
+    holdout_expectancy_delta_vs_observed: number;
+  }>;
+  limitations: string[];
+};
+
 type PortfolioAllocatorReport = {
   ready: boolean; capital_eur: number | null; capital_source: string;
   max_total_open_risk_fraction: number; max_total_open_risk_eur: number | null;
@@ -1682,6 +1696,7 @@ export default function App() {
   const [overview, setOverview] = useState<TradingOverview | null>(null);
   const [allocator, setAllocator] = useState<PortfolioAllocatorReport | null>(null);
   const [economicValidation, setEconomicValidation] = useState<EconomicValidationV2 | null>(null);
+  const [executionCostStress, setExecutionCostStress] = useState<ExecutionCostStressReport | null>(null);
   const [costs, setCosts] = useState<CostSummary>({});
   const [macro, setMacro] = useState<MacroStatus | null>(null);
   const [demo, setDemo] = useState<DemoExecutionStatus | null>(null);
@@ -1729,6 +1744,7 @@ export default function App() {
           positionManagerResearchResponse,
           assetSpecializationResponse,
           championChallengersResponse,
+          executionCostStressResponse,
           blockedProbesResponse,
           opportunityFunnelResponse,
           stopGeometryResponse,
@@ -1770,6 +1786,7 @@ export default function App() {
           fetch("/api/v1/research/position-manager/v2?hours=168"),
           fetch("/api/v1/asset-specialization/v2"),
           fetch("/api/v1/research/champion-challengers/v2?hours=168"),
+          fetch("/api/v1/research/execution-cost-stress"),
           fetch("/api/v1/shadow/blocked-probes"),
           fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           fetch("/api/v1/research/stop-geometry?hours=168"),
@@ -1830,6 +1847,9 @@ export default function App() {
           : [];
         const championChallengersPayload = championChallengersResponse.ok
           ? await championChallengersResponse.json()
+          : null;
+        const executionCostStressPayload = executionCostStressResponse.ok
+          ? await executionCostStressResponse.json()
           : null;
         const blockedProbesPayload = blockedProbesResponse.ok
           ? await blockedProbesResponse.json()
@@ -1907,6 +1927,7 @@ export default function App() {
         setPositionManagerResearch(positionManagerResearchPayload);
         setAssetSpecialization(assetSpecializationPayload);
         setChampionChallengers(championChallengersPayload);
+        setExecutionCostStress(executionCostStressPayload);
         setBlockedProbes(blockedProbesPayload);
           setOpportunityFunnel(opportunityFunnelPayload);
           setStopGeometryResearch(stopGeometryPayload);
@@ -4999,6 +5020,24 @@ export default function App() {
             ))}
           </div>
         </> : <p>Validation économique indisponible.</p>}
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "research"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">P2 · EXECUTION COST STRESS · READ ONLY</p><h2>Cost Robustness</h2></div>
+          <p>Observed spread proxy vs 1.25× and 1.50× stress. Aucun coût runtime n’est modifié.</p>
+        </div>
+        {executionCostStress ? <>
+          <div className="opportunity-summary">
+            <span>CAPITAL <strong>{executionCostStress.capital_eur.toFixed(2)} €</strong></span>
+            <span>AUTHORITY <strong>{executionCostStress.broker_authority ? "YES" : "NO"}</strong></span>
+            <span>ROBUST ROWS <strong>{executionCostStress.rows.filter((row) => row.edge_survives).length}/{executionCostStress.rows.length}</strong></span>
+          </div>
+          <div className="opportunity-table">
+            <div className="opportunity-row opportunity-head"><span>Family</span><span>Scenario</span><span>Validation Exp/PF/DD</span><span>Holdout Exp/PF/DD</span><span>Δ Exp V/H</span><span>Survives</span></div>
+            {executionCostStress.rows.map((row) => <div className="opportunity-row" key={`${row.strategy_id}:${row.scenario.scenario_id}`}><strong>{row.strategy_id}</strong><span>{row.scenario.scenario_id}</span><span>{row.validation.expectancy_r.toFixed(3)} / {row.validation.profit_factor.toFixed(2)} / {row.validation.max_drawdown_r.toFixed(2)}</span><span>{row.holdout.expectancy_r.toFixed(3)} / {row.holdout.profit_factor.toFixed(2)} / {row.holdout.max_drawdown_r.toFixed(2)}</span><span>{row.validation_expectancy_delta_vs_observed.toFixed(3)} / {row.holdout_expectancy_delta_vs_observed.toFixed(3)}</span><span>{row.edge_survives ? "YES" : "NO"}</span></div>)}
+          </div>
+        </> : <p>Aucun report stress en cache. L’évaluation est déclenchée explicitement côté research.</p>}
       </section>
 
       <section className="position-manager-panel" hidden={activeView !== "research"}>

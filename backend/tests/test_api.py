@@ -47,3 +47,10 @@ def test_ingest_and_read_m5_bar() -> None:
     latest = client.get("/api/v1/market/XAUUSD/M5/latest")
     assert latest.status_code == 200
     assert latest.json()["close"] == 3602.0
+
+
+def test_execution_cost_stress_cache_is_optional() -> None:
+    response = client.get("/api/v1/research/execution-cost-stress")
+    assert response.status_code in {200, 404}
+    if response.status_code == 200:
+        assert response.json()["broker_authority"] is False

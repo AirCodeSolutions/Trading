@@ -3766,3 +3766,17 @@ Validation:
 - git diff --check green.
 
 No runtime authority changes.
+
+## 2026-10-01 — P2-B family-specific exit challenger #1
+
+The first P2-B hypothesis is implemented as Research-only evidence and is
+rejected economically. Diagnostic replay found that XAU structural-displacement
+target winners often continue beyond 1.5R, while timeout and causal M15 regime
+loss are not repeated defects across validation and holdout.
+
+Pre-registered challenger `xau_sd_fixed_target_1_5r_vs_2r_exit_v1` freezes the
+canonical 1.5R champion cohort and changes only fixed target R to 2.0. Signal,
+entry, structural stop, sizing, execution-cost model and 12-M5 horizon are
+identical. Validation delta is -0.163R and holdout delta is -0.977R, so 2.0R is
+rejected and the 1.5R champion remains unchanged. The dashboard Research tab
+exposes the paired negative result. No authority effect.

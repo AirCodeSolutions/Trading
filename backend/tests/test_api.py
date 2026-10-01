@@ -266,3 +266,63 @@ def test_execution_cost_stress_endpoint_is_descriptive(
     assert payload["target_r"] == 1.5
     assert payload["all_scenarios_positive_both_windows"] is True
     assert payload["authority_effect"] is False
+
+def test_family_exit_challenger_endpoint_is_research_only(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("app.main._mt4_files_dir", lambda: tmp_path)
+
+    from datetime import UTC, datetime
+
+    from app.domain.family_exit_challenger import (
+        ExitChallengerWindowMetrics,
+        FamilyExitChallengerReport,
+    )
+
+    metrics = ExitChallengerWindowMetrics(
+        paired_trades=10,
+        champion_total_r=4.0,
+        challenger_total_r=3.5,
+        delta_total_r=-0.5,
+        champion_expectancy_r=0.4,
+        challenger_expectancy_r=0.35,
+        champion_profit_factor=2.0,
+        challenger_profit_factor=1.8,
+        champion_max_drawdown_r=2.0,
+        challenger_max_drawdown_r=2.0,
+        champion_targets=4,
+        challenger_targets=3,
+        champion_stops=3,
+        challenger_stops=3,
+        champion_timeouts=3,
+        challenger_timeouts=4,
+    )
+    report = FamilyExitChallengerReport(
+        generated_at=datetime(2026, 10, 1, 12, 0, tzinfo=UTC),
+        symbol="XAUUSD",
+        strategy_id="XAUUSD:structural_displacement_sequence",
+        hypothesis_id="xau_sd_fixed_target_1_5r_vs_2r_exit_v1",
+        change_axis="fixed_target_r",
+        champion_target_r=1.5,
+        challenger_target_r=2.0,
+        max_holding_bars=12,
+        capital_eur=866314.66,
+        capital_source="broker_equity",
+        validation=metrics,
+        holdout=metrics,
+        authority_effect=False,
+        human_review_required=True,
+    )
+    monkeypatch.setattr(
+        "app.main.build_xau_structural_displacement_exit_challenger",
+        lambda *args, **kwargs: report,
+    )
+
+    response = client.get(
+        "/api/v1/research/xau-structural-displacement/family-exit-challenger"
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["champion_target_r"] == 1.5
+    assert payload["challenger_target_r"] == 2.0
+    assert payload["validation"]["delta_total_r"] == -0.5
+    assert payload["authority_effect"] is False
+    assert payload["human_review_required"] is True

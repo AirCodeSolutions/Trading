@@ -317,6 +317,12 @@ type ExecutionCostStressReport = {
   scenarios: Array<{ scenario: string; spread_multiplier: number; slippage_spread_fraction: number; effective_spread: number; weakest_expectancy_r: number; weakest_profit_factor: number; worst_drawdown_r: number; positive_both_windows: boolean; authority_effect: boolean; validation: { trades: number; total_r: number; expectancy_r: number; profit_factor: number; max_drawdown_r: number; average_execution_cost_r: number }; holdout: { trades: number; total_r: number; expectancy_r: number; profit_factor: number; max_drawdown_r: number; average_execution_cost_r: number } }>;
 };
 
+type FamilyExitChallengerReport = {
+  generated_at: string; symbol: string; strategy_id: string; hypothesis_id: string; change_axis: string; champion_target_r: number; challenger_target_r: number; max_holding_bars: number; capital_eur: number; capital_source: string; authority_effect: boolean; human_review_required: boolean; limitations: string[];
+  validation: { paired_trades: number; champion_total_r: number; challenger_total_r: number; delta_total_r: number; champion_expectancy_r: number; challenger_expectancy_r: number; champion_profit_factor: number; challenger_profit_factor: number; champion_max_drawdown_r: number; challenger_max_drawdown_r: number; champion_targets: number; challenger_targets: number; champion_stops: number; challenger_stops: number; champion_timeouts: number; challenger_timeouts: number };
+  holdout: { paired_trades: number; champion_total_r: number; challenger_total_r: number; delta_total_r: number; champion_expectancy_r: number; challenger_expectancy_r: number; champion_profit_factor: number; challenger_profit_factor: number; champion_max_drawdown_r: number; challenger_max_drawdown_r: number; champion_targets: number; challenger_targets: number; champion_stops: number; challenger_stops: number; champion_timeouts: number; challenger_timeouts: number };
+};
+
 type PortfolioAllocatorReport = {
   ready: boolean; capital_eur: number | null; capital_source: string;
   max_total_open_risk_fraction: number; max_total_open_risk_eur: number | null;
@@ -1681,6 +1687,7 @@ export default function App() {
   const [admissionRefreshMessage, setAdmissionRefreshMessage] = useState("");
   const [regimeSessionAttribution, setRegimeSessionAttribution] = useState<RegimeSessionAttributionReport | null>(null);
   const [executionCostStress, setExecutionCostStress] = useState<ExecutionCostStressReport | null>(null);
+  const [familyExitChallenger, setFamilyExitChallenger] = useState<FamilyExitChallengerReport | null>(null);
   const positionManagerAggregates = useMemo(
     () => aggregatePositionManagerComparisons(positionManagerResearch?.comparisons),
     [positionManagerResearch?.comparisons],
@@ -1922,6 +1929,7 @@ export default function App() {
           authorityRegretResponse,
           regimeSessionAttributionResponse,
           executionCostStressResponse,
+          familyExitChallengerResponse,
           blockedProbesResponse,
           opportunityFunnelResponse,
           stopGeometryResponse,
@@ -1949,6 +1957,7 @@ export default function App() {
           () => fetch("/api/v1/research/authority-regret?hours=168"),
           () => fetch("/api/v1/research/xau-structural-displacement/regime-session-attribution"),
           () => fetch("/api/v1/research/xau-structural-displacement/execution-cost-stress"),
+          () => fetch("/api/v1/research/xau-structural-displacement/family-exit-challenger"),
           () => fetch("/api/v1/shadow/blocked-probes"),
           () => fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           () => fetch("/api/v1/research/stop-geometry?hours=168"),
@@ -1977,6 +1986,7 @@ export default function App() {
         setAuthorityRegret(authorityRegretResponse.ok ? await authorityRegretResponse.json() : null);
         setRegimeSessionAttribution(regimeSessionAttributionResponse.ok ? await regimeSessionAttributionResponse.json() : null);
         setExecutionCostStress(executionCostStressResponse.ok ? await executionCostStressResponse.json() : null);
+        setFamilyExitChallenger(familyExitChallengerResponse.ok ? await familyExitChallengerResponse.json() : null);
         setBlockedProbes(blockedProbesResponse.ok ? await blockedProbesResponse.json() : []);
         setOpportunityFunnel(opportunityFunnelResponse.ok ? await opportunityFunnelResponse.json() : null);
         setStopGeometryResearch(stopGeometryResponse.ok ? await stopGeometryResponse.json() : null);
@@ -5188,6 +5198,31 @@ export default function App() {
           </div>
           {executionCostStress.limitations.map((item) => <small key={item}>• {item}</small>)}
         </> : <p>Stress coûts indisponible.</p>}
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "research"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">P2-B · FAMILY-SPECIFIC EXIT CHALLENGER · READ ONLY</p><h2>XAU Structural Displacement · 1.5R vs 2.0R</h2></div>
+          <p>Cohorte figée sur le champion 1.5R : mêmes signaux, entrée, stop, sizing, coûts et horizon 12 M5 ; seul le target fixe change.</p>
+        </div>
+        {familyExitChallenger ? <>
+          <div className="opportunity-summary">
+            <span>HYPOTHESIS <strong>{familyExitChallenger.hypothesis_id}</strong></span>
+            <span>CAPITAL <strong>{familyExitChallenger.capital_eur.toFixed(2)} €</strong></span>
+            <span>VALIDATION Δ <strong>{familyExitChallenger.validation.delta_total_r.toFixed(3)}R</strong></span>
+            <span>HOLDOUT Δ <strong>{familyExitChallenger.holdout.delta_total_r.toFixed(3)}R</strong></span>
+            <span>AUTHORITY EFFECT <strong>{familyExitChallenger.authority_effect ? "YES" : "NO"}</strong></span>
+            <span>HUMAN REVIEW <strong>{familyExitChallenger.human_review_required ? "REQUIRED" : "NO"}</strong></span>
+          </div>
+          <div className="opportunity-table">
+            <div className="opportunity-row opportunity-head"><span>Window</span><span>N</span><span>1.5R total / exp / PF / DD</span><span>2.0R total / exp / PF / DD</span><span>ΔR</span><span>Targets 1.5 / 2.0</span><span>Stops 1.5 / 2.0</span><span>Timeouts 1.5 / 2.0</span></div>
+            {[['VALIDATION', familyExitChallenger.validation], ['HOLDOUT', familyExitChallenger.holdout]].map(([label, row]) => {
+              const metrics = row as FamilyExitChallengerReport['validation'];
+              return <div className="opportunity-row" key={label as string}><strong>{label as string}</strong><span>{metrics.paired_trades}</span><span>{metrics.champion_total_r.toFixed(3)}R / {metrics.champion_expectancy_r.toFixed(3)} / {metrics.champion_profit_factor.toFixed(2)} / {metrics.champion_max_drawdown_r.toFixed(2)}</span><span>{metrics.challenger_total_r.toFixed(3)}R / {metrics.challenger_expectancy_r.toFixed(3)} / {metrics.challenger_profit_factor.toFixed(2)} / {metrics.challenger_max_drawdown_r.toFixed(2)}</span><span>{metrics.delta_total_r.toFixed(3)}R</span><span>{metrics.champion_targets} / {metrics.challenger_targets}</span><span>{metrics.champion_stops} / {metrics.challenger_stops}</span><span>{metrics.champion_timeouts} / {metrics.challenger_timeouts}</span></div>;
+            })}
+          </div>
+          {familyExitChallenger.limitations.map((item) => <small key={item}>• {item}</small>)}
+        </> : <p>Challenger de sortie P2-B indisponible.</p>}
       </section>
 
       <section className="position-manager-panel" hidden={activeView !== "research"}>

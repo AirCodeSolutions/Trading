@@ -420,3 +420,15 @@ Research-only and authority_effect=false.
 
 Next queued item after P2-A is P2-B family-specific exit challengers, but do not
 start it in the same work session as P2-A validation/deployment.
+
+
+## 2026-10-01 — P2-B checkpoint
+
+P2-B challenger #1 is rejected: moving the XAU structural-displacement stop to
+breakeven from the next M5 bar after a closed-bar MFE >= +0.75R degraded
+validation and full-history performance and did not improve holdout.
+
+Do not optimize the threshold around this failed hypothesis. Preserve the
+canonical XAU structural-displacement 1.5R fixed-exit contract. P2-B remains
+open for a different, independently motivated exit hypothesis in a later short
+session.

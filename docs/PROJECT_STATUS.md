@@ -3766,3 +3766,18 @@ Validation:
 - git diff --check green.
 
 No runtime authority changes.
+
+
+## 2026-10-01 — P2-B family-specific exits
+
+Status: IN PROGRESS.
+
+Exit challenger #1 (breakeven from the next M5 bar after a closed-bar MFE >=
++0.75R) is rejected. It reduced validation by 2.907R, did not improve holdout,
+and reduced full-history performance by 10.469R while worsening validation DD.
+
+The canonical XAU structural-displacement 1.5R fixed-exit contract remains
+unchanged. No runtime or authority change was made.
+
+Next P2-B hypothesis must be a different, pre-registered single-axis exit change;
+do not tune the rejected breakeven threshold.

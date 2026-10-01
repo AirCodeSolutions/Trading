@@ -22,6 +22,7 @@ from app.services.execution_audit import (
     append_close_command_event,
     append_open_command_event,
 )
+from app.services.prospective_qualification import prospective_demo_execution_allowed
 
 COMMAND_FILE = "trading_demo_command.csv"
 CLOSE_COMMAND_FILE = "trading_demo_close_command.csv"
@@ -44,7 +45,9 @@ def build_demo_guard(
     bridge_position_count = len(bridge_positions or [])
     remaining_daily_loss = overview.risk.remaining_daily_loss_budget_eur
     qualified_collectors = sum(
-        row.historical_state == AdmissionState.SHADOW and row.paper_entry_allowed
+        row.historical_state == AdmissionState.SHADOW
+        and row.paper_entry_allowed
+        and prospective_demo_execution_allowed(row.qualification)
         for row in overview.paper_strategies
     )
     transport_armed = (
@@ -153,6 +156,10 @@ def submit_selected_demo_order(
         and proposal.strategy_id != overview.portfolio.selected_strategy_id
     ):
         raise ValueError("proposal strategy is not PAPER-entry eligible")
+    if not prospective_demo_execution_allowed(row.qualification):
+        raise ValueError(
+            "proposal strategy lacks prospective evidence for broker DEMO execution"
+        )
 
     trade = row.summary.open_trade
     if trade.lots > settings.max_lots_per_trade:

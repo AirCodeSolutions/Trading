@@ -28,6 +28,7 @@ from app.services.demo_execution import (
     submit_demo_close_order,
     submit_selected_demo_order,
 )
+from app.services.prospective_qualification import prospective_demo_execution_allowed
 
 STATE_FILE = "demo_collection_state.json"
 TRADING_NEW_COMMENT_PREFIX = "TradingNew:"
@@ -273,6 +274,7 @@ def _next_open_candidate(
         if (
             trade is None
             or not (row.paper_entry_allowed or selected_legacy_entry)
+            or not prospective_demo_execution_allowed(row.qualification)
         ):
             continue
         if trade.symbol.upper() in occupied_symbols:

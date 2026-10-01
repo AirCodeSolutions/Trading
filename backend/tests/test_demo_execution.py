@@ -391,3 +391,40 @@ def test_magic_scoped_bridge_position_blocks_second_demo_entry(
             proposal=proposal(),
             now=NOW,
         )
+
+
+def test_demo_submit_refuses_collecting_strategy_even_when_paper_eligible(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(settings, "execution_mode", ExecutionMode.DEMO)
+    monkeypatch.setattr(settings, "demo_execution_bridge_enabled", True)
+    monkeypatch.setattr(settings, "live_trading_enabled", False)
+    current = overview()
+    current.paper_strategies[0].qualification = (
+        current.paper_strategies[0].qualification.model_copy(
+            update={
+                "state": ProspectiveQualificationState.COLLECTING,
+                "closed_trades": 5,
+                "expectancy_r": -1.0,
+                "profit_factor": 0.0,
+                "max_drawdown_r": 5.0,
+                "reason": "collecting",
+            }
+        )
+    )
+    current.paper_strategies[0].paper_entry_allowed = True
+
+    with pytest.raises(
+        ValueError,
+        match="lacks prospective evidence for broker DEMO execution",
+    ):
+        submit_selected_demo_order(
+            files_dir=tmp_path,
+            overview=current,
+            macro=clear_macro(),
+            proposal=proposal(),
+            now=NOW,
+        )
+
+    assert read_pending_command(tmp_path / "trading_demo_command.csv") is None

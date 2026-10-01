@@ -3595,3 +3595,17 @@ la même fenêtre demandée : PAPER, funnel, Position Manager, execution quality
 et PnL broker. broker_history_complete=false entraîne un affichage PARTIAL
 avec les tickets manquants. Le dashboard affiche également N, R, expectancy,
 PF, DD, PnL, signaux, probes et delta PM par famille, sans score opaque.
+
+
+## 2026-10-01 — DEMO authority follows prospective qualification
+
+Trading-New now distinguishes PAPER eligibility from broker DEMO eligibility.
+`paper_entry_allowed=True` is not enough to create a broker command:
+the strategy must also be `ProspectiveQualificationState.SUPPORTS_DEMO`.
+A COLLECTING strategy remains visible and continues PAPER evidence, but the
+portfolio reports that broker DEMO remains locked.
+
+Current economic checkpoint remains negative, so this change is risk/evidence
+discipline rather than a profitability claim. XAU directional transition is the
+leading research challenger at 16/20 resolved probes (+6.86R); it has not been
+promoted automatically.

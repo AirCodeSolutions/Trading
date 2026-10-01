@@ -147,7 +147,9 @@ def test_overview_exposes_historical_paper_collection_status(tmp_path: Path) -> 
     assert row.paper_entry_allowed is True
 
 
-def test_open_paper_collection_candidate_becomes_demo_collection(tmp_path: Path) -> None:
+def test_open_paper_collection_candidate_stays_paper_only_while_collecting(
+    tmp_path: Path,
+) -> None:
     files_dir = tmp_path / "mt4"
     runtime_dir = tmp_path / "runtime"
     files_dir.mkdir()
@@ -194,8 +196,9 @@ def test_open_paper_collection_candidate_becomes_demo_collection(tmp_path: Path)
 
     overview = build_trading_overview(files_dir, runtime_dir, now)
 
-    assert overview.portfolio.action == "demo_collection"
+    assert overview.portfolio.action == "paper_only"
     assert overview.portfolio.selected_strategy_id == "GBPUSD:directional_pullback_resumption"
+    assert overview.portfolio.reason == "paper position is open; broker execution remains locked"
     assert overview.risk.selected_open_risk_eur == 2.0
 
 
@@ -244,7 +247,8 @@ def test_overview_exposes_positive_weakest_shadow_as_paper_eligible(
     assert row.paper_entry_allowed is True
     assert overview.portfolio.action == "no_trade"
     assert overview.portfolio.reason == (
-        "1 PAPER-eligible SHADOW strategies are waiting for an executable PAPER trade"
+        "1 PAPER-eligible strategies are collecting prospective evidence; "
+        "broker DEMO remains locked"
     )
 
 
@@ -320,6 +324,28 @@ def test_open_positive_weakest_shadow_can_enter_demo_collection(
     )
     (runtime_dir / "BTCUSD_break_retest_paper_state.json").write_text(
         ShadowPaperState(open_trade=trade).model_dump_json(),
+        encoding="utf-8",
+    )
+    closed = []
+    for index in range(20):
+        opened_at = now.replace(hour=7, minute=index)
+        resolved = trade.model_copy(
+            update={
+                "trade_id": f"btc-qualified-{index}",
+                "signal_at": opened_at,
+                "entry_bar_at": opened_at,
+                "opened_at": opened_at,
+                "status": PaperTradeStatus.TARGET,
+                "exit_at": opened_at,
+                "exit_price": 65800,
+                "result_r": 1.0,
+                "pnl_eur": 4.0,
+                "bars_held": 1,
+            }
+        )
+        closed.append(resolved.model_dump_json())
+    (runtime_dir / "BTCUSD_break_retest_paper_trades.jsonl").write_text(
+        "\n".join(closed) + "\n",
         encoding="utf-8",
     )
     (runtime_dir / "strategy_admissions.json").write_text(

@@ -2130,3 +2130,14 @@ sans nouveau replay ni changement d'autorité. Les triggers M1/M5 et Entry Zone
 restent sans evidence outcome tant qu'une population appariée n'est pas
 collectée. Aucune admission, sélection portefeuille, exécution, règle de
 risque ou commande broker n'est modifiée.
+
+
+## Étape 8 — Portfolio Opportunity Allocator V2
+
+Ajout d'un allocateur déterministe basé sur l'equity MT4 DEMO réelle (balance en
+repli, jamais le fallback recherche), le risque concurrent exact des positions
+Trading-New du bridge et le plafond de risque absolu existant. Le plafond 5 lots
+reste inchangé. Les expositions USD FX, métaux USD et crypto USD sont visibles ;
+la concentration est signalée sans inventer de nouveau seuil de corrélation.
+Le veto de perte journalière n'est plus une autorité d'exécution en DEMO :
+le contrôle pertinent est le risque ouvert concurrent, pas un cap journalier.

@@ -92,8 +92,6 @@ def build_demo_guard(
         reasons.append(
             f"Trading-New bridge already has open position for {normalized_target}"
         )
-    if remaining_daily_loss <= 0:
-        reasons.append("daily loss budget is exhausted")
     if macro.blocked:
         reasons.append(macro.reason)
 
@@ -157,8 +155,6 @@ def submit_selected_demo_order(
         raise ValueError("proposal strategy is not PAPER-entry eligible")
 
     trade = row.summary.open_trade
-    if trade.risk_eur > overview.risk.remaining_daily_loss_budget_eur:
-        raise ValueError("trade risk exceeds remaining daily loss budget")
     if trade.lots > settings.max_lots_per_trade:
         raise ValueError("trade size exceeds max lots per trade")
     if proposal.symbol.upper() != trade.symbol.upper():

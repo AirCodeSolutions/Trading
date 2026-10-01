@@ -274,6 +274,15 @@ type ChampionChallengerReport = {
   }>;
 };
 
+type PortfolioAllocatorReport = {
+  ready: boolean; capital_eur: number | null; capital_source: string;
+  max_total_open_risk_fraction: number; max_total_open_risk_eur: number | null;
+  current_open_risk_eur: number; current_open_risk_fraction: number | null;
+  bridge_open_positions: number; selected_strategy_ids: string[]; primary_strategy_id: string | null;
+  bucket_risk_eur: Record<string, number>; uses_daily_loss_cap: boolean; reason: string;
+  rows: Array<{ strategy_id: string; symbol: string; mechanism: string; side: string; risk_eur: number; lots: number; correlation_bucket: string; decision: string; reason: string; projected_total_open_risk_eur: number; projected_total_open_risk_fraction: number | null; projected_bucket_risk_eur: number; concentration_warning: boolean }>;
+};
+
 type MarketStateV2 = {
   symbol: string;
   evaluated_at: string;
@@ -1641,6 +1650,7 @@ export default function App() {
   const [entryZones, setEntryZones] = useState<EntryZoneV2[]>([]);
   const [marketQuality, setMarketQuality] = useState<MarketQualitySnapshot[]>([]);
   const [overview, setOverview] = useState<TradingOverview | null>(null);
+  const [allocator, setAllocator] = useState<PortfolioAllocatorReport | null>(null);
   const [costs, setCosts] = useState<CostSummary>({});
   const [macro, setMacro] = useState<MacroStatus | null>(null);
   const [demo, setDemo] = useState<DemoExecutionStatus | null>(null);
@@ -1676,6 +1686,7 @@ export default function App() {
           entryZonesResponse,
           qualityResponse,
           overviewResponse,
+          allocatorResponse,
           costsResponse,
           macroResponse,
           demoResponse,
@@ -1716,6 +1727,7 @@ export default function App() {
           fetch("/api/v1/entry-zones/v2"),
           fetch("/api/v1/market/mt4/quality"),
           fetch("/api/v1/portfolio/overview"),
+          fetch("/api/v1/portfolio/allocator/v2"),
           fetch("/api/v1/market/mt4/costs"),
           fetch("/api/v1/macro/status"),
           fetch("/api/v1/execution/demo/status"),
@@ -1760,6 +1772,7 @@ export default function App() {
         const entryZonesPayload = entryZonesResponse.ok ? await entryZonesResponse.json() : [];
         const qualityPayload = qualityResponse.ok ? await qualityResponse.json() : [];
         const overviewPayload = overviewResponse.ok ? await overviewResponse.json() : null;
+        const allocatorPayload = allocatorResponse.ok ? await allocatorResponse.json() : null;
         const costsPayload = costsResponse.ok ? await costsResponse.json() : {};
         const macroPayload = macroResponse.ok ? await macroResponse.json() : null;
         const demoPayload = demoResponse.ok ? await demoResponse.json() : null;
@@ -1851,6 +1864,7 @@ export default function App() {
         setEntryZones(entryZonesPayload);
         setMarketQuality(qualityPayload);
         setOverview(overviewPayload);
+        setAllocator(allocatorPayload);
         setCosts(costsPayload);
         setMacro(macroPayload);
         setDemo(demoPayload);
@@ -4834,6 +4848,28 @@ export default function App() {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "trading"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">PORTFOLIO OPPORTUNITY ALLOCATOR V2</p><h2>Concurrent risk allocation</h2></div>
+          <p>Equity MT4 réelle, risque ouvert agrégé, concentration visible, aucun veto de perte journalière.</p>
+        </div>
+        {allocator ? <>
+          <div className="opportunity-summary">
+            <span>READY <strong>{allocator.ready ? "YES" : "NO"}</strong></span>
+            <span>CAPITAL <strong>{allocator.capital_eur?.toFixed(2) ?? "—"} €</strong></span>
+            <span>OPEN RISK <strong>{allocator.current_open_risk_eur.toFixed(2)} €</strong></span>
+            <span>MAX OPEN RISK <strong>{allocator.max_total_open_risk_eur?.toFixed(2) ?? "—"} €</strong></span>
+            <span>BRIDGE <strong>{allocator.bridge_open_positions}</strong></span>
+            <span>DAILY LOSS VETO <strong>{allocator.uses_daily_loss_cap ? "ON" : "OFF"}</strong></span>
+          </div>
+          <p>{allocator.reason}</p>
+          <div className="opportunity-table">
+            <div className="opportunity-row opportunity-head"><span>Strategy</span><span>Bucket</span><span>Risk €</span><span>Lots</span><span>Projected risk</span><span>Decision</span><span>Concentration</span></div>
+            {allocator.rows.map((row) => <div className="opportunity-row" key={row.strategy_id}><strong>{row.strategy_id}</strong><span>{row.correlation_bucket}</span><span>{row.risk_eur.toFixed(2)}</span><span>{row.lots.toFixed(2)}</span><span>{row.projected_total_open_risk_eur.toFixed(2)}</span><span>{row.decision.replaceAll("_", " ")}</span><span>{row.concentration_warning ? "WATCH" : "OK"}</span></div>)}
+          </div>
+        </> : <p>Allocator indisponible.</p>}
       </section>
 
       <section className="position-manager-panel" hidden={activeView !== "trading"}>

@@ -3553,3 +3553,14 @@ Entry Zone restent collecting/no evidence tant qu'aucun outcome apparié n'est
 disponible. Les états reviewable utilisent uniquement les seuils prospectifs
 existants. Toute promotion automatique est interdite et la revue humaine reste
 obligatoire.
+
+
+## Étape 8 — Portfolio Opportunity Allocator V2
+
+`/api/v1/portfolio/allocator/v2` expose un plan d'allocation multi-opportunités
+fondé uniquement sur l'equity/balance du broker DEMO et les garde-fous existants.
+Le risque courant du bridge est valorisé depuis l'open/stop/lots et les specs MT4.
+Une position par symbole reste la règle ; le risque agrégé ne peut pas dépasser
+`absolute_max_risk_fraction`. Les buckets de corrélation sont descriptifs et
+signalent la concentration. Aucun cap de perte journalier ne bloque désormais
+les ordres DEMO ; LIVE reste désactivé et le plafond reste 5 lots par trade.

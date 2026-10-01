@@ -51,6 +51,7 @@ from app.domain.opportunity_funnel import OpportunityFunnel
 from app.domain.opportunity_state import OpportunityStateSnapshot
 from app.domain.performance_attribution import PerformanceAttributionReport
 from app.domain.portfolio import MarketUniverseAsset, TradingOverview
+from app.domain.portfolio_allocator import PortfolioOpportunityAllocationReport
 from app.domain.position_manager import PositionManagerReport, PositionManagerV2Snapshot
 from app.domain.precursor_execution_shadow import PrecursorExecutionShadowSummary
 from app.domain.precursor_forward_research import PrecursorForwardResearchReport
@@ -91,7 +92,12 @@ from app.services.daily_report import (
     load_daily_trading_report,
 )
 from app.services.demo_collection import load_demo_collection_state
-from app.services.demo_execution import build_demo_status, submit_selected_demo_order
+from app.services.demo_execution import (
+    POSITIONS_FILE,
+    build_demo_status,
+    read_demo_positions,
+    submit_selected_demo_order,
+)
 from app.services.economic_feasibility import (
     ECONOMIC_FEASIBILITY_FILE,
     load_economic_feasibility_report,
@@ -126,6 +132,7 @@ from app.services.opportunity_engine_v2 import (
 from app.services.opportunity_funnel import build_opportunity_funnel
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.performance_attribution import build_performance_attribution_report
+from app.services.portfolio_allocator import build_portfolio_opportunity_allocation
 from app.services.portfolio_overview import build_trading_overview
 from app.services.position_manager_v2 import (
     build_position_manager_report,
@@ -406,6 +413,22 @@ def portfolio_overview() -> TradingOverview:
         _mt4_files_dir(),
         settings.shadow_ledger_dir,
         datetime.now(tz=_server_timezone()),
+    )
+
+
+@app.get(
+    f"{settings.api_prefix}/portfolio/allocator/v2",
+    response_model=PortfolioOpportunityAllocationReport,
+)
+def portfolio_allocator_v2() -> PortfolioOpportunityAllocationReport:
+    now = datetime.now(tz=_server_timezone())
+    files_dir = _mt4_files_dir()
+    overview = build_trading_overview(files_dir, settings.shadow_ledger_dir, now)
+    return build_portfolio_opportunity_allocation(
+        overview,
+        read_demo_positions(files_dir / POSITIONS_FILE),
+        list_mt4_symbol_specs(files_dir),
+        now,
     )
 
 

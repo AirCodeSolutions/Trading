@@ -312,6 +312,11 @@ type RegimeSessionAttributionReport = {
   regime_buckets: Array<{ window: string; dimension: string; key: string; trades: number; wins: number; losses: number; total_r: number; expectancy_r: number | null; profit_factor: number | null; max_drawdown_r: number; average_execution_cost_r: number | null }>;
 };
 
+type ExecutionCostStressReport = {
+  generated_at: string; symbol: string; strategy_id: string; target_r: number; capital_eur: number; capital_source: string; baseline_spread: number; all_scenarios_positive_both_windows: boolean; authority_effect: boolean; limitations: string[];
+  scenarios: Array<{ scenario: string; spread_multiplier: number; slippage_spread_fraction: number; effective_spread: number; weakest_expectancy_r: number; weakest_profit_factor: number; worst_drawdown_r: number; positive_both_windows: boolean; authority_effect: boolean; validation: { trades: number; total_r: number; expectancy_r: number; profit_factor: number; max_drawdown_r: number; average_execution_cost_r: number }; holdout: { trades: number; total_r: number; expectancy_r: number; profit_factor: number; max_drawdown_r: number; average_execution_cost_r: number } }>;
+};
+
 type PortfolioAllocatorReport = {
   ready: boolean; capital_eur: number | null; capital_source: string;
   max_total_open_risk_fraction: number; max_total_open_risk_eur: number | null;
@@ -1675,6 +1680,7 @@ export default function App() {
   const [admissionRefreshBusy, setAdmissionRefreshBusy] = useState(false);
   const [admissionRefreshMessage, setAdmissionRefreshMessage] = useState("");
   const [regimeSessionAttribution, setRegimeSessionAttribution] = useState<RegimeSessionAttributionReport | null>(null);
+  const [executionCostStress, setExecutionCostStress] = useState<ExecutionCostStressReport | null>(null);
   const positionManagerAggregates = useMemo(
     () => aggregatePositionManagerComparisons(positionManagerResearch?.comparisons),
     [positionManagerResearch?.comparisons],
@@ -1915,6 +1921,7 @@ export default function App() {
           pairedEconomicContractsResponse,
           authorityRegretResponse,
           regimeSessionAttributionResponse,
+          executionCostStressResponse,
           blockedProbesResponse,
           opportunityFunnelResponse,
           stopGeometryResponse,
@@ -1941,6 +1948,7 @@ export default function App() {
           () => fetch("/api/v1/research/paired-economic-contracts/xau-structural-displacement"),
           () => fetch("/api/v1/research/authority-regret?hours=168"),
           () => fetch("/api/v1/research/xau-structural-displacement/regime-session-attribution"),
+          () => fetch("/api/v1/research/xau-structural-displacement/execution-cost-stress"),
           () => fetch("/api/v1/shadow/blocked-probes"),
           () => fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           () => fetch("/api/v1/research/stop-geometry?hours=168"),
@@ -1968,6 +1976,7 @@ export default function App() {
         setPairedEconomicContracts(pairedEconomicContractsResponse.ok ? await pairedEconomicContractsResponse.json() : null);
         setAuthorityRegret(authorityRegretResponse.ok ? await authorityRegretResponse.json() : null);
         setRegimeSessionAttribution(regimeSessionAttributionResponse.ok ? await regimeSessionAttributionResponse.json() : null);
+        setExecutionCostStress(executionCostStressResponse.ok ? await executionCostStressResponse.json() : null);
         setBlockedProbes(blockedProbesResponse.ok ? await blockedProbesResponse.json() : []);
         setOpportunityFunnel(opportunityFunnelResponse.ok ? await opportunityFunnelResponse.json() : null);
         setStopGeometryResearch(stopGeometryResponse.ok ? await stopGeometryResponse.json() : null);
@@ -5159,6 +5168,26 @@ export default function App() {
           </div>
           {regimeSessionAttribution.limitations.map((item) => <small key={item}>• {item}</small>)}
         </> : <p>Attribution régime/session indisponible.</p>}
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "research"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">P2-A · EXECUTION COST STRESS · READ ONLY</p><h2>XAU Structural Displacement · coût adverse</h2></div>
+          <p>Même signal, même stop, même target 1.5R ; seuls spread et slippage sont stressés.</p>
+        </div>
+        {executionCostStress ? <>
+          <div className="opportunity-summary">
+            <span>ALL ROBUST <strong>{executionCostStress.all_scenarios_positive_both_windows ? "YES" : "NO"}</strong></span>
+            <span>BASE SPREAD <strong>{executionCostStress.baseline_spread.toFixed(3)}</strong></span>
+            <span>CAPITAL <strong>{executionCostStress.capital_eur.toFixed(2)} €</strong></span>
+            <span>AUTHORITY EFFECT <strong>{executionCostStress.authority_effect ? "YES" : "NO"}</strong></span>
+          </div>
+          <div className="opportunity-table">
+            <div className="opportunity-row opportunity-head"><span>Scenario</span><span>Spread / slip</span><span>Validation</span><span>Holdout</span><span>Weak Exp / PF</span><span>Worst DD</span><span>Robust</span><span>Authority</span></div>
+            {executionCostStress.scenarios.map((row) => <div className="opportunity-row" key={row.scenario}><strong>{row.scenario.replaceAll("_", " ").toUpperCase()}</strong><span>{row.spread_multiplier.toFixed(2)}× / {row.slippage_spread_fraction.toFixed(2)}×</span><span>N{row.validation.trades} · {row.validation.expectancy_r.toFixed(3)}R · PF {row.validation.profit_factor.toFixed(2)} · cost {row.validation.average_execution_cost_r.toFixed(3)}R</span><span>N{row.holdout.trades} · {row.holdout.expectancy_r.toFixed(3)}R · PF {row.holdout.profit_factor.toFixed(2)} · cost {row.holdout.average_execution_cost_r.toFixed(3)}R</span><span>{row.weakest_expectancy_r.toFixed(3)}R / {row.weakest_profit_factor.toFixed(2)}</span><span>{row.worst_drawdown_r.toFixed(2)}R</span><span>{row.positive_both_windows ? "YES" : "NO"}</span><span>{row.authority_effect ? "YES" : "NO"}</span></div>)}
+          </div>
+          {executionCostStress.limitations.map((item) => <small key={item}>• {item}</small>)}
+        </> : <p>Stress coûts indisponible.</p>}
       </section>
 
       <section className="position-manager-panel" hidden={activeView !== "research"}>

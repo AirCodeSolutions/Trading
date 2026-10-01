@@ -143,11 +143,23 @@ These small cells are not sufficient to create a session/regime veto.
 
 ### P2-A — Execution-cost stress
 
-Status: QUEUED
+Status: COMPLETE — PR pending validation/merge
 
-Replay candidate families under observed costs plus pre-registered adverse-cost
-scenarios. A family is not considered robust if its edge disappears under a
-reasonable spread/slippage deterioration.
+Scope: XAUUSD structural displacement under the canonical 1.5R contract.
+
+Pre-registered scenarios:
+- OBSERVED: spread 1.00x, slippage 0.25x spread;
+- ADVERSE_25: spread 1.25x, slippage 0.50x spread;
+- ADVERSE_50: spread 1.50x, slippage 1.00x spread.
+
+Observed result:
+- OBSERVED validation +0.423R / PF 2.46; holdout +0.661R / PF 3.31.
+- ADVERSE_25 validation +0.400R / PF 2.37; holdout +0.473R / PF 2.32.
+- ADVERSE_50 validation +0.312R / PF 2.05; holdout +0.458R / PF 2.28.
+
+All three scenarios remain positive in both frozen windows. The report is
+Research-only, authority_effect=false, and changes no live spread guard,
+admission, PAPER or broker authority.
 
 ### P2-B — Family-specific exit challengers
 

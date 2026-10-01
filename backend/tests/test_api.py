@@ -200,3 +200,69 @@ def test_regime_session_attribution_endpoint_is_descriptive(
     assert payload["holdout_trades"] == 14
     assert payload["authority_effect"] is False
     assert payload["session_partition"] == ["asia", "london", "us", "transition"]
+
+
+def test_execution_cost_stress_endpoint_is_descriptive(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    monkeypatch.setattr("app.main._mt4_files_dir", lambda: tmp_path)
+
+    from datetime import UTC, datetime
+
+    from app.domain.execution_cost_stress import (
+        CostStressScenario,
+        CostStressScenarioResult,
+        CostStressWindowMetrics,
+        ExecutionCostStressReport,
+    )
+
+    now = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
+    metrics = CostStressWindowMetrics(
+        trades=10,
+        total_r=4.0,
+        expectancy_r=0.4,
+        profit_factor=2.0,
+        max_drawdown_r=2.0,
+        average_execution_cost_r=0.06,
+    )
+    report = ExecutionCostStressReport(
+        generated_at=now,
+        symbol="XAUUSD",
+        strategy_id="XAUUSD:structural_displacement_sequence",
+        target_r=1.5,
+        capital_eur=866312.61,
+        capital_source="broker_equity",
+        baseline_spread=0.2,
+        scenarios=[
+            CostStressScenarioResult(
+                scenario=CostStressScenario.OBSERVED,
+                spread_multiplier=1.0,
+                slippage_spread_fraction=0.25,
+                effective_spread=0.2,
+                validation=metrics,
+                holdout=metrics,
+                weakest_expectancy_r=0.4,
+                weakest_profit_factor=2.0,
+                worst_drawdown_r=2.0,
+                positive_both_windows=True,
+                authority_effect=False,
+            )
+        ],
+        all_scenarios_positive_both_windows=True,
+        authority_effect=False,
+    )
+    monkeypatch.setattr(
+        "app.main.build_xau_structural_displacement_cost_stress",
+        lambda *args, **kwargs: report,
+    )
+
+    response = client.get(
+        "/api/v1/research/xau-structural-displacement/execution-cost-stress"
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["strategy_id"] == "XAUUSD:structural_displacement_sequence"
+    assert payload["target_r"] == 1.5
+    assert payload["all_scenarios_positive_both_windows"] is True
+    assert payload["authority_effect"] is False

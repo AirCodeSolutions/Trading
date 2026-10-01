@@ -32,6 +32,7 @@ from app.domain.economic_feasibility import EconomicFeasibilityReport
 from app.domain.economic_validation_v2 import EconomicValidationReport
 from app.domain.entry_zone import ExecutableEntryZoneV2
 from app.domain.execution_audit import ExecutionQualitySummary
+from app.domain.execution_cost_stress import ExecutionCostStressReport
 from app.domain.live_market import LiveMarketQuote
 from app.domain.macro import MacroGateStatus
 from app.domain.manual_demo import (
@@ -116,6 +117,9 @@ from app.services.economic_validation_v2 import build_economic_validation_report
 from app.services.entry_zone import build_entry_zone
 from app.services.execution_audit import AUDIT_FILE, build_execution_quality_summary
 from app.services.execution_cost_history import summarize_execution_costs
+from app.services.execution_cost_stress import (
+    build_xau_structural_displacement_cost_stress,
+)
 from app.services.live_market_quality import build_live_market_quality
 from app.services.macro_gate import load_macro_events, macro_gate_status
 from app.services.manual_demo import (
@@ -653,6 +657,23 @@ def xau_structural_displacement_regime_session_attribution() -> RegimeSessionAtt
         return build_xau_structural_displacement_regime_session_attribution(
             _mt4_files_dir(),
             generated_at=datetime.now(tz=_server_timezone()),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get(
+    f"{settings.api_prefix}/research/xau-structural-displacement/execution-cost-stress",
+    response_model=ExecutionCostStressReport,
+)
+def xau_structural_displacement_execution_cost_stress() -> ExecutionCostStressReport:
+    try:
+        return build_xau_structural_displacement_cost_stress(
+            _mt4_files_dir(),
+            generated_at=datetime.now(tz=_server_timezone()),
+            risk_fraction=settings.risk_per_trade_fraction,
+            research_execution_model_path=settings.research_execution_model_path,
+            macro_events_path=settings.macro_events_path,
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

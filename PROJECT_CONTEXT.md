@@ -409,3 +409,14 @@ and no cross-product/ranking is produced.
 Current read-only replay reconstructs 25 validation and 14 holdout outcomes.
 The report is descriptive only and cannot alter admission, PAPER or broker
 authority.
+
+
+## 2026-10-01 — Post-V2 chantier update: P2-A
+
+P2-A execution-cost stress is complete in source and validates the current XAU
+structural-displacement 1.5R contract against three pre-registered cost
+scenarios. All three remain positive in validation and holdout. The report is
+Research-only and authority_effect=false.
+
+Next queued item after P2-A is P2-B family-specific exit challengers, but do not
+start it in the same work session as P2-A validation/deployment.

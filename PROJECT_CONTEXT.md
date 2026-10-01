@@ -398,3 +398,14 @@ ON, Trading-New BOOK_FLAT and complete research coverage for active assets.
 
 The heavy replay remains on-demand and outside the shadow-worker heartbeat.
 Dashboard users can preview the diff but cannot apply it from the UI.
+
+
+## 2026-10-01 — P1-C regime/session attribution
+
+P1-C is scoped only to XAU structural displacement 1.5R. Session and M15 regime
+partitions are fixed before interpretation, validation and holdout are separate,
+and no cross-product/ranking is produced.
+
+Current read-only replay reconstructs 25 validation and 14 holdout outcomes.
+The report is descriptive only and cannot alter admission, PAPER or broker
+authority.

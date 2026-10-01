@@ -153,3 +153,50 @@ def test_runtime_admission_refresh_endpoint_returns_409_when_guard_blocks(
     response = client.post("/api/v1/research/runtime-admissions/refresh")
     assert response.status_code == 409
     assert "drain must be ON" in response.json()["detail"]
+
+
+def test_regime_session_attribution_endpoint_is_descriptive(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    monkeypatch.setattr("app.main._mt4_files_dir", lambda: tmp_path)
+
+    from datetime import UTC, datetime
+
+    from app.domain.regime import MarketRegime
+    from app.domain.regime_session_attribution import RegimeSessionAttributionReport
+
+    now = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
+    report = RegimeSessionAttributionReport(
+        generated_at=now,
+        symbol="XAUUSD",
+        strategy_id="XAUUSD:structural_displacement_sequence",
+        target_r=1.5,
+        capital_eur=866312.61,
+        capital_source="broker_equity",
+        train_end=now,
+        validation_end=now,
+        validation_trades=25,
+        holdout_trades=14,
+        session_buckets=[],
+        regime_buckets=[],
+        session_partition=["asia", "london", "us", "transition"],
+        regime_partition=list(MarketRegime),
+        authority_effect=False,
+    )
+    monkeypatch.setattr(
+        "app.main.build_xau_structural_displacement_regime_session_attribution",
+        lambda *args, **kwargs: report,
+    )
+
+    response = client.get(
+        "/api/v1/research/xau-structural-displacement/regime-session-attribution"
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["strategy_id"] == "XAUUSD:structural_displacement_sequence"
+    assert payload["target_r"] == 1.5
+    assert payload["validation_trades"] == 25
+    assert payload["holdout_trades"] == 14
+    assert payload["authority_effect"] is False
+    assert payload["session_partition"] == ["asia", "london", "us", "transition"]

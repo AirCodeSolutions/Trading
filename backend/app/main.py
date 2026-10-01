@@ -61,6 +61,7 @@ from app.domain.precursor_forward_research import PrecursorForwardResearchReport
 from app.domain.probe_review import ProbeReviewContract, ProbeReviewPack, ProbeReviewRequest
 from app.domain.qualification_history import QualificationHistoryEvent
 from app.domain.regime import RegimeSnapshot
+from app.domain.regime_session_attribution import RegimeSessionAttributionReport
 from app.domain.runtime_admission_refresh import RuntimeAdmissionRefreshReport
 from app.domain.runtime_control import RuntimeDrainRequest, RuntimeDrainState
 from app.domain.session import SessionPreflight
@@ -157,6 +158,9 @@ from app.services.probe_review import (
 from app.services.prospective_qualification import MIN_PROSPECTIVE_TRADES
 from app.services.qualification_history import load_qualification_history
 from app.services.regime import classify_regime
+from app.services.regime_session_attribution import (
+    build_xau_structural_displacement_regime_session_attribution,
+)
 from app.services.research_execution_model import (
     apply_research_execution_model,
     load_research_execution_model,
@@ -638,6 +642,20 @@ def xau_structural_displacement_paired_contracts() -> PairedEconomicContractRepo
     return build_xau_structural_displacement_target_report(
         settings.shadow_ledger_dir
     )
+
+
+@app.get(
+    f"{settings.api_prefix}/research/xau-structural-displacement/regime-session-attribution",
+    response_model=RegimeSessionAttributionReport,
+)
+def xau_structural_displacement_regime_session_attribution() -> RegimeSessionAttributionReport:
+    try:
+        return build_xau_structural_displacement_regime_session_attribution(
+            _mt4_files_dir(),
+            generated_at=datetime.now(tz=_server_timezone()),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.get(

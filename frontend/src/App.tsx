@@ -305,6 +305,13 @@ type RuntimeAdmissionRefreshReport = {
   changes: Array<{ strategy_id: string; change_type: string; before_state: string | null; after_state: string | null; before_weakest_expectancy_r: number | null; after_weakest_expectancy_r: number | null; before_worst_drawdown_r: number | null; after_worst_drawdown_r: number | null; before_paper_collection_candidate: boolean | null; after_paper_collection_candidate: boolean | null; before_reason: string | null; after_reason: string | null }>;
 };
 
+type RegimeSessionAttributionReport = {
+  generated_at: string; symbol: string; strategy_id: string; target_r: number; capital_eur: number; capital_source: string;
+  validation_trades: number; holdout_trades: number; session_partition: string[]; regime_partition: string[]; authority_effect: boolean; limitations: string[];
+  session_buckets: Array<{ window: string; dimension: string; key: string; trades: number; wins: number; losses: number; total_r: number; expectancy_r: number | null; profit_factor: number | null; max_drawdown_r: number; average_execution_cost_r: number | null }>;
+  regime_buckets: Array<{ window: string; dimension: string; key: string; trades: number; wins: number; losses: number; total_r: number; expectancy_r: number | null; profit_factor: number | null; max_drawdown_r: number; average_execution_cost_r: number | null }>;
+};
+
 type PortfolioAllocatorReport = {
   ready: boolean; capital_eur: number | null; capital_source: string;
   max_total_open_risk_fraction: number; max_total_open_risk_eur: number | null;
@@ -1667,6 +1674,7 @@ export default function App() {
   const [admissionRefreshPreview, setAdmissionRefreshPreview] = useState<RuntimeAdmissionRefreshReport | null>(null);
   const [admissionRefreshBusy, setAdmissionRefreshBusy] = useState(false);
   const [admissionRefreshMessage, setAdmissionRefreshMessage] = useState("");
+  const [regimeSessionAttribution, setRegimeSessionAttribution] = useState<RegimeSessionAttributionReport | null>(null);
   const positionManagerAggregates = useMemo(
     () => aggregatePositionManagerComparisons(positionManagerResearch?.comparisons),
     [positionManagerResearch?.comparisons],
@@ -1906,6 +1914,7 @@ export default function App() {
           championChallengersResponse,
           pairedEconomicContractsResponse,
           authorityRegretResponse,
+          regimeSessionAttributionResponse,
           blockedProbesResponse,
           opportunityFunnelResponse,
           stopGeometryResponse,
@@ -1931,6 +1940,7 @@ export default function App() {
           () => fetch("/api/v1/research/champion-challengers/v2?hours=168"),
           () => fetch("/api/v1/research/paired-economic-contracts/xau-structural-displacement"),
           () => fetch("/api/v1/research/authority-regret?hours=168"),
+          () => fetch("/api/v1/research/xau-structural-displacement/regime-session-attribution"),
           () => fetch("/api/v1/shadow/blocked-probes"),
           () => fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           () => fetch("/api/v1/research/stop-geometry?hours=168"),
@@ -1957,6 +1967,7 @@ export default function App() {
         setChampionChallengers(championChallengersResponse.ok ? await championChallengersResponse.json() : null);
         setPairedEconomicContracts(pairedEconomicContractsResponse.ok ? await pairedEconomicContractsResponse.json() : null);
         setAuthorityRegret(authorityRegretResponse.ok ? await authorityRegretResponse.json() : null);
+        setRegimeSessionAttribution(regimeSessionAttributionResponse.ok ? await regimeSessionAttributionResponse.json() : null);
         setBlockedProbes(blockedProbesResponse.ok ? await blockedProbesResponse.json() : []);
         setOpportunityFunnel(opportunityFunnelResponse.ok ? await opportunityFunnelResponse.json() : null);
         setStopGeometryResearch(stopGeometryResponse.ok ? await stopGeometryResponse.json() : null);
@@ -5121,6 +5132,33 @@ export default function App() {
           </div>
           {authorityRegret.limitations.map((item) => <small key={item}>• {item}</small>)}
         </> : <p>Authority Regret indisponible.</p>}
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "research"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">P1-C · XAU REGIME / SESSION ATTRIBUTION</p><h2>Où l'edge structural displacement apparaît</h2></div>
+          <p>Partitions fixes, validation et holdout séparés, aucune autorité ou sélection automatique.</p>
+        </div>
+        {regimeSessionAttribution ? <>
+          <div className="opportunity-summary">
+            <span>TARGET <strong>{regimeSessionAttribution.target_r.toFixed(1)}R</strong></span>
+            <span>VALIDATION N <strong>{regimeSessionAttribution.validation_trades}</strong></span>
+            <span>HOLDOUT N <strong>{regimeSessionAttribution.holdout_trades}</strong></span>
+            <span>CAPITAL <strong>{regimeSessionAttribution.capital_eur.toFixed(2)} €</strong></span>
+            <span>AUTHORITY EFFECT <strong>{regimeSessionAttribution.authority_effect ? "YES" : "NO"}</strong></span>
+          </div>
+          <h3>Sessions fixes</h3>
+          <div className="opportunity-table">
+            <div className="opportunity-row opportunity-head"><span>Window / session</span><span>N</span><span>W/L</span><span>Total R</span><span>Exp R</span><span>PF</span><span>DD</span><span>Cost R</span></div>
+            {regimeSessionAttribution.session_buckets.map((row) => <div className="opportunity-row" key={`${row.window}:session:${row.key}`}><strong>{row.window.toUpperCase()} · {row.key.toUpperCase()}</strong><span>{row.trades}</span><span>{row.wins}/{row.losses}</span><span>{row.total_r.toFixed(2)}</span><span>{row.expectancy_r?.toFixed(3) ?? "—"}</span><span>{row.profit_factor?.toFixed(2) ?? "—"}</span><span>{row.max_drawdown_r.toFixed(2)}</span><span>{row.average_execution_cost_r?.toFixed(3) ?? "—"}</span></div>)}
+          </div>
+          <h3>Régimes fixes</h3>
+          <div className="opportunity-table">
+            <div className="opportunity-row opportunity-head"><span>Window / regime</span><span>N</span><span>W/L</span><span>Total R</span><span>Exp R</span><span>PF</span><span>DD</span><span>Cost R</span></div>
+            {regimeSessionAttribution.regime_buckets.map((row) => <div className="opportunity-row" key={`${row.window}:regime:${row.key}`}><strong>{row.window.toUpperCase()} · {row.key.replaceAll("_", " ").toUpperCase()}</strong><span>{row.trades}</span><span>{row.wins}/{row.losses}</span><span>{row.total_r.toFixed(2)}</span><span>{row.expectancy_r?.toFixed(3) ?? "—"}</span><span>{row.profit_factor?.toFixed(2) ?? "—"}</span><span>{row.max_drawdown_r.toFixed(2)}</span><span>{row.average_execution_cost_r?.toFixed(3) ?? "—"}</span></div>)}
+          </div>
+          {regimeSessionAttribution.limitations.map((item) => <small key={item}>• {item}</small>)}
+        </> : <p>Attribution régime/session indisponible.</p>}
       </section>
 
       <section className="position-manager-panel" hidden={activeView !== "research"}>

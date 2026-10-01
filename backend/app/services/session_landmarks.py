@@ -20,6 +20,20 @@ _LANDMARK_ORDER = (
 )
 
 
+def active_session_at(at: datetime) -> str:
+    if at.tzinfo is None or at.utcoffset() is None:
+        raise ValueError("at must be timezone-aware")
+    local_at = at.astimezone(_server_timezone())
+    hour = local_at.time()
+    if time(ASIA_RANGE_START_HOUR) <= hour < time(ASIA_RANGE_END_HOUR):
+        return "asia"
+    if _LONDON_START <= hour < _LONDON_END:
+        return "london"
+    if _US_START <= hour < _US_END:
+        return "us"
+    return "transition"
+
+
 def _closed_before_signal(bars: Sequence[MarketBar], signal_at: datetime) -> list[MarketBar]:
     return [
         bar for bar in bars
@@ -64,15 +78,7 @@ def build_session_landmark_context(
     lh, ll = _levels(london)
     uh, ul = _levels(us)
 
-    hour = local_at.time()
-    if time(ASIA_RANGE_START_HOUR) <= hour < time(ASIA_RANGE_END_HOUR):
-        active = "asia"
-    elif _LONDON_START <= hour < _LONDON_END:
-        active = "london"
-    elif _US_START <= hour < _US_END:
-        active = "us"
-    else:
-        active = "transition"
+    active = active_session_at(signal_at)
     active_bars = {"asia": asia, "london": london, "us": us}.get(active, [])
     active_high, active_low = _levels(active_bars)
     active_range = (

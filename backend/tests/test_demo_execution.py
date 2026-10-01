@@ -322,7 +322,7 @@ def test_demo_submit_ignores_positions_owned_by_other_mt4_systems(
     assert command.strategy_id == STRATEGY
 
 
-def test_demo_submit_refuses_when_daily_loss_budget_is_exhausted(
+def test_demo_submit_does_not_use_daily_loss_budget_as_authority(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -332,14 +332,15 @@ def test_demo_submit_refuses_when_daily_loss_budget_is_exhausted(
     current = overview()
     current.risk.remaining_daily_loss_budget_eur = 0
 
-    with pytest.raises(ValueError, match="daily loss budget is exhausted"):
-        submit_selected_demo_order(
-            files_dir=tmp_path,
-            overview=current,
-            macro=clear_macro(),
-            proposal=proposal(),
-            now=NOW,
-        )
+    command = submit_selected_demo_order(
+        files_dir=tmp_path,
+        overview=current,
+        macro=clear_macro(),
+        proposal=proposal(),
+        now=NOW,
+    )
+
+    assert command.strategy_id == STRATEGY
 
 
 def test_external_broker_positions_do_not_block_magic_scoped_demo_entry(

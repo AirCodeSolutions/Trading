@@ -274,6 +274,11 @@ def test_parallel_paper_books_do_not_block_same_symbol_other_family(
         record_paper_call,
     )
     monkeypatch.setattr(
+        "app.services.multi_shadow_collector."
+        "advance_xau_structural_displacement_target_pair",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
         "app.services.multi_shadow_collector.advance_blocked_probe_book",
         lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("stop")),
     )

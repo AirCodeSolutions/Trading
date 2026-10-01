@@ -26,6 +26,7 @@ from app.domain.champion_challengers import (
 )
 from app.domain.daily_report import DailyTradingReport
 from app.domain.demo_execution import DemoCloseCommand, DemoExecutionStatus, DemoOrderCommand
+from app.domain.economic_contract import PairedEconomicContractReport
 from app.domain.economic_feasibility import EconomicFeasibilityReport
 from app.domain.economic_validation_v2 import EconomicValidationReport
 from app.domain.entry_zone import ExecutableEntryZoneV2
@@ -137,6 +138,9 @@ from app.services.opportunity_engine_v2 import (
 )
 from app.services.opportunity_funnel import build_opportunity_funnel
 from app.services.opportunity_matrix import run_mt4_portfolio_research
+from app.services.paired_economic_contracts import (
+    build_xau_structural_displacement_target_report,
+)
 from app.services.performance_attribution import build_performance_attribution_report
 from app.services.portfolio_allocator import build_portfolio_opportunity_allocation
 from app.services.portfolio_overview import build_trading_overview
@@ -618,6 +622,16 @@ def champion_challengers_v2_evaluate(request: ChampionChallengerResearchRequest)
         return evaluate_asset_specialization(_mt4_files_dir(), AssetSpecializationResearchRequest(split=request.split, symbols=request.symbols))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get(
+    f"{settings.api_prefix}/research/paired-economic-contracts/xau-structural-displacement",
+    response_model=PairedEconomicContractReport,
+)
+def xau_structural_displacement_paired_contracts() -> PairedEconomicContractReport:
+    return build_xau_structural_displacement_target_report(
+        settings.shadow_ledger_dir
+    )
 
 
 @app.get(

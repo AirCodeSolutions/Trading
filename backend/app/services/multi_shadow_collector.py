@@ -14,6 +14,9 @@ from app.services.macro_gate import (
 from app.services.market_universe import build_market_universe
 from app.services.mt4_market_data import load_closed_market_bars
 from app.services.mt4_specs import get_mt4_symbol_spec
+from app.services.paired_economic_contracts import (
+    advance_xau_structural_displacement_target_pair,
+)
 from app.services.probe_qualification import (
     load_research_probe_qualification,
     paper_entry_allowed_with_probe_evidence,
@@ -147,6 +150,19 @@ def collect_all_shadow_once(
                     )
                 ),
             )
+            if (
+                asset.symbol.upper() == "XAUUSD"
+                and mechanism
+                == OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE
+            ):
+                advance_xau_structural_displacement_target_pair(
+                    diagnostic=diagnostic,
+                    spec=spec,
+                    bars_m5=bars_m5,
+                    runtime_dir=runtime_dir,
+                    evaluated_at=evaluated_at,
+                    allow_new_entries=allow_paper_entries,
+                )
             unqualified_state_path = (
                 runtime_dir / f"{prefix}_unqualified_probe_state.json"
             )

@@ -387,3 +387,44 @@ def test_conditional_exit_challenger_endpoint_is_research_only(monkeypatch, tmp_
     assert payload["validation"]["extension_qualified"] == 2
     assert payload["authority_effect"] is False
     assert payload["human_review_required"] is True
+
+
+def test_landmark_exit_challenger_endpoint_is_research_only(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("app.main._mt4_files_dir", lambda: tmp_path)
+
+    from datetime import UTC, datetime
+
+    from app.domain.family_exit_challenger import (
+        ExitChallengerWindowMetrics,
+        FamilyExitChallengerReport,
+    )
+
+    metrics = ExitChallengerWindowMetrics(
+        paired_trades=14, champion_total_r=9.2, challenger_total_r=7.2,
+        delta_total_r=-2.0, champion_expectancy_r=0.65, challenger_expectancy_r=0.51,
+        champion_profit_factor=3.3, challenger_profit_factor=2.8,
+        champion_max_drawdown_r=2.0, challenger_max_drawdown_r=2.0,
+        champion_targets=7, challenger_targets=2, champion_stops=4, challenger_stops=4,
+        champion_timeouts=3, challenger_timeouts=8, extension_qualified=11,
+    )
+    report = FamilyExitChallengerReport(
+        generated_at=datetime(2026, 10, 1, 12, 0, tzinfo=UTC),
+        symbol="XAUUSD", strategy_id="XAUUSD:structural_displacement_sequence",
+        hypothesis_id="xau_sd_target_nearest_frozen_landmark_beyond_1_5r_v1",
+        change_axis="frozen_landmark_target", champion_target_r=1.5, challenger_target_r=1.5,
+        max_holding_bars=12, capital_eur=866318.79, capital_source="broker_equity",
+        validation=metrics, holdout=metrics, authority_effect=False, human_review_required=True,
+        qualification_rule="nearest frozen side-aligned landmark beyond 1.5R",
+    )
+    monkeypatch.setattr(
+        "app.main.build_xau_structural_displacement_landmark_extension",
+        lambda *args, **kwargs: report,
+    )
+    response = client.get(
+        "/api/v1/research/xau-structural-displacement/landmark-exit-challenger"
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["holdout"]["extension_qualified"] == 11
+    assert payload["authority_effect"] is False
+    assert payload["human_review_required"] is True

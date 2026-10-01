@@ -439,3 +439,14 @@ closes were directional. Validation delta -1.954R; holdout delta -1.500R. Do
 not deploy this rule and do not retry it. Canonical XAU structural displacement
 remains fixed 1.5R. Next P2-B work, if continued, must test one different causal
 feature only. Runtime drain remains operator-blocked ON from #205 deployment.
+
+## 2026-10-01 — P2-B closed after hypothesis #3
+
+Hypothesis `xau_sd_target_nearest_frozen_landmark_beyond_1_5r_v1` is complete
+and rejected in Research. Validation delta -0.208R; holdout delta -1.979R. It
+qualified too broadly and converted target winners into timeouts. Together with
+failed fixed-2R and three-directional-M5 extensions, P2-B is COMPLETE with no
+promoted exit challenger. Canonical XAU structural displacement remains fixed
+1.5R. Next PnL work must focus on selection/admission quality rather than further
+target stretching. Runtime drain remains ON from the #205 deployment gate until
+an operator-safe OFF action is available.

@@ -163,7 +163,7 @@ admission, PAPER or broker authority.
 
 ### P2-B — Family-specific exit challengers
 
-Status: ACTIVE — hypothesis 1 REJECTED, champion unchanged
+Status: COMPLETE — three exit-extension hypotheses REJECTED, champion unchanged
 
 Only create an exit challenger when measured giveback/no-follow-through supports
 a specific hypothesis. No generic Position Manager rollout.
@@ -202,10 +202,25 @@ touch. It qualified 4 validation and 3 holdout extensions, but degraded total R
 by -1.954R and -1.500R respectively. Simple M5 target-event momentum is therefore
 not a sufficient extension selector. Champion remains fixed 1.5R.
 
+Hypothesis 3 is complete and rejected:
+`xau_sd_target_nearest_frozen_landmark_beyond_1_5r_v1` replaces 1.5R only when
+a side-aligned session landmark already frozen at entry lies strictly beyond
+the champion target. The nearest qualifying landmark is used exactly, without
+a tuned distance threshold. It qualified 21/25 validation trades and 11/14
+holdout trades, but degraded total R by -0.208R and -1.979R respectively.
+Targets fell from 9 to 2 in validation and 7 to 2 in holdout while timeouts rose
+from 11 to 18 and 3 to 8. Landmark extension is therefore too permissive.
+
+P2-B is closed. Three independent target-extension variants failed both frozen
+windows. The canonical XAU structural-displacement exit remains fixed 1.5R.
+Further PnL work should move away from target stretching and toward entry/selection
+quality or prospectively qualified authority, one causal axis at a time.
+
 Current evidence also still rejects Position Manager V2 as a wholesale
 replacement: validation and full-history performance degrade despite a holdout
-improvement. Any next P2-B hypothesis must be conditional and causal, and must
-be tested alone against the unchanged 1.5R champion.
+improvement. P2-B is therefore complete with no promoted challenger. The next
+economic-acceleration work must target selection/admission quality rather than
+another exit-extension variant.
 
 ## Invariants
 

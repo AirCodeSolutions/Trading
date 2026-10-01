@@ -2443,3 +2443,14 @@ by 1.954R in validation and 1.500R in holdout, so it is rejected. This confirms
 that simple M5 close momentum at the target is not sufficient to identify the
 true extenders. The negative result is retained in Research and must not be
 promoted to PAPER or broker authority.
+
+## 2026-10-01 — P2-B landmark extension rejected; exit work closed
+
+The nearest frozen side-aligned session landmark beyond 1.5R was tested as the
+only changed exit axis for XAU structural displacement. Landmarks are causal:
+previous-day and session-so-far levels are computed only from M5 bars fully
+closed before entry. Validation changed by -0.208R and holdout by -1.979R.
+The rule qualified 21/25 and 11/14 trades respectively, causing target counts to
+fall sharply and timeouts to rise. It is rejected and cannot alter PAPER or
+broker authority. After fixed 2R, directional conditional 2R and landmark target
+all failed, P2-B is closed and the 1.5R champion remains unchanged.

@@ -1689,6 +1689,7 @@ export default function App() {
   const [executionCostStress, setExecutionCostStress] = useState<ExecutionCostStressReport | null>(null);
   const [familyExitChallenger, setFamilyExitChallenger] = useState<FamilyExitChallengerReport | null>(null);
   const [conditionalExitChallenger, setConditionalExitChallenger] = useState<FamilyExitChallengerReport | null>(null);
+  const [landmarkExitChallenger, setLandmarkExitChallenger] = useState<FamilyExitChallengerReport | null>(null);
   const positionManagerAggregates = useMemo(
     () => aggregatePositionManagerComparisons(positionManagerResearch?.comparisons),
     [positionManagerResearch?.comparisons],
@@ -1932,6 +1933,7 @@ export default function App() {
           executionCostStressResponse,
           familyExitChallengerResponse,
           conditionalExitChallengerResponse,
+          landmarkExitChallengerResponse,
           blockedProbesResponse,
           opportunityFunnelResponse,
           stopGeometryResponse,
@@ -1961,6 +1963,7 @@ export default function App() {
           () => fetch("/api/v1/research/xau-structural-displacement/execution-cost-stress"),
           () => fetch("/api/v1/research/xau-structural-displacement/family-exit-challenger"),
           () => fetch("/api/v1/research/xau-structural-displacement/conditional-exit-challenger"),
+          () => fetch("/api/v1/research/xau-structural-displacement/landmark-exit-challenger"),
           () => fetch("/api/v1/shadow/blocked-probes"),
           () => fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           () => fetch("/api/v1/research/stop-geometry?hours=168"),
@@ -1991,6 +1994,7 @@ export default function App() {
         setExecutionCostStress(executionCostStressResponse.ok ? await executionCostStressResponse.json() : null);
         setFamilyExitChallenger(familyExitChallengerResponse.ok ? await familyExitChallengerResponse.json() : null);
         setConditionalExitChallenger(conditionalExitChallengerResponse.ok ? await conditionalExitChallengerResponse.json() : null);
+        setLandmarkExitChallenger(landmarkExitChallengerResponse.ok ? await landmarkExitChallengerResponse.json() : null);
         setBlockedProbes(blockedProbesResponse.ok ? await blockedProbesResponse.json() : []);
         setOpportunityFunnel(opportunityFunnelResponse.ok ? await opportunityFunnelResponse.json() : null);
         setStopGeometryResearch(stopGeometryResponse.ok ? await stopGeometryResponse.json() : null);
@@ -5253,6 +5257,32 @@ export default function App() {
           </div>
           {conditionalExitChallenger.limitations.map((item) => <small key={item}>• {item}</small>)}
         </> : <p>Challenger conditionnel P2-B indisponible.</p>}
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "research"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">P2-B · FROZEN LANDMARK EXIT · READ ONLY</p><h2>XAU Structural Displacement · nearest landmark beyond 1.5R</h2></div>
+          <p>Le landmark est figé à l'entrée à partir de barres déjà closes. S'il n'existe pas au-delà de 1.5R, le champion reste inchangé.</p>
+        </div>
+        {landmarkExitChallenger ? <>
+          <div className="opportunity-summary">
+            <span>HYPOTHESIS <strong>{landmarkExitChallenger.hypothesis_id}</strong></span>
+            <span>VAL QUALIFIED <strong>{landmarkExitChallenger.validation.extension_qualified ?? 0}</strong></span>
+            <span>VAL Δ <strong>{landmarkExitChallenger.validation.delta_total_r.toFixed(3)}R</strong></span>
+            <span>HOLD QUALIFIED <strong>{landmarkExitChallenger.holdout.extension_qualified ?? 0}</strong></span>
+            <span>HOLD Δ <strong>{landmarkExitChallenger.holdout.delta_total_r.toFixed(3)}R</strong></span>
+            <span>AUTHORITY EFFECT <strong>{landmarkExitChallenger.authority_effect ? "YES" : "NO"}</strong></span>
+          </div>
+          <p>{landmarkExitChallenger.qualification_rule ?? "—"}</p>
+          <div className="opportunity-table">
+            <div className="opportunity-row opportunity-head"><span>Window</span><span>N</span><span>Qualified</span><span>1.5R total / exp / PF</span><span>Landmark total / exp / PF</span><span>ΔR</span><span>DD 1.5 / landmark</span><span>Targets / timeouts landmark</span></div>
+            {[['VALIDATION', landmarkExitChallenger.validation], ['HOLDOUT', landmarkExitChallenger.holdout]].map(([label, row]) => {
+              const metrics = row as FamilyExitChallengerReport['validation'];
+              return <div className="opportunity-row" key={label as string}><strong>{label as string}</strong><span>{metrics.paired_trades}</span><span>{metrics.extension_qualified ?? 0}</span><span>{metrics.champion_total_r.toFixed(3)} / {metrics.champion_expectancy_r.toFixed(3)} / {metrics.champion_profit_factor.toFixed(2)}</span><span>{metrics.challenger_total_r.toFixed(3)} / {metrics.challenger_expectancy_r.toFixed(3)} / {metrics.challenger_profit_factor.toFixed(2)}</span><span>{metrics.delta_total_r.toFixed(3)}R</span><span>{metrics.champion_max_drawdown_r.toFixed(2)} / {metrics.challenger_max_drawdown_r.toFixed(2)}</span><span>{metrics.challenger_targets} / {metrics.challenger_timeouts}</span></div>;
+            })}
+          </div>
+          {landmarkExitChallenger.limitations.map((item) => <small key={item}>• {item}</small>)}
+        </> : <p>Challenger landmark P2-B indisponible.</p>}
       </section>
 
       <section className="position-manager-panel" hidden={activeView !== "research"}>

@@ -2411,3 +2411,25 @@ positive in both independent windows under all three pre-registered cost
 scenarios. This is robustness evidence only. authority_effect=false and no
 admission, PAPER, portfolio, broker, risk, sizing, spread guard or lot-cap rule
 changes.
+
+
+## 2026-10-01 — P2-B exit challenger #1 rejected
+
+Family: XAUUSD structural displacement, canonical target 1.5R.
+
+Hypothesis tested:
+- once a fully closed M5 bar has achieved at least +0.75R favorable excursion,
+  move the stop to breakeven from the next M5 bar;
+- target remains 1.5R;
+- structural stop, entry, sizing and 12-M5 horizon remain unchanged;
+- stop is never widened.
+
+Result versus the canonical fixed-exit baseline:
+- validation: baseline +10.571R vs challenger +7.664R, delta -2.907R;
+- holdout: unchanged at +9.248R, delta 0.000R;
+- full history: baseline +27.668R vs challenger +17.199R, delta -10.469R;
+- validation max drawdown worsened from 1.743R to 2.443R.
+
+Conclusion: REJECTED. The rule protects some losing trades but cuts too many
+future winners in validation and degrades full-history economics. No production
+code, PAPER authority or broker policy is changed.

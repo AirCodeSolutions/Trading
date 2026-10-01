@@ -154,7 +154,7 @@ from app.services.research_execution_model import (
     apply_research_execution_model,
     load_research_execution_model,
 )
-from app.services.runtime_admission_registry import save_research_admissions
+from app.services.runtime_admission_refresh import refresh_runtime_admissions
 from app.services.runtime_capital import resolve_demo_sizing_capital
 from app.services.runtime_control import (
     DRAIN_FILE,
@@ -1051,19 +1051,28 @@ def mt4_portfolio_research(
     request: PortfolioResearchRequest,
 ) -> PortfolioResearchResult:
     try:
-        result = run_mt4_portfolio_research(
+        return run_mt4_portfolio_research(
             _mt4_files_dir(),
             request,
             macro_events_path=settings.macro_events_path,
             research_execution_model_path=settings.research_execution_model_path,
         )
-        save_research_admissions(
-            settings.shadow_ledger_dir / "strategy_admissions.json",
-            result,
-        )
-        return result
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post(
+    f"{settings.api_prefix}/research/runtime-admissions/refresh",
+    response_model=PortfolioResearchResult,
+)
+def runtime_admissions_refresh() -> PortfolioResearchResult:
+    try:
+        return refresh_runtime_admissions(
+            _mt4_files_dir(),
+            settings.shadow_ledger_dir,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.get(

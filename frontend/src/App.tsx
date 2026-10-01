@@ -207,6 +207,15 @@ type MarketStateV2 = {
   m1: { available: boolean; pressure: number | null };
 };
 
+type EntryZoneV2 = {
+  symbol: string; mechanism: string; side: "buy" | "sell" | null;
+  opportunity_state: string; state: string; evaluated_at: string;
+  current_entry: number | null; structural_stop: number | null; current_stop_distance: number | null;
+  minimum_stop_distance_for_spread: number | null; maximum_stop_distance_for_min_lot_budget: number | null;
+  spread_to_stop: number | null; post_trigger_chase_atr: number | null; room_to_landmark_r: number | null;
+  favorable_landmark_type: string | null; reason: string; sizing: { lots: number | null; capital_source: string; sizing_reason: string | null } | null;
+};
+
 type PaperTrade = {
   trade_id: string;
   side: "buy" | "sell";
@@ -1517,6 +1526,7 @@ export default function App() {
   const [universe, setUniverse] = useState<MarketUniverseAsset[]>([]);
   const [marketBrief, setMarketBrief] = useState<DailyMarketBrief | null>(null);
   const [marketStates, setMarketStates] = useState<MarketStateV2[]>([]);
+  const [entryZones, setEntryZones] = useState<EntryZoneV2[]>([]);
   const [marketQuality, setMarketQuality] = useState<MarketQualitySnapshot[]>([]);
   const [overview, setOverview] = useState<TradingOverview | null>(null);
   const [costs, setCosts] = useState<CostSummary>({});
@@ -1551,6 +1561,7 @@ export default function App() {
           universeResponse,
           marketBriefResponse,
           marketStateResponse,
+          entryZonesResponse,
           qualityResponse,
           overviewResponse,
           costsResponse,
@@ -1585,6 +1596,7 @@ export default function App() {
           fetch("/api/v1/market/mt4/universe"),
           fetch("/api/v1/research/market-brief"),
           fetch("/api/v1/market-state/v2"),
+          fetch("/api/v1/entry-zones/v2"),
           fetch("/api/v1/market/mt4/quality"),
           fetch("/api/v1/portfolio/overview"),
           fetch("/api/v1/market/mt4/costs"),
@@ -1623,6 +1635,7 @@ export default function App() {
         const universePayload = universeResponse.ok ? await universeResponse.json() : [];
         const marketBriefPayload = marketBriefResponse.ok ? await marketBriefResponse.json() : null;
         const marketStatePayload = marketStateResponse.ok ? await marketStateResponse.json() : [];
+        const entryZonesPayload = entryZonesResponse.ok ? await entryZonesResponse.json() : [];
         const qualityPayload = qualityResponse.ok ? await qualityResponse.json() : [];
         const overviewPayload = overviewResponse.ok ? await overviewResponse.json() : null;
         const costsPayload = costsResponse.ok ? await costsResponse.json() : {};
@@ -1698,6 +1711,7 @@ export default function App() {
         setUniverse(universePayload);
         setMarketBrief(marketBriefPayload);
         setMarketStates(marketStatePayload);
+        setEntryZones(entryZonesPayload);
         setMarketQuality(qualityPayload);
         setOverview(overviewPayload);
         setCosts(costsPayload);
@@ -2301,6 +2315,20 @@ export default function App() {
                 <span>Spread/ATR5 <b>{item.spread_atr_m5?.toFixed(3) ?? "—"}</b></span>
               </div>
               <small>Session {item.session_context?.active_session ?? "—"} · Landmark {item.session_context?.nearest_landmark_type ?? "—"} · Macro {!item.macro.available ? "unavailable" : item.macro.blocked ? "BLOCK" : "clear"} · Quote {item.quote.status} · M1 {item.m1.available ? "available" : "unavailable"}</small>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="market-state-panel" hidden={activeView !== "trading"}>
+        <div className="section-heading"><div><p className="eyebrow">ENTRY ZONE V2 · DESCRIPTIVE</p><h2>Executable Entry Zone</h2></div><p>Le trigger et son économie courante sont décrits ; aucun ordre n’est créé.</p></div>
+        <div className="market-state-grid">
+          {entryZones.map((item) => (
+            <article className="market-state-card" key={`${item.symbol}:${item.mechanism}`}>
+              <div className="market-state-card-heading"><strong>{item.symbol}</strong><span>{item.state.replaceAll("_", " ").toUpperCase()}</span></div>
+              <div className="market-state-primary"><b>{item.mechanism.replaceAll("_", " ")}</b><span>{item.side?.toUpperCase() ?? "—"}</span></div>
+              <div className="market-state-metrics"><span>Entry <b>{item.current_entry?.toFixed(4) ?? "—"}</b></span><span>Stop <b>{item.current_stop_distance?.toFixed(4) ?? "—"}</b></span><span>Spread/stop <b>{item.spread_to_stop == null ? "—" : `${(item.spread_to_stop * 100).toFixed(1)} %`}</b></span><span>Lots <b>{item.sizing?.lots ?? "—"}</b></span><span>Chase ATR <b>{item.post_trigger_chase_atr?.toFixed(2) ?? "—"}</b></span><span>Room R <b>{item.room_to_landmark_r?.toFixed(2) ?? "—"}</b></span></div>
+              <small>{item.reason}</small>
             </article>
           ))}
         </div>

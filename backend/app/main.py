@@ -18,6 +18,7 @@ from app.domain.broker import (
 from app.domain.daily_report import DailyTradingReport
 from app.domain.demo_execution import DemoCloseCommand, DemoExecutionStatus, DemoOrderCommand
 from app.domain.economic_feasibility import EconomicFeasibilityReport
+from app.domain.entry_zone import ExecutableEntryZoneV2
 from app.domain.execution_audit import ExecutionQualitySummary
 from app.domain.live_market import LiveMarketQuote
 from app.domain.macro import MacroGateStatus
@@ -79,6 +80,7 @@ from app.services.economic_feasibility import (
     ECONOMIC_FEASIBILITY_FILE,
     load_economic_feasibility_report,
 )
+from app.services.entry_zone import build_entry_zone
 from app.services.execution_audit import AUDIT_FILE, build_execution_quality_summary
 from app.services.execution_cost_history import summarize_execution_costs
 from app.services.live_market_quality import build_live_market_quality
@@ -454,6 +456,28 @@ def opportunity_states_v2() -> list[OpportunityStateSnapshot]:
                 )
             )
     return states
+
+
+@app.get(
+    f"{settings.api_prefix}/entry-zones/v2",
+    response_model=list[ExecutableEntryZoneV2],
+)
+def entry_zones_v2() -> list[ExecutableEntryZoneV2]:
+    evaluated_at = datetime.now(tz=_server_timezone())
+    files_dir = _mt4_files_dir()
+    quotes = {quote.symbol: quote for quote in read_live_market_quotes(files_dir, evaluated_at, symbols=settings.session_watch_symbols)}
+    specs = list_mt4_symbol_specs(files_dir)
+    capital = resolve_demo_sizing_capital(files_dir)
+    macro = build_market_state_macro_context(settings.macro_events_path, evaluated_at)
+    result: list[ExecutableEntryZoneV2] = []
+    for symbol in settings.session_watch_symbols:
+        bars_m5 = load_closed_market_bars(files_dir, symbol, Timeframe.M5, evaluated_at)
+        bars_m15 = load_closed_market_bars(files_dir, symbol, Timeframe.M15, evaluated_at)
+        state = build_market_state(symbol, evaluated_at, bars_m5, bars_m15, quote=quotes.get(symbol), macro=macro)
+        for mechanism in REPRESENTATIVE_MECHANISMS:
+            opportunity = build_opportunity_state(symbol=symbol, bars_m5=bars_m5, bars_m15=bars_m15, mechanism=mechanism, evaluated_at=evaluated_at)
+            result.append(build_entry_zone(snapshot=opportunity, market_state=state, bars_m5=bars_m5, bars_m15=bars_m15, quote=quotes.get(symbol), spec=specs.get(symbol), capital=capital))
+    return result
 
 
 @app.get(

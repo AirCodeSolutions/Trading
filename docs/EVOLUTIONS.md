@@ -2066,3 +2066,11 @@ de trading ; les règles V1 et les garde-fous broker restent inchangés.
 La correction #180 rend explicites la provenance/fraîcheur des quotes, les
 timestamps de clôture M5/M15, l'indisponibilité macro et le comportement neutre
 des landmarks. Le contexte macro est composé une seule fois par réponse API.
+
+## Étape 3 — Executable Entry Zone V2
+
+Ajout d'un endpoint read-only et d'une vue descriptive séparée pour distinguer
+un trigger valide d'un prix encore économiquement exploitable. Les stops sont
+résolus avec les règles shadow existantes et `size_position()` ; le garde
+spread/stop, le risque, le plafond 5 lots et la politique de marge restent
+inchangés. Aucun champ ou chemin de commande broker n'est exposé.

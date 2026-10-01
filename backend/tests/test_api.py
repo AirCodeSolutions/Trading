@@ -47,3 +47,17 @@ def test_ingest_and_read_m5_bar() -> None:
     latest = client.get("/api/v1/market/XAUUSD/M5/latest")
     assert latest.status_code == 200
     assert latest.json()["close"] == 3602.0
+
+
+def test_authority_regret_endpoint_is_read_only() -> None:
+    response = client.get("/api/v1/research/authority-regret?hours=168")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["broker_authority_changed"] is False
+    assert payload["resolved"] >= 0
+    assert payload["net_authority_regret_r"] == 0.0
+
+
+def test_authority_regret_endpoint_rejects_invalid_window() -> None:
+    response = client.get("/api/v1/research/authority-regret?hours=169")
+    assert response.status_code == 422

@@ -6,6 +6,7 @@ from app.domain.market import Timeframe
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.shadow import ShadowCollectionResult
 from app.services.admission import paper_entry_allowed
+from app.services.authority_regret import advance_authority_regret_from_paper
 from app.services.blocked_probe import advance_blocked_probe_book
 from app.services.macro_gate import (
     classify_macro_signal_context,
@@ -146,6 +147,19 @@ def collect_all_shadow_once(
                         assess_prospective(strategy_id, summary)
                     )
                 ),
+            )
+            advance_authority_regret_from_paper(
+                diagnostic=diagnostic,
+                spec=spec,
+                bars_m5=bars_m5,
+                runtime_dir=runtime_dir,
+                prefix=prefix,
+                strategy_id=strategy_id,
+                admission=admission,
+                paper_summary=paper,
+                effective_paper_entry_allowed=effective_paper_entry_allowed,
+                evaluated_at=evaluated_at,
+                allow_new_entries=allow_paper_entries,
             )
             unqualified_state_path = (
                 runtime_dir / f"{prefix}_unqualified_probe_state.json"

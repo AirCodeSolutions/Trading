@@ -61,6 +61,7 @@ from app.domain.precursor_forward_research import PrecursorForwardResearchReport
 from app.domain.probe_review import ProbeReviewContract, ProbeReviewPack, ProbeReviewRequest
 from app.domain.qualification_history import QualificationHistoryEvent
 from app.domain.regime import RegimeSnapshot
+from app.domain.runtime_admission_refresh import RuntimeAdmissionRefreshReport
 from app.domain.runtime_control import RuntimeDrainRequest, RuntimeDrainState
 from app.domain.session import SessionPreflight
 from app.domain.session_landmark_research import SessionLandmarkResearchReport
@@ -160,7 +161,10 @@ from app.services.research_execution_model import (
     apply_research_execution_model,
     load_research_execution_model,
 )
-from app.services.runtime_admission_refresh import refresh_runtime_admissions
+from app.services.runtime_admission_refresh import (
+    preview_runtime_admissions,
+    refresh_runtime_admissions,
+)
 from app.services.runtime_capital import resolve_demo_sizing_capital
 from app.services.runtime_control import (
     DRAIN_FILE,
@@ -1093,14 +1097,30 @@ def mt4_portfolio_research(
 
 
 @app.post(
-    f"{settings.api_prefix}/research/runtime-admissions/refresh",
-    response_model=PortfolioResearchResult,
+    f"{settings.api_prefix}/research/runtime-admissions/preview",
+    response_model=RuntimeAdmissionRefreshReport,
 )
-def runtime_admissions_refresh() -> PortfolioResearchResult:
+def runtime_admissions_preview() -> RuntimeAdmissionRefreshReport:
+    try:
+        return preview_runtime_admissions(
+            _mt4_files_dir(),
+            settings.shadow_ledger_dir,
+            now=datetime.now(tz=_server_timezone()),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post(
+    f"{settings.api_prefix}/research/runtime-admissions/refresh",
+    response_model=RuntimeAdmissionRefreshReport,
+)
+def runtime_admissions_refresh() -> RuntimeAdmissionRefreshReport:
     try:
         return refresh_runtime_admissions(
             _mt4_files_dir(),
             settings.shadow_ledger_dir,
+            now=datetime.now(tz=_server_timezone()),
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

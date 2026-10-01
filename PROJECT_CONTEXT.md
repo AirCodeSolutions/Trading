@@ -388,3 +388,13 @@ Critical interpretation: only resolved unqualified executable probes count
 toward winners-missed / losses-avoided. Blocked probes remain a separate guard
 counterfactual population. Broker-net costs are not fabricated when exact fills
 are unavailable.
+
+
+## 2026-10-01 — P1-B admission refresh control
+
+P1-B replaces the previous immediate runtime-admission refresh surface with a
+preview/apply contract. Preview is read-only. Apply is permitted only with drain
+ON, Trading-New BOOK_FLAT and complete research coverage for active assets.
+
+The heavy replay remains on-demand and outside the shadow-worker heartbeat.
+Dashboard users can preview the diff but cannot apply it from the UI.

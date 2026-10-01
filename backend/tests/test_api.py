@@ -1,3 +1,5 @@
+from datetime import UTC
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -76,3 +78,78 @@ def test_authority_regret_endpoint_is_descriptive() -> None:
 def test_authority_regret_endpoint_rejects_invalid_window() -> None:
     response = client.get("/api/v1/research/authority-regret?hours=0")
     assert response.status_code == 422
+
+
+def _runtime_admission_report():
+    from datetime import datetime
+
+    from app.domain.runtime_admission_refresh import RuntimeAdmissionRefreshReport
+
+    now = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
+    return RuntimeAdmissionRefreshReport(
+        generated_at=now,
+        applied=False,
+        apply_allowed=True,
+        capital_eur=866312.61,
+        capital_source="broker_equity",
+        active_assets=["BTCUSD", "EURUSD", "GBPUSD", "XAUUSD", "XAGUSD"],
+        train_end=now,
+        validation_end=now,
+        evaluated_results=33,
+        drain_enabled=True,
+        book_flat=True,
+        paper_open_positions=0,
+        bridge_open_positions=0,
+        pending_open_command=False,
+        pending_close_command=False,
+        added=1,
+        removed=0,
+        changed=2,
+        unchanged=30,
+        registry_path="/tmp/strategy_admissions.json",
+        receipt_path="/tmp/runtime_admission_refresh_receipt.json",
+    )
+
+
+def test_runtime_admission_preview_endpoint(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr("app.main._mt4_files_dir", lambda: tmp_path)
+    monkeypatch.setattr(
+        "app.main.preview_runtime_admissions",
+        lambda *args, **kwargs: _runtime_admission_report(),
+    )
+    response = client.post("/api/v1/research/runtime-admissions/preview")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["applied"] is False
+    assert payload["apply_allowed"] is True
+    assert payload["changed"] == 2
+
+
+def test_runtime_admission_refresh_endpoint_returns_controlled_report(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    monkeypatch.setattr("app.main._mt4_files_dir", lambda: tmp_path)
+    report = _runtime_admission_report().model_copy(update={"applied": True})
+    monkeypatch.setattr(
+        "app.main.refresh_runtime_admissions",
+        lambda *args, **kwargs: report,
+    )
+    response = client.post("/api/v1/research/runtime-admissions/refresh")
+    assert response.status_code == 200
+    assert response.json()["applied"] is True
+
+
+def test_runtime_admission_refresh_endpoint_returns_409_when_guard_blocks(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    monkeypatch.setattr("app.main._mt4_files_dir", lambda: tmp_path)
+
+    def blocked(*args, **kwargs):
+        raise ValueError("runtime admission refresh apply blocked: runtime drain must be ON")
+
+    monkeypatch.setattr("app.main.refresh_runtime_admissions", blocked)
+    response = client.post("/api/v1/research/runtime-admissions/refresh")
+    assert response.status_code == 409
+    assert "drain must be ON" in response.json()["detail"]

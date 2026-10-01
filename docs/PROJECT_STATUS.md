@@ -3713,3 +3713,25 @@ P1-A is implemented and validation-green:
 - no automatic authority/admission change;
 - backend complete: 523 tests passed;
 - Ruff and frontend production build green.
+
+
+## 2026-10-01 — P1-B controlled admission refresh
+
+P1-B is implemented:
+- POST /api/v1/research/runtime-admissions/preview: actual-equity replay + diff,
+  no write;
+- POST /api/v1/research/runtime-admissions/refresh: same replay + guarded apply;
+- apply requires drain ON, BOOK_FLAT and zero skipped active symbols;
+- registry and receipt are atomic;
+- dashboard Research exposes PREVIEW only;
+- no worker polling and no broker authority change.
+
+Targeted service/API tests: 13 passed. Frontend production build: green.
+
+
+## 2026-10-01 — P1-B controlled admission refresh
+
+P1-B is implemented. The daily admission cron is PREVIEW-only and uses the
+same actual-MT4-DEMO-capital service as the API. Explicit APPLY is guarded by
+drain ON + Trading-New BOOK_FLAT + complete active-symbol replay, with atomic
+registry/receipt writes and an old/new admission diff.

@@ -88,18 +88,32 @@ this measurement PR.
 
 ### P1-B — Controlled admission refresh
 
-Status: QUEUED
+Status: IMPLEMENTED — VALIDATION IN PROGRESS
 
-Recompute runtime historical admissions from actual MT4 DEMO equity on a
-controlled cadence using the frozen split and existing thresholds.
-The refresh remains research/admission only and never promotes directly to
-broker authority.
+The refresh is now split into two explicit operations:
+- PREVIEW: rerun the frozen historical research with actual MT4 DEMO
+  equity/balance and show the exact old/new admission diff without writing;
+- APPLY: rerun the same contract and atomically replace the registry only when
+  drain is ON, Trading-New BOOK_FLAT is proven and no active symbol was skipped.
+
+The workflow preserves:
+- the frozen research split;
+- current risk fraction and five active assets;
+- actual DEMO equity/balance capital source;
+- atomic strategy_admissions.json replacement;
+- an atomic runtime_admission_refresh_receipt.json receipt;
+- no heartbeat or shadow-worker refresh loop;
+- no direct broker promotion.
+
+The dashboard exposes PREVIEW only. APPLY remains an operator/deployment action.
 
 Exit criteria:
 - deterministic output;
 - atomic registry replacement;
 - no heartbeat blocking;
-- explicit diff old/new admissions.
+- explicit diff old/new admissions;
+- fail-closed on drain OFF, non-flat book, unavailable DEMO capital or skipped
+  active symbols.
 
 ### P1-C — Regime/session attribution
 
@@ -146,3 +160,9 @@ Current evidence:
 - no merge/pull/restart while Trading-New deployment book is not flat.
 - drain ON -> BOOK_FLAT -> deploy -> postflight -> drain OFF.
 - research/PAPER changes never imply broker authority.
+
+
+P1-B operational cadence correction:
+- the installed 05:43 daily cron invokes the admission refresh script in PREVIEW mode only;
+- PREVIEW now reuses the same runtime service as the API, therefore sizing capital is actual MT4 DEMO equity first, DEMO balance fallback, never the research fallback;
+- APPLY requires the explicit `--apply` flag and still fails closed unless drain is ON, Trading-New BOOK_FLAT is proven and all active symbols were evaluated.

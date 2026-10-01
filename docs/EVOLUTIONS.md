@@ -2332,3 +2332,33 @@ guard blocks are explicitly excluded from executable authority regret.
 Persisted PAPER/probe result R is spread-aware. Broker slippage and commissions
 are not inferred for counterfactual observations; broker-net adjustment remains
 unavailable unless an exact fill can be paired. No authority rule changed.
+
+
+## 2026-10-01 — P1-B controlled actual-equity admission refresh
+
+Runtime admission refresh is now a controlled two-step research workflow.
+
+PREVIEW reruns the frozen admission matrix with actual MT4 DEMO equity/balance
+and returns the exact old/new registry diff without writing anything.
+
+APPLY is fail-closed unless drain is ON, Trading-New BOOK_FLAT is proven and no
+active symbol was skipped by the research replay. A successful apply preserves
+the existing atomic registry replacement and writes an atomic receipt containing
+the operational gate and admission diff.
+
+The shadow worker never runs this heavy refresh automatically. The dashboard
+offers PREVIEW only; there is no UI apply action and no automatic promotion to
+broker authority.
+
+
+## 2026-10-01 — P1-B cron alignment with runtime admission contract
+
+The scheduled research-admission job no longer performs an implicit standalone
+research refresh. It now calls the controlled runtime-admission service in
+PREVIEW mode by default, which resolves capital from actual MT4 DEMO
+equity/balance and reuses the frozen split.
+
+An APPLY requires the explicit `--apply` flag and remains fail-closed behind
+drain ON, Trading-New BOOK_FLAT and zero skipped active symbols. This removes
+the last path where a scheduled runtime admission calculation could silently
+fall back to research capital.

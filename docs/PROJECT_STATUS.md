@@ -3642,3 +3642,15 @@ REJECTED on independent holdout, while XAU structural displacement and
 structural persistence are positive but under-sampled SHADOW candidates. The
 runtime registry will be refreshed only under drain/book-flat deployment
 discipline.
+
+
+## 2026-10-01 — Parallel PAPER collection
+
+PAPER evidence is now independent by strategy family rather than globally
+serialized by symbol. This removes an artificial research bottleneck that could
+let the first mechanism in enum order monopolize XAU evidence.
+
+Broker execution remains unchanged: one Trading-New position per symbol,
+prospective SUPPORTS_DEMO required, LIVE disabled. The purpose is faster and less
+biased qualification of the five PAPER-eligible SHADOW candidates produced by
+the DEMO-equity admission refresh.

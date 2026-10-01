@@ -67,12 +67,12 @@ def _row(
 ) -> PaperStrategyRuntime:
     qualification = ProspectiveQualification(
         strategy_id=strategy_id,
-        state=ProspectiveQualificationState.COLLECTING,
-        closed_trades=0,
-        expectancy_r=0,
-        profit_factor=0,
-        max_drawdown_r=0,
-        reason="collecting",
+        state=ProspectiveQualificationState.SUPPORTS_DEMO,
+        closed_trades=20,
+        expectancy_r=0.2,
+        profit_factor=1.4,
+        max_drawdown_r=3,
+        reason="supported",
     )
     return PaperStrategyRuntime(
         strategy_id=strategy_id,

@@ -14,7 +14,10 @@ from app.domain.portfolio import (
 from app.services.admission import demo_collection_allowed, paper_entry_allowed
 from app.services.broker_account import read_broker_demo_snapshot
 from app.services.paper_registry import load_paper_registry
-from app.services.prospective_qualification import prospective_entry_allowed
+from app.services.prospective_qualification import (
+    prospective_demo_execution_allowed,
+    prospective_entry_allowed,
+)
 from app.services.runtime_admission_registry import load_research_admissions
 from app.services.runtime_capital import resolve_demo_sizing_capital
 
@@ -80,17 +83,24 @@ def build_trading_overview(
         and row.qualification.state == ProspectiveQualificationState.SUPPORTS_DEMO
     ]
 
+    paper_collectable_rows = [
+        row
+        for row in paper_rows
+        if row.paper_entry_allowed
+    ]
     collectable_rows = [
         row
         for row in paper_rows
         if row.paper_entry_allowed
         and demo_collection_allowed(admissions.get(row.strategy_id))
+        and prospective_demo_execution_allowed(row.qualification)
     ]
     collection_rows = [
         row
         for row in open_rows
         if row.paper_entry_allowed
         and demo_collection_allowed(admissions.get(row.strategy_id))
+        and prospective_demo_execution_allowed(row.qualification)
     ]
 
     selected_row: PaperStrategyRuntime | None = None
@@ -160,8 +170,13 @@ def build_trading_overview(
         )
         if collectable_rows:
             reason = (
-                f"{len(collectable_rows)} PAPER-eligible SHADOW strategies are "
-                "waiting for an executable PAPER trade"
+                f"{len(collectable_rows)} prospectively qualified SHADOW strategies "
+                "are waiting for an executable PAPER trade"
+            )
+        elif paper_collectable_rows:
+            reason = (
+                f"{len(paper_collectable_rows)} PAPER-eligible strategies are "
+                "collecting prospective evidence; broker DEMO remains locked"
             )
         else:
             reason = (

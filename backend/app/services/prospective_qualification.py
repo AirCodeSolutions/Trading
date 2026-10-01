@@ -60,3 +60,9 @@ def _failed(
 
 def prospective_entry_allowed(qualification: ProspectiveQualification) -> bool:
     return qualification.state != ProspectiveQualificationState.FAILED
+
+
+def prospective_demo_execution_allowed(
+    qualification: ProspectiveQualification,
+) -> bool:
+    return qualification.state == ProspectiveQualificationState.SUPPORTS_DEMO

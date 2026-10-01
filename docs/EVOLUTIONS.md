@@ -2173,3 +2173,23 @@ PnL broker Trading-New sur la même fenêtre, séparément du PnL du jour. Si
 l'historique MT4 est incomplet, le rapport reste explicitement PARTIAL et expose
 les tickets manquants au lieu de présenter un PnL partiel comme exhaustif. La
 vue Research affiche désormais la ventilation économique par famille.
+
+
+## 2026-10-01 — Prospective evidence required for broker DEMO authority
+
+Broker DEMO execution is now separated from PAPER collection. A strategy may keep
+collecting PAPER while its prospective qualification is `COLLECTING`, but no
+broker DEMO command may be created until that same strategy reaches the existing
+`SUPPORTS_DEMO` state (`N >= 20`, positive expectancy, PF >= 1.05,
+DD <= 12R). The rule is enforced in portfolio selection, multi-symbol candidate
+selection and the final DEMO writer.
+
+No admission threshold, risk fraction, spread guard, stop, target, lot cap or
+daily trade cap changed. PAPER/probe collection continues. This prevents
+unproven SHADOW cohorts from paying their research losses in broker PnL.
+
+Evidence that motivated the change at the checkpoint: XAU break/retest had
+5/5 prospective PAPER losses (-5R), while XAU directional transition remained
+research-only with 16/20 resolved executable probes, +6.86R, expectancy +0.429R,
+PF 2.04 and DD 2.04R. Directional transition remains research-only until the
+existing 20-outcome gate is reached.

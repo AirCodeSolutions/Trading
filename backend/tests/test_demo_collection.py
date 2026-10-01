@@ -57,15 +57,20 @@ def trade(*, status: PaperTradeStatus = PaperTradeStatus.OPEN) -> ShadowPaperTra
     )
 
 
-def overview(open_trade: ShadowPaperTrade | None) -> TradingOverview:
+def overview(
+    open_trade: ShadowPaperTrade | None,
+    *,
+    qualification_state: ProspectiveQualificationState = ProspectiveQualificationState.SUPPORTS_DEMO,
+) -> TradingOverview:
+    supported = qualification_state == ProspectiveQualificationState.SUPPORTS_DEMO
     qualification = ProspectiveQualification(
         strategy_id=STRATEGY,
-        state=ProspectiveQualificationState.COLLECTING,
-        closed_trades=0,
-        expectancy_r=0,
-        profit_factor=0,
-        max_drawdown_r=0,
-        reason="collecting",
+        state=qualification_state,
+        closed_trades=20 if supported else 0,
+        expectancy_r=0.2 if supported else 0,
+        profit_factor=1.4 if supported else 0,
+        max_drawdown_r=3 if supported else 0,
+        reason="supported" if supported else "collecting",
     )
     summary = ShadowPaperSummary(
         closed_trades=0,
@@ -107,7 +112,7 @@ def overview(open_trade: ShadowPaperTrade | None) -> TradingOverview:
             selected_strategy_id=STRATEGY if open_trade else None,
             reason="test",
             historical_active=False,
-            prospective_supports_demo=False,
+            prospective_supports_demo=supported,
         ),
         qualifications=[qualification],
         paper_strategies=[
@@ -406,3 +411,23 @@ def test_demo_collection_ticket_fallback_does_not_close_other_empty_comment_posi
     )
     assert close_command is not None
     assert close_command.ticket == 321
+
+
+def test_collecting_paper_trade_cannot_create_demo_command(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    enable(monkeypatch)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    current = overview(
+        trade(),
+        qualification_state=ProspectiveQualificationState.COLLECTING,
+    )
+
+    advance_demo_collection(tmp_path, runtime, current, macro(), NOW)
+
+    assert read_pending_command(tmp_path / "trading_demo_command.csv") is None
+    state = load_demo_collection_state(runtime / "demo_collection_state.json")
+    assert state.open_command_id is None
+    assert state.paper_trade_id is None

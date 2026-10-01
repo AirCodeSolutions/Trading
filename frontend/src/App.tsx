@@ -274,6 +274,18 @@ type ChampionChallengerReport = {
   }>;
 };
 
+type PairedEconomicContractReport = {
+  family_id: string;
+  comparison_id: string;
+  paired_trades: number;
+  delta_total_r: number;
+  open_pair: boolean;
+  broker_authority: boolean;
+  human_review_required: boolean;
+  champion: { contract_id: string; role: string; closed_trades: number; total_r: number; expectancy_r: number; profit_factor: number; max_drawdown_r: number };
+  challenger: { contract_id: string; role: string; closed_trades: number; total_r: number; expectancy_r: number; profit_factor: number; max_drawdown_r: number };
+};
+
 type PortfolioAllocatorReport = {
   ready: boolean; capital_eur: number | null; capital_source: string;
   max_total_open_risk_fraction: number; max_total_open_risk_eur: number | null;
@@ -1631,6 +1643,7 @@ export default function App() {
   const [positionManagerResearch, setPositionManagerResearch] = useState<PositionManagerReport | null>(null);
   const [assetSpecialization, setAssetSpecialization] = useState<AssetSpecializationSnapshot[]>([]);
   const [championChallengers, setChampionChallengers] = useState<ChampionChallengerReport | null>(null);
+  const [pairedEconomicContracts, setPairedEconomicContracts] = useState<PairedEconomicContractReport | null>(null);
   const positionManagerAggregates = useMemo(
     () => aggregatePositionManagerComparisons(positionManagerResearch?.comparisons),
     [positionManagerResearch?.comparisons],
@@ -1856,19 +1869,97 @@ export default function App() {
   useEffect(() => {
     if (activeView !== "research") return;
     let active = true;
-    const refreshEconomicValidation = async () => {
+    let refreshing = false;
+
+    const refreshResearchSnapshots = async () => {
+      if (refreshing) return;
+      refreshing = true;
       try {
-        const response = await fetch("/api/v1/research/economic-validation/v2?hours=168");
+        const [
+          economicResponse,
+          marketBriefResponse,
+          positionManagerResearchResponse,
+          assetSpecializationResponse,
+          championChallengersResponse,
+          pairedEconomicContractsResponse,
+          blockedProbesResponse,
+          opportunityFunnelResponse,
+          stopGeometryResponse,
+          sessionLandmarkResponse,
+          performanceAttributionResponse,
+          probeReviewContractResponse,
+          intelligenceResponse,
+          trailingShadowResponse,
+          xauFeasiblePullbackResponse,
+          xauCompressionPrecursorResponse,
+          xauAuctionPrecursorResponse,
+          xauMicrobarsResponse,
+          marketMicrobarsResponse,
+          precursorForwardResponse,
+          economicFeasibilityResponse,
+          dailyReportResponse,
+          qualificationHistoryResponse
+        ] = await runSequentialFetches([
+          () => fetch("/api/v1/research/economic-validation/v2?hours=168"),
+          () => fetch("/api/v1/research/market-brief"),
+          () => fetch("/api/v1/research/position-manager/v2?hours=168"),
+          () => fetch("/api/v1/asset-specialization/v2"),
+          () => fetch("/api/v1/research/champion-challengers/v2?hours=168"),
+          () => fetch("/api/v1/research/paired-economic-contracts/xau-structural-displacement"),
+          () => fetch("/api/v1/shadow/blocked-probes"),
+          () => fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
+          () => fetch("/api/v1/research/stop-geometry?hours=168"),
+          () => fetch("/api/v1/research/session-landmarks?hours=168"),
+          () => fetch("/api/v1/research/performance-attribution?hours=168"),
+          () => fetch("/api/v1/research/probe-review/contract"),
+          () => fetch("/api/v1/intelligence/overview?hours=24"),
+          () => fetch("/api/v1/research/trailing-shadow"),
+          () => fetch("/api/v1/research/xau-feasible-pullback"),
+          () => fetch("/api/v1/research/xau-compression-precursor"),
+          () => fetch("/api/v1/research/xau-auction-precursor"),
+          () => fetch("/api/v1/research/xau-microbars"),
+          () => fetch("/api/v1/research/microbars"),
+          () => fetch("/api/v1/research/precursor-forward"),
+          () => fetch("/api/v1/research/economic-feasibility"),
+          () => fetch("/api/v1/reports/daily"),
+          () => fetch("/api/v1/qualification/history?limit=50")
+        ]);
         if (!active) return;
-        setEconomicValidation(response.ok ? await response.json() : null);
+        setEconomicValidation(economicResponse.ok ? await economicResponse.json() : null);
+        setMarketBrief(marketBriefResponse.ok ? await marketBriefResponse.json() : null);
+        setPositionManagerResearch(positionManagerResearchResponse.ok ? await positionManagerResearchResponse.json() : null);
+        setAssetSpecialization(assetSpecializationResponse.ok ? await assetSpecializationResponse.json() : []);
+        setChampionChallengers(championChallengersResponse.ok ? await championChallengersResponse.json() : null);
+        setPairedEconomicContracts(pairedEconomicContractsResponse.ok ? await pairedEconomicContractsResponse.json() : null);
+        setBlockedProbes(blockedProbesResponse.ok ? await blockedProbesResponse.json() : []);
+        setOpportunityFunnel(opportunityFunnelResponse.ok ? await opportunityFunnelResponse.json() : null);
+        setStopGeometryResearch(stopGeometryResponse.ok ? await stopGeometryResponse.json() : null);
+        setSessionLandmarkResearch(sessionLandmarkResponse.ok ? await sessionLandmarkResponse.json() : null);
+        setPerformanceAttribution(performanceAttributionResponse.ok ? await performanceAttributionResponse.json() : null);
+        setProbeReviewContract(probeReviewContractResponse.ok ? await probeReviewContractResponse.json() : null);
+        setIntelligence(intelligenceResponse.ok ? await intelligenceResponse.json() : null);
+        setTrailingShadow(trailingShadowResponse.ok ? await trailingShadowResponse.json() : null);
+        setXauFeasiblePullback(xauFeasiblePullbackResponse.ok ? await xauFeasiblePullbackResponse.json() : null);
+        setXauCompressionPrecursor(xauCompressionPrecursorResponse.ok ? await xauCompressionPrecursorResponse.json() : null);
+        setXauAuctionPrecursor(xauAuctionPrecursorResponse.ok ? await xauAuctionPrecursorResponse.json() : null);
+        setXauMicrobars(xauMicrobarsResponse.ok ? await xauMicrobarsResponse.json() : null);
+        setMarketMicrobars(marketMicrobarsResponse.ok ? await marketMicrobarsResponse.json() : []);
+        setPrecursorForward(precursorForwardResponse.ok ? await precursorForwardResponse.json() : null);
+        setEconomicFeasibility(economicFeasibilityResponse.ok ? await economicFeasibilityResponse.json() : null);
+        setDailyReport(dailyReportResponse.ok ? await dailyReportResponse.json() : null);
+        setQualificationHistory(qualificationHistoryResponse.ok ? await qualificationHistoryResponse.json() : []);
       } catch {
-        if (active) setEconomicValidation(null);
+        // Keep the last valid Research snapshot; never affect backend health.
+      } finally {
+        refreshing = false;
       }
     };
-    void refreshEconomicValidation();
-    const timer = window.setInterval(refreshEconomicValidation, 120_000);
+
+    const initial = window.setTimeout(() => void refreshResearchSnapshots(), 500);
+    const timer = window.setInterval(refreshResearchSnapshots, 600_000);
     return () => {
       active = false;
+      window.clearTimeout(initial);
       window.clearInterval(timer);
     };
   }, [activeView]);
@@ -1883,6 +1974,10 @@ export default function App() {
     .join("|");
 
   useEffect(() => {
+    if (activeView !== "research") {
+      setProbeReviewPacks({});
+      return;
+    }
     const reviewQueue = opportunityFunnel?.unqualified_probe_review_queue ?? [];
     if (!probeReviewContract || reviewQueue.length === 0) {
       setProbeReviewPacks({});
@@ -1927,7 +2022,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [probeReviewContract, reviewQueueSignature]);
+  }, [activeView, probeReviewContract, reviewQueueSignature]);
 
   useEffect(() => {
     let active = true;
@@ -4915,6 +5010,30 @@ export default function App() {
             ))}
           </div>
         </> : <p>Validation économique indisponible.</p>}
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "research"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">P0 · PAIRED ECONOMIC CONTRACTS</p><h2>XAU Structural Displacement · 1R vs 1.5R</h2></div>
+          <p>Mêmes signaux, même entrée, même stop et même risque ; seul le target change.</p>
+        </div>
+        {pairedEconomicContracts ? <>
+          <div className="opportunity-summary">
+            <span>PAIRED N <strong>{pairedEconomicContracts.paired_trades}</strong></span>
+            <span>OPEN PAIR <strong>{pairedEconomicContracts.open_pair ? "YES" : "NO"}</strong></span>
+            <span>1R TOTAL <strong>{pairedEconomicContracts.champion.total_r.toFixed(2)}R</strong></span>
+            <span>1R EXP <strong>{pairedEconomicContracts.champion.expectancy_r.toFixed(3)}R</strong></span>
+            <span>1R PF <strong>{pairedEconomicContracts.champion.profit_factor.toFixed(2)}</strong></span>
+            <span>1R DD <strong>{pairedEconomicContracts.champion.max_drawdown_r.toFixed(2)}R</strong></span>
+            <span>1.5R TOTAL <strong>{pairedEconomicContracts.challenger.total_r.toFixed(2)}R</strong></span>
+            <span>1.5R EXP <strong>{pairedEconomicContracts.challenger.expectancy_r.toFixed(3)}R</strong></span>
+            <span>1.5R PF <strong>{pairedEconomicContracts.challenger.profit_factor.toFixed(2)}</strong></span>
+            <span>1.5R DD <strong>{pairedEconomicContracts.challenger.max_drawdown_r.toFixed(2)}R</strong></span>
+            <span>ΔR <strong>{pairedEconomicContracts.delta_total_r.toFixed(2)}R</strong></span>
+            <span>BROKER AUTHORITY <strong>{pairedEconomicContracts.broker_authority ? "YES" : "NO"}</strong></span>
+          </div>
+          <small>{pairedEconomicContracts.champion.contract_id} vs {pairedEconomicContracts.challenger.contract_id} · revue humaine obligatoire</small>
+        </> : <p>Cohorte A/B appariée indisponible.</p>}
       </section>
 
       <section className="position-manager-panel" hidden={activeView !== "research"}>

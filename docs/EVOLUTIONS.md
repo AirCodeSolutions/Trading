@@ -2297,3 +2297,23 @@ Baseline fixed exits therefore remain the champion contract.
 
 This target change is not broker authority. Prospective PAPER evidence must start
 under the new target contract and broker DEMO still requires SUPPORTS_DEMO.
+
+
+## 2026-10-01 — P0 paired economic contracts foundation
+
+Trading-New now has a research-only paired-contract framework for the first
+post-V2 economic experiment: XAU structural displacement 1.0R champion versus
+1.5R challenger.
+
+Both variants are opened from the same executable diagnostic with identical
+entry, structural stop, lots, monetary risk, opened_at and 12-M5 horizon. Only
+target R differs. If one variant resolves first, no new pair may start until the
+other variant also resolves. Reports use only outcomes resolved on both sides,
+so orphan files cannot bias the paired metrics.
+
+Stable version ids:
+- xau_sd_target_1r_v1
+- xau_sd_target_1_5r_v2
+
+The collector is research-only, respects drain for new entries, exposes no
+broker authority and requires human review.

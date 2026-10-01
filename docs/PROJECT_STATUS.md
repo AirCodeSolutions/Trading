@@ -3690,3 +3690,13 @@ XAU with essentially unchanged drawdown, while the same change was not robust on
 BTC. No signal predicate, stop, sizing, spread rule, lot cap or broker admission
 changed. Existing 1.0R prospective evidence must not be mixed with the new
 contract after deployment; preserve it as legacy and start a fresh PAPER cohort.
+
+
+## 2026-10-01 — P0-P2 economic acceleration started
+
+See `docs/POST_V2_ECONOMIC_ACCELERATION.md`.
+
+P0-A is implemented in a separate development branch: XAU structural
+displacement champion 1R and challenger 1.5R receive the same executable signal,
+entry, stop, lots and risk. Their outcomes are matched by pair and exposed as a
+research-only report. No broker authority is connected to this experiment.

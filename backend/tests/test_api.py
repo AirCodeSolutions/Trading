@@ -47,3 +47,16 @@ def test_ingest_and_read_m5_bar() -> None:
     latest = client.get("/api/v1/market/XAUUSD/M5/latest")
     assert latest.status_code == 200
     assert latest.json()["close"] == 3602.0
+
+
+def test_paired_economic_contracts_endpoint_is_research_only() -> None:
+    response = client.get(
+        "/api/v1/research/paired-economic-contracts/xau-structural-displacement"
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["family_id"] == "XAUUSD:structural_displacement_sequence"
+    assert payload["broker_authority"] is False
+    assert payload["human_review_required"] is True
+    assert payload["champion"]["contract_id"] == "xau_sd_target_1r_v1"
+    assert payload["challenger"]["contract_id"] == "xau_sd_target_1_5r_v2"

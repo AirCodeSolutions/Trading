@@ -360,3 +360,19 @@ Toute évolution backend V2 doit conserver un contrat de visibilité dashboard. 
 ### Suivi de chantier obligatoire
 
 À chaque chat Trading-New, rapporter : HEAD main, PR/CI, étape ou hypothèse active, dashboard, runtime/drain/flatness, changements économiques, research-only, blocages, prochaine action et prompt Codex si pertinent.
+
+
+## 2026-10-01 — Post-V2 economic acceleration chantier
+
+The technical 10-step V2 rebuild is complete. The next chantier is
+`docs/POST_V2_ECONOMIC_ACCELERATION.md`.
+
+Priorities:
+- P0: paired economic contracts and versioned evidence cutovers;
+- P1: authority-regret measurement, controlled actual-equity admission refresh,
+  and causal regime/session attribution;
+- P2: execution-cost stress and family-specific exit challengers.
+
+The first active experiment is XAU structural displacement 1R champion vs 1.5R
+challenger on exactly paired PAPER signals. This comparison is research-only and
+cannot create broker authority.

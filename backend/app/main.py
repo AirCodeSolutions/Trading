@@ -134,10 +134,8 @@ from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.performance_attribution import build_performance_attribution_report
 from app.services.portfolio_allocator import build_portfolio_opportunity_allocation
 from app.services.portfolio_overview import build_trading_overview
-from app.services.position_manager_v2 import (
-    build_position_manager_report,
-    replay_position_manager_v2,
-)
+from app.services.position_manager_runtime import build_runtime_position_manager_report
+from app.services.position_manager_v2 import replay_position_manager_v2
 from app.services.precursor_forward_research import build_precursor_forward_research
 from app.services.probe_review import (
     build_probe_review_pack,
@@ -162,7 +160,6 @@ from app.services.session_preflight import build_session_preflight
 from app.services.shadow_collector import collect_btc_break_retest_once
 from app.services.shadow_overview import load_shadow_overview
 from app.services.shadow_paper import (
-    load_closed_trades,
     load_shadow_paper_state,
     load_shadow_paper_summary,
 )
@@ -576,19 +573,12 @@ def position_manager_v2_research(hours: int = 168) -> PositionManagerReport:
     if hours < 1 or hours > 168:
         raise HTTPException(status_code=422, detail="hours must be between 1 and 168")
     now = datetime.now(tz=_server_timezone())
-    trades = []
-    for trades_path in settings.shadow_ledger_dir.glob("*_paper_trades.jsonl"):
-        trades.extend(load_closed_trades(trades_path))
-    symbols = sorted({trade.symbol for trade in trades})
-    bars_by_symbol = {
-        symbol: load_closed_market_bars(_mt4_files_dir(), symbol, Timeframe.M5, now)
-        for symbol in symbols
-    }
-    bars_by_symbol_m15 = {
-        symbol: load_closed_market_bars(_mt4_files_dir(), symbol, Timeframe.M15, now)
-        for symbol in symbols
-    }
-    return build_position_manager_report(trades, bars_by_symbol, bars_by_symbol_m15=bars_by_symbol_m15, now=now, window_hours=hours)
+    return build_runtime_position_manager_report(
+        _mt4_files_dir(),
+        settings.shadow_ledger_dir,
+        now=now,
+        window_hours=hours,
+    )
 
 
 @app.get(
@@ -599,14 +589,16 @@ def champion_challengers_v2(hours: int = 168) -> ChampionChallengerReport:
     if hours < 1 or hours > 168:
         raise HTTPException(status_code=422, detail="hours must be between 1 and 168")
     now = datetime.now(tz=_server_timezone())
-    asset_snapshots = build_asset_specialization_snapshots(settings.shadow_ledger_dir, now)
-    trades = []
-    for trades_path in settings.shadow_ledger_dir.glob("*_paper_trades.jsonl"):
-        trades.extend(load_closed_trades(trades_path))
-    symbols = sorted({trade.symbol for trade in trades})
-    bars_by_symbol = {symbol: load_closed_market_bars(_mt4_files_dir(), symbol, Timeframe.M5, now) for symbol in symbols}
-    bars_by_symbol_m15 = {symbol: load_closed_market_bars(_mt4_files_dir(), symbol, Timeframe.M15, now) for symbol in symbols}
-    position_manager = build_position_manager_report(trades, bars_by_symbol, bars_by_symbol_m15=bars_by_symbol_m15, now=now, window_hours=hours)
+    asset_snapshots = build_asset_specialization_snapshots(
+        settings.shadow_ledger_dir,
+        now,
+    )
+    position_manager = build_runtime_position_manager_report(
+        _mt4_files_dir(),
+        settings.shadow_ledger_dir,
+        now=now,
+        window_hours=hours,
+    )
     return build_champion_challenger_report(asset_snapshots, position_manager)
 
 

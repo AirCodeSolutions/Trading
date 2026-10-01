@@ -5,6 +5,7 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.domain.approval import DecisionMode
+from app.domain.strategy_universe import ACTIVE_ASSETS
 
 
 class ExecutionMode(StrEnum):
@@ -33,13 +34,7 @@ class Settings(BaseSettings):
     mt4_server_timezone: str = "Europe/Athens"
     shadow_ledger_dir: Path = Path("runtime/shadow")
     shadow_collection_interval_seconds: int = 30
-    session_watch_symbols: tuple[str, ...] = (
-        "BTCUSD",
-        "EURUSD",
-        "GBPUSD",
-        "XAUUSD",
-        "XAGUSD",
-    )
+    session_watch_symbols: tuple[str, ...] = ACTIVE_ASSETS
 
     macro_events_path: Path = Path("config/macro_events_2026.json")
     research_execution_model_path: Path = Path(

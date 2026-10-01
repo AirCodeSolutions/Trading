@@ -2141,3 +2141,14 @@ reste inchangé. Les expositions USD FX, métaux USD et crypto USD sont visibles
 la concentration est signalée sans inventer de nouveau seuil de corrélation.
 Le veto de perte journalière n'est plus une autorité d'exécution en DEMO :
 le contrôle pertinent est le risque ouvert concurrent, pas un cap journalier.
+
+
+## Étape 9 — Simplification V2
+
+Centralisation de l'univers Trading-New dans `strategy_universe.py` : cinq actifs,
+compatibilités structurelles, slugs de mécanismes et identifiants de famille.
+`opportunity_matrix`, Asset Specialization, PAPER registry et shadow overview
+consomment désormais les mêmes contrats au lieu de maintenir des copies.
+Le chargement du report Position Manager runtime est également factorisé et
+réutilisé par les endpoints PM et Champion/Challengers. Aucun prédicat
+économique, seuil, admission ou chemin d'exécution n'est modifié.

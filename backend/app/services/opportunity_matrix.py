@@ -5,10 +5,10 @@ from app.domain.market import Timeframe
 from app.domain.opportunity import (
     OpportunityBacktestConfig,
     OpportunityBacktestResult,
-    OpportunityMechanism,
     PortfolioResearchRequest,
     PortfolioResearchResult,
 )
+from app.domain.strategy_universe import mechanism_is_compatible
 from app.services.macro_gate import load_macro_events
 from app.services.mt4_csv import read_mt4_csv
 from app.services.mt4_history import resolve_mt4_history_path
@@ -79,15 +79,7 @@ def run_mt4_portfolio_research(
             continue
 
         for mechanism in request.mechanisms:
-            if (
-                mechanism == OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE
-                and symbol not in {"BTCUSD", "XAUUSD"}
-            ):
-                continue
-            if (
-                mechanism == OpportunityMechanism.STRUCTURAL_PERSISTENCE_SEQUENCE
-                and symbol != "XAUUSD"
-            ):
+            if not mechanism_is_compatible(symbol, mechanism):
                 continue
             config = OpportunityBacktestConfig(
                 spec=spec,

@@ -5,7 +5,22 @@
 Build a causal M5/M15 trading system that can progress from research to SHADOW,
 then DEMO, without increasing risk to compensate for missing edge.
 
-Economic reference capital is now **400 EUR** (updated 2026-09-22). Risk percentages remain unchanged.
+Operational Trading-New sizing uses the live MT4 DEMO account equity/balance
+with the existing risk fractions and 5-lot hard cap. The historical **400 EUR**
+amount is retained only as a reproducible research/backtest fallback.
+
+## Opportunity Engine V2 — fondation état des setups
+
+La fondation V2 représente causalement les états `NONE`, `SETUP`, `ARMED`,
+`TRIGGERED`, `INVALIDATED` et `EXPIRED` pour `break_retest_reaccel` et
+`directional_pullback_resumption`. Les transitions utilisent uniquement des
+barres closes et sont exposées par une API read-only pour le dashboard. Aucun
+ordre, gate, sizing, garde ou transport broker n'est modifié.
+
+Les deux phases V2 représentatives sont dérivées de conditions partielles
+pré-signal ; le trigger final réutilise les constructeurs V1 existants. Les
+états terminaux sont causaux et transitoires dans le dashboard. Aucun état V2
+ne possède d'autorité broker.
 
 ## Active market scope
 

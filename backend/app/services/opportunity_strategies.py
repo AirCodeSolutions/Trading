@@ -8,6 +8,10 @@ from app.domain.opportunity import OpportunityCandidate, OpportunityMechanism
 from app.domain.regime import MarketRegime, RegimeSnapshot
 from app.domain.trading import Side
 from app.domain.trading_intelligence import OpportunityCausalPattern
+from app.services.opportunity_triggers import (
+    inspect_break_retest_trigger,
+    inspect_directional_pullback_trigger,
+)
 from app.services.replay import RegimeReplay
 from app.services.session_continuity import reopen_warmup_remaining
 from app.services.trading_intelligence import _classify_causal_context
@@ -304,7 +308,7 @@ def _asia_range_sweep_candidate(
     geometry = _asia_range_sweep_geometry(bars, atr, index)
     if geometry is None:
         return None
-    side, stop, _, _, _ = geometry
+    side, _stop, _, _, _ = geometry
     signal = bars[index]
     entry = bars[index + 1]
     return OpportunityCandidate(
@@ -315,7 +319,7 @@ def _asia_range_sweep_candidate(
         entry_at=entry.timestamp,
         signal_index=index,
         entry_index=index + 1,
-        structural_stop=stop,
+        structural_stop=_stop,
         target_r=1.5,
         max_holding_bars=12,
         reason="completed Athens Asia range sweep with causal reclaim",
@@ -564,57 +568,26 @@ def _directional_pullback_resumption_candidate(
 ) -> OpportunityCandidate | None:
     if index < 2 or index + 1 >= len(bars):
         return None
-    if regime.regime != MarketRegime.DIRECTIONAL or regime.direction == 0:
+    inspection = inspect_directional_pullback_trigger(
+        bars[: index + 1], atr[: index + 1], regime
+    )
+    if inspection is None:
         return None
-
-    value = atr[index]
-    if value <= 0:
-        return None
-
-    first_pullback = bars[index - 2]
-    second_pullback = bars[index - 1]
-    confirmation = bars[index]
     entry = bars[index + 1]
-    side = Side.BUY if regime.direction > 0 else Side.SELL
-
-    if side == Side.BUY:
-        if not (
-            first_pullback.close < first_pullback.open
-            and second_pullback.close < second_pullback.open
-            and confirmation.close > confirmation.open
-            and confirmation.close > second_pullback.high
-        ):
-            return None
-        swing = min(first_pullback.low, second_pullback.low)
-        stop = swing - 0.10 * value
-    else:
-        if not (
-            first_pullback.close > first_pullback.open
-            and second_pullback.close > second_pullback.open
-            and confirmation.close < confirmation.open
-            and confirmation.close < second_pullback.low
-        ):
-            return None
-        swing = max(first_pullback.high, second_pullback.high)
-        stop = swing + 0.10 * value
-
-    if stop <= 0:
-        return None
+    side = inspection.side
 
     return OpportunityCandidate(
-        symbol=confirmation.symbol,
+        symbol=bars[index].symbol,
         mechanism=OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
         side=side,
-        signal_at=confirmation.timestamp + timedelta(minutes=5),
+        signal_at=bars[index].timestamp + timedelta(minutes=5),
         entry_at=entry.timestamp,
         signal_index=index,
         entry_index=index + 1,
-        structural_stop=stop,
-        target_r=2.0,
-        max_holding_bars=12,
-        reason=(
-            "directional M15 with two-bar M5 pullback and local-swing resumption"
-        ),
+        structural_stop=inspection.raw_stop,
+        target_r=inspection.target_r,
+        max_holding_bars=inspection.max_holding_bars,
+        reason=inspection.reason,
     )
 
 
@@ -702,66 +675,30 @@ def _break_retest_candidate(
     index: int,
     regime: RegimeSnapshot,
 ) -> OpportunityCandidate | None:
+    inspection = inspect_break_retest_trigger(
+        bars[: index + 1], atr[: index + 1], regime
+    )
+    if inspection is None:
+        return None
     bar = bars[index]
-    value = atr[index]
-    if value <= 0:
-        return None
-
-    base = bars[index - 15 : index - 3]
-    recent = bars[index - 3 : index]
-    if not base or not recent:
-        return None
-
-    prior_high = max(item.high for item in base)
-    prior_low = min(item.low for item in base)
-    bar_range = bar.high - bar.low
-    if bar_range <= 0:
-        return None
-    close_location = (bar.close - bar.low) / bar_range
-
-    side: Side | None = None
-    if regime.direction > 0:
-        breakout = max(item.close for item in recent) > prior_high + 0.05 * value
-        retest = (
-            bar.low <= prior_high + 0.30 * value
-            and bar.close > prior_high
-            and bar.close > bar.open
-            and close_location >= 0.60
-        )
-        if breakout and retest:
-            side = Side.BUY
-    else:
-        breakout = min(item.close for item in recent) < prior_low - 0.05 * value
-        retest = (
-            bar.high >= prior_low - 0.30 * value
-            and bar.close < prior_low
-            and bar.close < bar.open
-            and close_location <= 0.40
-        )
-        if breakout and retest:
-            side = Side.SELL
-
-    if side is None:
-        return None
-
     entry = bars[index + 1]
-    if side == Side.BUY:
-        stop = min(bar.low - 0.10 * value, entry.open - 0.65 * value)
+    if inspection.side == Side.BUY:
+        stop = min(inspection.raw_stop, entry.open - inspection.stop_atr)
     else:
-        stop = max(bar.high + 0.10 * value, entry.open + 0.65 * value)
+        stop = max(inspection.raw_stop, entry.open + inspection.stop_atr)
 
     return OpportunityCandidate(
         symbol=bar.symbol,
         mechanism=OpportunityMechanism.BREAK_RETEST_REACCEL,
-        side=side,
+        side=inspection.side,
         signal_at=bar.timestamp + timedelta(minutes=5),
         entry_at=entry.timestamp,
         signal_index=index,
         entry_index=index + 1,
         structural_stop=stop,
-        target_r=1.8,
-        max_holding_bars=18,
-        reason="M15 directional regime with M5 break, retest and re-acceleration",
+        target_r=inspection.target_r,
+        max_holding_bars=inspection.max_holding_bars,
+        reason=inspection.reason,
     )
 
 

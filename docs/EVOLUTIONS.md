@@ -2028,3 +2028,28 @@ autorité sur le signal, le stop, le target, le sizing ou l'admission.
 
 Les cinq observations historiques restent legacy et ne sont pas backfillées. La
 nouvelle cohorte `POST_SHOCK_CONSUMED_MOVE_V1` commence après le déploiement.
+
+## Opportunity Engine V2 — état descriptif des setups
+
+La première fondation V2 expose une machine d'état commune (`NONE`, `SETUP`,
+`ARMED`, `TRIGGERED`, `INVALIDATED`, `EXPIRED`) avec transitions explicites,
+provenance et timestamps de barres closes. Les familles migrées dans cette
+étape sont `break_retest_reaccel` et `directional_pullback_resumption` ; les
+autres mécanismes V1 restent inchangés.
+
+L'endpoint `/api/v1/opportunities/v2/states` et la surface compacte
+`Opportunity State` sont descriptifs. `SETUP` et `ARMED` ne peuvent créer ni
+PAPER, ni proposition d'exécution, ni commande broker. Aucun signal, stop,
+target, sizing, spread guard, admission ou autorité DEMO n'est modifié.
+
+Le snapshot V2 est reconstruit depuis les phases partielles causales des barres
+M5 closes : breakout puis retest pour `break_retest_reaccel`, première puis
+seconde barre de pullback pour `directional_pullback_resumption`. Le passage à
+`TRIGGERED` réutilise les constructeurs de candidats V1 ; les fenêtres natives
+produisent `INVALIDATED` ou `EXPIRED`, puis l'état courant revient à `NONE`.
+Chaque transition conserve l'instant de clôture qui la rend connaissable.
+
+La décision `TRIGGERED` partage désormais une primitive de prédicat entre le
+scanner shadow, le générateur de candidats V1 et le moteur V2. Elle ne crée
+aucune barre d'entrée synthétique : l'entrée économique reste construite par
+V1 uniquement lorsqu'une barre réelle suivante existe.

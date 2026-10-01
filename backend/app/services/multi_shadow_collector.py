@@ -26,10 +26,7 @@ from app.services.prospective_qualification import (
 from app.services.runtime_admission_registry import load_research_admissions
 from app.services.runtime_capital import resolve_demo_sizing_capital
 from app.services.shadow_ledger import append_shadow_observation
-from app.services.shadow_paper import (
-    advance_shadow_paper_book,
-    load_shadow_paper_state,
-)
+from app.services.shadow_paper import advance_shadow_paper_book
 from app.services.shadow_scanner import scan_shadow_opportunity
 from app.services.xau_microbar import capture_xau_sequence_microstructure
 
@@ -134,11 +131,6 @@ def collect_all_shadow_once(
             allow_new_entries = (
                 allow_paper_entries
                 and effective_paper_entry_allowed
-                and not symbol_has_open_paper_elsewhere(
-                    runtime_dir,
-                    asset.symbol,
-                    current_state_path=state_path,
-                )
             )
             paper = advance_shadow_paper_book(
                 diagnostic=diagnostic,
@@ -190,23 +182,6 @@ def collect_all_shadow_once(
             )
 
     return results
-
-
-def symbol_has_open_paper_elsewhere(
-    runtime_dir: Path,
-    symbol: str,
-    *,
-    current_state_path: Path,
-) -> bool:
-    pattern = f"{symbol.upper()}_*_paper_state.json"
-    current = current_state_path.resolve()
-    for state_path in runtime_dir.glob(pattern):
-        if state_path.resolve() == current:
-            continue
-        if load_shadow_paper_state(state_path).open_trade is not None:
-            return True
-    return False
-
 
 def should_advance_unqualified_probe(admission, state_path: Path) -> bool:
     return unqualified_probe_entry_allowed(admission) or state_path.is_file()

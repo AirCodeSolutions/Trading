@@ -2230,3 +2230,16 @@ This fixes a stale-capital failure mode where historical admissions could be
 computed with `reference_capital_eur` even though runtime sizing had moved to
 actual MT4 equity. No admission threshold, PF/DD rule, spread guard, lot cap,
 stop/target or broker authority rule changed.
+
+
+## 2026-10-01 — PAPER evidence parallelized per strategy family
+
+Research PAPER books are no longer serialized across mechanisms sharing the same
+symbol. Each `symbol × mechanism` family may keep its own independent hypothetical
+PAPER position, so XAU structural displacement, persistence and Asia-sweep
+evidence can accumulate without code-order bias.
+
+This changes research throughput only. Each family still has at most one open
+trade in its own PAPER state. Broker DEMO keeps the existing one-position-per-
+symbol protection and still requires `SUPPORTS_DEMO` before any command. Risk,
+5-lot cap, spread guard, stops, targets and admission thresholds are unchanged.

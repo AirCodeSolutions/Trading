@@ -11,12 +11,13 @@ from app.domain.opportunity_funnel import (
     ResearchProbeQualification,
     ResearchProbeQualificationState,
 )
+from app.domain.shadow_paper import ShadowPaperState, ShadowPaperTrade
+from app.domain.trading import Side
 from app.services.multi_shadow_collector import (
     collect_all_shadow_once,
     paper_entry_allowed,
     shadow_mechanism_enabled,
     should_advance_unqualified_probe,
-    symbol_has_open_paper_elsewhere,
     unqualified_probe_entry_allowed,
 )
 from app.services.paper_registry import _parse_state_name
@@ -166,29 +167,123 @@ def test_rejected_strategy_never_collects_paper_even_if_candidate_flag_is_true()
     )
 
 
-def test_symbol_paper_guard_blocks_only_same_symbol_other_family(
+def test_parallel_paper_books_do_not_block_same_symbol_other_family(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
-    existing = tmp_path / "XAUUSD_structural_displacement_sequence_paper_state.json"
-    existing.write_text("{}", encoding="utf-8")
-    current = tmp_path / "XAUUSD_structural_persistence_sequence_paper_state.json"
+    now = datetime(2026, 10, 1, 10, 0, tzinfo=ZoneInfo("Europe/Athens"))
+    strategy_id = "XAUUSD:structural_displacement_sequence"
+    admission = AdmissionDecision(
+        strategy_id=strategy_id,
+        state=AdmissionState.SHADOW,
+        reason="under-sampled",
+        weakest_expectancy_r=0.3,
+        worst_drawdown_r=2.0,
+        paper_collection_candidate=True,
+    )
+
+    # Another XAU family already owns an independent PAPER trade.
+    existing_trade = ShadowPaperTrade(
+        trade_id="existing-asia-paper",
+        symbol="XAUUSD",
+        mechanism=OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL,
+        side=Side.BUY,
+        signal_at=now,
+        entry_bar_at=now,
+        opened_at=now,
+        entry_price=4160.0,
+        stop_price=4156.0,
+        target_price=4166.0,
+        spread_at_entry=0.28,
+        lots=1.0,
+        risk_eur=400.0,
+        risk_distance=4.0,
+        target_r=1.5,
+        max_holding_bars=12,
+    )
+    (
+        tmp_path / "XAUUSD_asia_range_sweep_paper_state.json"
+    ).write_text(
+        ShadowPaperState(open_trade=existing_trade).model_dump_json(),
+        encoding="utf-8",
+    )
+
+    class FakeDiagnostic:
+        latest_closed_m5_at = now
+
+        def model_copy(self, *, update):
+            return self
+
+    calls: list[tuple[str, bool]] = []
 
     monkeypatch.setattr(
-        "app.services.multi_shadow_collector.load_shadow_paper_state",
-        lambda path: SimpleNamespace(open_trade=object() if path == existing else None),
+        "app.services.multi_shadow_collector.load_research_admissions",
+        lambda path: {strategy_id: admission},
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.build_market_universe",
+        lambda *args, **kwargs: [
+            SimpleNamespace(symbol="XAUUSD", paper_ready=True, quote_live=True)
+        ],
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.get_mt4_symbol_spec",
+        lambda *args, **kwargs: object(),
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.load_closed_market_bars",
+        lambda *args, **kwargs: [object()] * 50,
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.shadow_mechanism_enabled",
+        lambda symbol, mechanism: (
+            mechanism == OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.scan_shadow_opportunity",
+        lambda *args, **kwargs: FakeDiagnostic(),
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.load_macro_events",
+        lambda path: [],
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.classify_macro_signal_context",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.append_shadow_observation",
+        lambda *args, **kwargs: True,
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.capture_xau_sequence_microstructure",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.load_research_probe_qualification",
+        lambda *args, **kwargs: None,
     )
 
-    assert symbol_has_open_paper_elsewhere(
-        tmp_path,
-        "XAUUSD",
-        current_state_path=current,
+    def record_paper_call(*, state_path, allow_new_entries, **kwargs):
+        calls.append((state_path.name, allow_new_entries))
+        return SimpleNamespace()
+
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.advance_shadow_paper_book",
+        record_paper_call,
     )
-    assert not symbol_has_open_paper_elsewhere(
-        tmp_path,
-        "BTCUSD",
-        current_state_path=tmp_path / "BTCUSD_break_retest_paper_state.json",
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.advance_blocked_probe_book",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("stop")),
     )
+
+    with pytest.raises(RuntimeError, match="stop"):
+        collect_all_shadow_once(tmp_path, tmp_path, now)
+
+    assert calls == [
+        ("XAUUSD_structural_displacement_sequence_paper_state.json", True),
+    ]
 
 
 def test_probe_promotion_routes_signal_to_paper_and_stops_new_probe(

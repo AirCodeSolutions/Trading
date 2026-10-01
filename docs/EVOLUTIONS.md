@@ -2276,3 +2276,24 @@ train-only selection contract. No new runtime mechanism was added.
 Runtime admissions were refreshed from the current DEMO-equity replay.
 Broker DEMO authority remains locked until a family independently reaches
 SUPPORTS_DEMO from prospective PAPER evidence.
+
+
+## 2026-10-01 — XAU structural displacement 1.5R target challenger
+
+One economic hypothesis only: XAUUSD structural displacement keeps the exact
+same causal sequence, entry, 1.50 ATR structural stop and 12-M5 safety horizon,
+but moves its fixed target from 1.0R to 1.5R. BTCUSD remains at 1.0R.
+
+The preregistered DEMO-equity replay improved both independent XAU windows:
+validation 25 trades moved from +0.302R expectancy / PF 2.049 / 1.742R DD to
++0.423R / PF 2.461 / 1.743R DD; holdout 14 trades moved from +0.375R / PF 2.314 /
+2.0R DD to +0.661R / PF 3.312 / 2.0R DD. A BTC cross-check did not improve
+holdout, so the change is deliberately XAU-specific.
+
+Position Manager V2 was also replayed on the same XAU structural-displacement
+population and was rejected as a replacement: it improved holdout by +0.77R but
+reduced validation by -1.01R and the full historical population by -10.80R.
+Baseline fixed exits therefore remain the champion contract.
+
+This target change is not broker authority. Prospective PAPER evidence must start
+under the new target contract and broker DEMO still requires SUPPORTS_DEMO.

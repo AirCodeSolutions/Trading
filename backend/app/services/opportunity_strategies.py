@@ -378,6 +378,10 @@ def _structural_displacement_sequence_side(
     return contexts[-1].side
 
 
+def _structural_displacement_target_r(symbol: str) -> float:
+    return 1.5 if symbol.upper() == "XAUUSD" else 1.0
+
+
 def _structural_displacement_sequence_reason(symbol: str) -> str:
     patterns = STRUCTURAL_DISPLACEMENT_SEQUENCE_PATTERNS.get(symbol.upper(), ())
     return "causal three-state sequence: " + " -> ".join(
@@ -419,7 +423,7 @@ def _structural_displacement_sequence_candidate(
         signal_index=index,
         entry_index=index + 1,
         structural_stop=stop,
-        target_r=1.0,
+        target_r=_structural_displacement_target_r(signal.symbol),
         max_holding_bars=12,
         reason=_structural_displacement_sequence_reason(signal.symbol),
     )
@@ -444,7 +448,7 @@ def _structural_displacement_sequence_signal(
     return (
         side,
         raw_stop,
-        1.0,
+        _structural_displacement_target_r(bar.symbol),
         12,
         1.50 * atr_value,
         None,

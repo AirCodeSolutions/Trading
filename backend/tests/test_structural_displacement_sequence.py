@@ -182,7 +182,7 @@ def test_xau_sequence_runtime_and_backtest_geometry_are_identical(
     assert signal is not None
     assert candidate.side == signal[0] == Side.BUY
     assert candidate.structural_stop == bars[27].open - 3.0
-    assert candidate.target_r == signal[2] == 1.0
+    assert candidate.target_r == signal[2] == 1.5
     assert candidate.max_holding_bars == signal[3] == 12
     assert signal[4] == 3.0
 

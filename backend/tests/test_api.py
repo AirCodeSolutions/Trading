@@ -452,3 +452,38 @@ def test_authority_recovery_endpoint_is_descriptive(monkeypatch) -> None:
     assert payload["required_additional_observations"] == 19
     assert payload["supports_demo"] is False
     assert payload["authority_effect"] is False
+
+
+def test_authority_recovery_clear_path_endpoint_is_descriptive(monkeypatch) -> None:
+    from datetime import UTC, datetime
+
+    from app.domain.authority_recovery_clear_path import (
+        ClearPathRecoveryReport,
+        ClearPathWindowMetrics,
+    )
+
+    metrics = ClearPathWindowMetrics(
+        observations=34, wins=12, losses=22, flats=0, total_r=-5.7,
+        expectancy_r=-0.16, profit_factor=0.72, max_drawdown_r=13.6,
+    )
+    empty = ClearPathWindowMetrics(
+        observations=0, wins=0, losses=0, flats=0, total_r=0.0,
+        expectancy_r=None, profit_factor=0.0, max_drawdown_r=0.0,
+    )
+    report = ClearPathRecoveryReport(
+        generated_at=datetime(2026, 10, 1, 12, 0, tzinfo=UTC),
+        window_hours=168, hypothesis_id="recover_rejected_clear_path_to_existing_target_v1",
+        resolved_unqualified=161, context_available=87, selected_resolved=34,
+        selection_rate=34/87, selected=metrics, older_half=empty, recent_half=metrics,
+        minimum_observations=20, required_additional_observations=0,
+        evidence_state="economically_rejected", supports_demo=False,
+        authority_effect=False, human_review_required=True,
+    )
+    monkeypatch.setattr("app.main.build_clear_path_recovery_report", lambda *args, **kwargs: report)
+    response = client.get("/api/v1/research/authority-recovery/clear-path?hours=168")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["selected_resolved"] == 34
+    assert payload["evidence_state"] == "economically_rejected"
+    assert payload["supports_demo"] is False
+    assert payload["authority_effect"] is False

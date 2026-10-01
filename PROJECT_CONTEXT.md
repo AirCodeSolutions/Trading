@@ -460,3 +460,11 @@ family robustness. Current prospective cohort N=1, result -1.0R; 19 more resolve
 observations are required before review-ready. supports_demo=false and no authority
 change. Next P2-C hypothesis may test one different pre-existing causal selector
 across the larger rejected population; do not loosen authority globally.
+
+## 2026-10-01 — P2-C checkpoint #2
+
+Hypothesis `recover_rejected_clear_path_to_existing_target_v1` is complete and
+economically rejected. Current 168h selected cohort: N=34, 12W/22L, -5.746R,
+expectancy -0.169R, PF 0.72, DD 13.65R. Do not use landmark clear-path as an
+authority recovery rule. P2-C remains active; next hypothesis must use a different
+pre-existing causal feature and must not loosen authority globally.

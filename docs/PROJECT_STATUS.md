@@ -3814,3 +3814,10 @@ rejected executable XAU structural-displacement probes because that family has
 independent robust 1.5R evidence. Current prospective evidence is only N=1 and
 -1.0R. State: INSUFFICIENT_EVIDENCE, 19 more resolved observations required.
 No SUPPORTS_DEMO or broker/PAPER authority change.
+
+## 2026-10-01 — P2-C clear-path recovery rejected
+
+The pre-registered no-new-threshold selector `clear_path_to_existing_target` is
+complete. Of 161 resolved rejected executable probes in the 168h window, 87 had
+causal landmark context and 34 passed. Result: 12W/22L, -5.746R, expectancy
+-0.169R, PF 0.72, DD 13.65R. It is economically rejected and grants no authority.

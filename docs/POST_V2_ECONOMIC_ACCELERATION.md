@@ -258,3 +258,13 @@ Current 168h prospective cohort: N=1, 0 wins / 1 loss, -1.0R, PF 0.0. Evidence
 state is `INSUFFICIENT_EVIDENCE`; 19 additional resolved observations are needed.
 `supports_demo=false`, `authority_effect=false`, human review remains mandatory.
 No authority change is justified.
+
+P2-C hypothesis 2 is complete and economically rejected:
+`recover_rejected_clear_path_to_existing_target_v1` selects rejected executable
+probes only when the nearest favorable landmark already persisted at entry is at
+or beyond the existing target. No new numeric threshold, target, stop or sizing
+rule is introduced. In the current 168h window, 161 resolved unqualified probes
+exist; 87 have causal landmark context and 34 pass the selector. Those 34 produce
+12 wins / 22 losses, -5.746R total, -0.169R expectancy, PF 0.72 and 13.65R max
+drawdown. This fails the existing prospective criteria and is
+`ECONOMICALLY_REJECTED`. `supports_demo=false`; no authority change.

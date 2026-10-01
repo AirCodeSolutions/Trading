@@ -2461,3 +2461,11 @@ Added a read-only recovery contract for rejected XAU structural-displacement
 1.5R probes. It deliberately reuses the 20-observation prospective governance
 gate. Current N=1 (-1.0R) is insufficient, so the report cannot grant PAPER or
 broker authority and explicitly returns supports_demo=false.
+
+## 2026-10-01 — P2-C clear-path selector rejected
+
+Added a Research-only authority-recovery selector using only persisted causal
+landmarks and the existing target. The nearest favorable landmark must be at or
+beyond that target; no numeric threshold was fitted. The selected prospective
+cohort N=34 loses -5.746R with PF 0.72 and DD 13.65R, so the selector is rejected.
+No SUPPORTS_DEMO, PAPER or broker authority changes.

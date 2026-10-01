@@ -33,6 +33,7 @@ from app.domain.economic_validation_v2 import EconomicValidationReport
 from app.domain.entry_zone import ExecutableEntryZoneV2
 from app.domain.execution_audit import ExecutionQualitySummary
 from app.domain.execution_cost_stress import ExecutionCostStressReport
+from app.domain.family_exit_challenger import FamilyExitChallengerReport
 from app.domain.live_market import LiveMarketQuote
 from app.domain.macro import MacroGateStatus
 from app.domain.manual_demo import (
@@ -119,6 +120,9 @@ from app.services.execution_audit import AUDIT_FILE, build_execution_quality_sum
 from app.services.execution_cost_history import summarize_execution_costs
 from app.services.execution_cost_stress import (
     build_xau_structural_displacement_cost_stress,
+)
+from app.services.family_exit_challenger import (
+    build_xau_structural_displacement_exit_challenger,
 )
 from app.services.live_market_quality import build_live_market_quality
 from app.services.macro_gate import load_macro_events, macro_gate_status
@@ -669,6 +673,23 @@ def xau_structural_displacement_regime_session_attribution() -> RegimeSessionAtt
 def xau_structural_displacement_execution_cost_stress() -> ExecutionCostStressReport:
     try:
         return build_xau_structural_displacement_cost_stress(
+            _mt4_files_dir(),
+            generated_at=datetime.now(tz=_server_timezone()),
+            risk_fraction=settings.risk_per_trade_fraction,
+            research_execution_model_path=settings.research_execution_model_path,
+            macro_events_path=settings.macro_events_path,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get(
+    f"{settings.api_prefix}/research/xau-structural-displacement/family-exit-challenger",
+    response_model=FamilyExitChallengerReport,
+)
+def xau_structural_displacement_family_exit_challenger() -> FamilyExitChallengerReport:
+    try:
+        return build_xau_structural_displacement_exit_challenger(
             _mt4_files_dir(),
             generated_at=datetime.now(tz=_server_timezone()),
             risk_fraction=settings.risk_per_trade_fraction,

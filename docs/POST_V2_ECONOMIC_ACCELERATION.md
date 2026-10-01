@@ -143,7 +143,7 @@ These small cells are not sufficient to create a session/regime veto.
 
 ### P2-A — Execution-cost stress
 
-Status: COMPLETE — PR pending validation/merge
+Status: COMPLETE — MERGED / DEPLOYED — PR #203
 
 Scope: XAUUSD structural displacement under the canonical 1.5R contract.
 
@@ -163,15 +163,42 @@ admission, PAPER or broker authority.
 
 ### P2-B — Family-specific exit challengers
 
-Status: QUEUED
+Status: ACTIVE — hypothesis 1 REJECTED, champion unchanged
 
 Only create an exit challenger when measured giveback/no-follow-through supports
 a specific hypothesis. No generic Position Manager rollout.
 
-Current evidence:
-- Position Manager V2 is rejected for XAU structural displacement as a wholesale
-  replacement: validation and full-history performance degrade despite a holdout
-  improvement.
+Initial diagnostic on the canonical XAU structural-displacement 1.5R replay:
+- loss after favorable MFE is not stable across windows: 6/9 negative validation
+  outcomes reached at least +0.5R MFE, versus 0/4 negative holdout outcomes;
+- timeout is not the dominant defect: validation timeouts total +2.071R and
+  holdout timeouts total +2.748R;
+- opposite-direction M15 regime loss is too rare: 1 validation case, 0 holdout;
+- extension beyond 1.5R is the only repeated symptom: 6/9 validation target
+  winners and 5/7 holdout target winners reached at least 2.0R within the same
+  12-M5 horizon.
+
+Hypothesis 1 was therefore pre-registered before outcome replay:
+`xau_sd_fixed_target_1_5r_vs_2r_exit_v1`. The champion cohort is frozen by the
+canonical 1.5R overlap policy. Challenger and champion use identical signal,
+entry, structural stop, sizing, costs and 12-M5 horizon; only fixed target R
+changes from 1.5 to 2.0.
+
+Result with actual MT4 DEMO equity and the frozen validation/holdout split:
+- validation N=25: 1.5R +10.571R / exp +0.423R / PF 2.46 versus 2.0R
+  +10.408R / exp +0.416R / PF 2.44; delta -0.163R;
+- holdout N=14: 1.5R +9.248R / exp +0.661R / PF 3.31 versus 2.0R
+  +8.272R / exp +0.591R / PF 2.65; delta -0.977R.
+
+Conclusion: fixed 2.0R is rejected because it degrades both independent windows.
+The canonical XAU structural-displacement champion remains fixed target 1.5R.
+The negative result is retained in Research to avoid retesting it.
+`authority_effect=false`; no PAPER/admission/broker/risk/sizing rule changes.
+
+Current evidence also still rejects Position Manager V2 as a wholesale
+replacement: validation and full-history performance degrade despite a holdout
+improvement. Any next P2-B hypothesis must be conditional and causal, and must
+be tested alone against the unchanged 1.5R champion.
 
 ## Invariants
 

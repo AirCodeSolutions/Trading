@@ -2411,3 +2411,21 @@ positive in both independent windows under all three pre-registered cost
 scenarios. This is robustness evidence only. authority_effect=false and no
 admission, PAPER, portfolio, broker, risk, sizing, spread guard or lot-cap rule
 changes.
+
+## 2026-10-01 — P2-B XAU fixed-2R exit challenger rejected
+
+A family-specific exit diagnostic compared four possible defects on the current
+XAU structural-displacement 1.5R contract. Negative-trade MFE giveback was not
+stable in holdout, timeout cohorts were net positive in both windows, and an
+opposite-direction M15 regime appeared only once in validation and never in
+holdout. The repeated observation was post-target extension: 6/9 validation and
+5/7 holdout 1.5R target winners later reached at least 2.0R inside the same
+12-M5 horizon.
+
+That observation justified exactly one pre-registered challenger, fixed target
+2.0R versus the unchanged fixed-target 1.5R champion on the same frozen champion
+signal cohort. It failed: validation lost 0.163R and holdout lost 0.977R versus
+1.5R, with lower PF in both windows. Therefore no target or exit rule changes.
+The negative result is versioned and visible in Research so it is not retested
+as if unknown. Broker authority, PAPER admission, risk, sizing, spread guard and
+5-lot cap are untouched.

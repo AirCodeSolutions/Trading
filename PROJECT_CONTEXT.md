@@ -420,3 +420,13 @@ Research-only and authority_effect=false.
 
 Next queued item after P2-A is P2-B family-specific exit challengers, but do not
 start it in the same work session as P2-A validation/deployment.
+
+## 2026-10-01 — P2-B exit challenger checkpoint
+
+P2-B hypothesis 1 is complete in research: `xau_sd_fixed_target_1_5r_vs_2r_exit_v1`.
+The 2.0R fixed-target challenger was selected because extension past 1.5R repeated
+in validation and holdout, but the paired replay degraded both windows
+(validation -0.163R, holdout -0.977R). It is rejected. The canonical XAU
+structural-displacement target remains 1.5R. No broker/PAPER/admission/risk/sizing
+change is authorized. The next P2-B hypothesis, if any, must be one conditional
+causal exit variation only; do not retry fixed 2.0R.

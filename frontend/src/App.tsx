@@ -1697,6 +1697,42 @@ export default function App() {
   const [manualBusy, setManualBusy] = useState(false);
   const [manualMessage, setManualMessage] = useState("");
 
+  const runSequentialFetches = async (
+    tasks: Array<() => Promise<Response>>
+  ): Promise<Response[]> => {
+    const responses: Response[] = [];
+    for (const task of tasks) {
+      responses.push(await task());
+    }
+    return responses;
+  };
+
+  useEffect(() => {
+    let active = true;
+
+    const refreshBackendHealth = async () => {
+      try {
+        const response = await fetch("/api/v1/health");
+        if (!active) return;
+        if (!response.ok) {
+          setStatus("Backend indisponible");
+          return;
+        }
+        const health = await response.json();
+        setStatus(health.status === "ok" ? "Opérationnel" : "Dégradé");
+      } catch {
+        if (active) setStatus("Backend indisponible");
+      }
+    };
+
+    void refreshBackendHealth();
+    const timer = window.setInterval(refreshBackendHealth, 10_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, []);
+
   useEffect(() => {
     let active = true;
     let refreshing = false;
@@ -1706,226 +1742,48 @@ export default function App() {
       refreshing = true;
       try {
         const [
-          healthResponse,
           configResponse,
           drainResponse,
-          shadowResponse,
-          paperResponse,
           universeResponse,
-          marketBriefResponse,
-          marketStateResponse,
-          entryZonesResponse,
           qualityResponse,
           overviewResponse,
-          allocatorResponse,
           costsResponse,
           macroResponse,
           demoResponse,
-          preflightResponse,
-          opportunitiesResponse,
-          opportunityStatesResponse,
-          triggerEngineResponse,
-          positionManagerResponse,
-          positionManagerResearchResponse,
-          assetSpecializationResponse,
-          championChallengersResponse,
-          blockedProbesResponse,
-          opportunityFunnelResponse,
-          stopGeometryResponse,
-          sessionLandmarkResponse,
-          performanceAttributionResponse,
-          probeReviewContractResponse,
-          intelligenceResponse,
-          trailingShadowResponse,
-          xauFeasiblePullbackResponse,
-          xauCompressionPrecursorResponse,
-          xauAuctionPrecursorResponse,
-          xauMicrobarsResponse,
-          marketMicrobarsResponse,
-          precursorForwardResponse,
-          economicFeasibilityResponse,
-          dailyReportResponse,
-          qualificationHistoryResponse
-        ] = await Promise.all([
-          fetch("/api/v1/health"),
-          fetch("/api/v1/config"),
-          fetch("/api/v1/runtime/drain"),
-          fetch("/api/v1/shadow/mt4/btc/break-retest"),
-          fetch("/api/v1/shadow/mt4/btc/break-retest/paper"),
-          fetch("/api/v1/market/mt4/universe"),
-          fetch("/api/v1/research/market-brief"),
-          fetch("/api/v1/market-state/v2"),
-          fetch("/api/v1/entry-zones/v2"),
-          fetch("/api/v1/market/mt4/quality"),
-          fetch("/api/v1/portfolio/overview"),
-          fetch("/api/v1/portfolio/allocator/v2"),
-          fetch("/api/v1/market/mt4/costs"),
-          fetch("/api/v1/macro/status"),
-          fetch("/api/v1/execution/demo/status"),
-          fetch("/api/v1/session/preflight"),
-          fetch("/api/v1/shadow/overview"),
-          fetch("/api/v1/opportunities/v2/states"),
-          fetch("/api/v1/triggers/v2"),
-          fetch("/api/v1/position-manager/v2"),
-          fetch("/api/v1/research/position-manager/v2?hours=168"),
-          fetch("/api/v1/asset-specialization/v2"),
-          fetch("/api/v1/research/champion-challengers/v2?hours=168"),
-          fetch("/api/v1/shadow/blocked-probes"),
-          fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
-          fetch("/api/v1/research/stop-geometry?hours=168"),
-          fetch("/api/v1/research/session-landmarks?hours=168"),
-          fetch("/api/v1/research/performance-attribution?hours=168"),
-          fetch("/api/v1/research/probe-review/contract"),
-          fetch("/api/v1/intelligence/overview?hours=24"),
-          fetch("/api/v1/research/trailing-shadow"),
-          fetch("/api/v1/research/xau-feasible-pullback"),
-          fetch("/api/v1/research/xau-compression-precursor"),
-          fetch("/api/v1/research/xau-auction-precursor"),
-          fetch("/api/v1/research/xau-microbars"),
-          fetch("/api/v1/research/microbars"),
-          fetch("/api/v1/research/precursor-forward"),
-          fetch("/api/v1/research/economic-feasibility"),
-          fetch("/api/v1/reports/daily"),
-          fetch("/api/v1/qualification/history?limit=50")
+          preflightResponse
+        ] = await runSequentialFetches([
+          () => fetch("/api/v1/config"),
+          () => fetch("/api/v1/runtime/drain"),
+          () => fetch("/api/v1/market/mt4/universe"),
+          () => fetch("/api/v1/market/mt4/quality"),
+          () => fetch("/api/v1/portfolio/overview"),
+          () => fetch("/api/v1/market/mt4/costs"),
+          () => fetch("/api/v1/macro/status"),
+          () => fetch("/api/v1/execution/demo/status"),
+          () => fetch("/api/v1/session/preflight")
         ]);
-        if (!healthResponse.ok || !configResponse.ok) {
-          throw new Error("backend unavailable");
-        }
-
-        const health = await healthResponse.json();
+        if (!configResponse.ok) throw new Error("config unavailable");
         const runtime = await configResponse.json();
         const drainPayload = drainResponse.ok ? await drainResponse.json() : null;
-        const shadowPayload = shadowResponse.ok ? await shadowResponse.json() : null;
-        const paperPayload = paperResponse.ok ? await paperResponse.json() : null;
         const universePayload = universeResponse.ok ? await universeResponse.json() : [];
-        const marketBriefPayload = marketBriefResponse.ok ? await marketBriefResponse.json() : null;
-        const marketStatePayload = marketStateResponse.ok ? await marketStateResponse.json() : [];
-        const entryZonesPayload = entryZonesResponse.ok ? await entryZonesResponse.json() : [];
         const qualityPayload = qualityResponse.ok ? await qualityResponse.json() : [];
         const overviewPayload = overviewResponse.ok ? await overviewResponse.json() : null;
-        const allocatorPayload = allocatorResponse.ok ? await allocatorResponse.json() : null;
         const costsPayload = costsResponse.ok ? await costsResponse.json() : {};
         const macroPayload = macroResponse.ok ? await macroResponse.json() : null;
         const demoPayload = demoResponse.ok ? await demoResponse.json() : null;
-        const preflightPayload = preflightResponse.ok
-          ? await preflightResponse.json()
-          : null;
-        const opportunitiesPayload = opportunitiesResponse.ok
-          ? await opportunitiesResponse.json()
-          : [];
-        const opportunityStatesPayload = opportunityStatesResponse.ok
-          ? await opportunityStatesResponse.json()
-          : [];
-        const triggerEnginePayload = triggerEngineResponse.ok
-          ? await triggerEngineResponse.json()
-          : [];
-        const positionManagerPayload = positionManagerResponse.ok
-          ? await positionManagerResponse.json()
-          : [];
-        const positionManagerResearchPayload = positionManagerResearchResponse.ok
-          ? await positionManagerResearchResponse.json()
-          : null;
-        const assetSpecializationPayload = assetSpecializationResponse.ok
-          ? await assetSpecializationResponse.json()
-          : [];
-        const championChallengersPayload = championChallengersResponse.ok
-          ? await championChallengersResponse.json()
-          : null;
-        const blockedProbesPayload = blockedProbesResponse.ok
-          ? await blockedProbesResponse.json()
-          : [];
-        const opportunityFunnelPayload = opportunityFunnelResponse.ok
-          ? await opportunityFunnelResponse.json()
-          : null;
-        const stopGeometryPayload = stopGeometryResponse.ok
-          ? await stopGeometryResponse.json()
-          : null;
-        const sessionLandmarkPayload = sessionLandmarkResponse.ok
-          ? await sessionLandmarkResponse.json()
-          : null;
-        const performanceAttributionPayload = performanceAttributionResponse.ok
-          ? await performanceAttributionResponse.json()
-          : null;
-        const probeReviewContractPayload = probeReviewContractResponse.ok
-          ? await probeReviewContractResponse.json()
-          : null;
-        const intelligencePayload = intelligenceResponse.ok
-          ? await intelligenceResponse.json()
-          : null;
-        const trailingShadowPayload = trailingShadowResponse.ok
-          ? await trailingShadowResponse.json()
-          : null;
-        const xauFeasiblePullbackPayload = xauFeasiblePullbackResponse.ok
-          ? await xauFeasiblePullbackResponse.json()
-          : null;
-        const xauCompressionPrecursorPayload = xauCompressionPrecursorResponse.ok
-          ? await xauCompressionPrecursorResponse.json()
-          : null;
-        const xauAuctionPrecursorPayload = xauAuctionPrecursorResponse.ok
-          ? await xauAuctionPrecursorResponse.json()
-          : null;
-        const xauMicrobarsPayload = xauMicrobarsResponse.ok
-          ? await xauMicrobarsResponse.json()
-          : null;
-        const marketMicrobarsPayload = marketMicrobarsResponse.ok
-          ? await marketMicrobarsResponse.json()
-          : [];
-        const precursorForwardPayload = precursorForwardResponse.ok
-          ? await precursorForwardResponse.json()
-          : null;
-        const economicFeasibilityPayload = economicFeasibilityResponse.ok
-          ? await economicFeasibilityResponse.json()
-          : null;
-        const dailyReportPayload = dailyReportResponse.ok
-          ? await dailyReportResponse.json()
-          : null;
-        const qualificationHistoryPayload = qualificationHistoryResponse.ok
-          ? await qualificationHistoryResponse.json()
-          : [];
-
+        const preflightPayload = preflightResponse.ok ? await preflightResponse.json() : null;
         if (!active) return;
-        setStatus(health.status === "ok" ? "Opérationnel" : "Dégradé");
         setConfig(runtime);
         setDrain(drainPayload);
-        setShadow(shadowPayload);
-        setPaper(paperPayload);
         setUniverse(universePayload);
-        setMarketBrief(marketBriefPayload);
-        setMarketStates(marketStatePayload);
-        setEntryZones(entryZonesPayload);
         setMarketQuality(qualityPayload);
         setOverview(overviewPayload);
-        setAllocator(allocatorPayload);
         setCosts(costsPayload);
         setMacro(macroPayload);
         setDemo(demoPayload);
         setPreflight(preflightPayload);
-        setOpportunities(opportunitiesPayload);
-        setOpportunityStates(opportunityStatesPayload);
-        setTriggerEngine(triggerEnginePayload);
-        setPositionManager(positionManagerPayload);
-        setPositionManagerResearch(positionManagerResearchPayload);
-        setAssetSpecialization(assetSpecializationPayload);
-        setChampionChallengers(championChallengersPayload);
-        setBlockedProbes(blockedProbesPayload);
-          setOpportunityFunnel(opportunityFunnelPayload);
-          setStopGeometryResearch(stopGeometryPayload);
-          setSessionLandmarkResearch(sessionLandmarkPayload);
-          setPerformanceAttribution(performanceAttributionPayload);
-        setProbeReviewContract(probeReviewContractPayload);
-        setIntelligence(intelligencePayload);
-        setTrailingShadow(trailingShadowPayload);
-        setXauFeasiblePullback(xauFeasiblePullbackPayload);
-        setXauCompressionPrecursor(xauCompressionPrecursorPayload);
-        setXauAuctionPrecursor(xauAuctionPrecursorPayload);
-        setXauMicrobars(xauMicrobarsPayload);
-        setMarketMicrobars(marketMicrobarsPayload);
-        setPrecursorForward(precursorForwardPayload);
-        setEconomicFeasibility(economicFeasibilityPayload);
-        setDailyReport(dailyReportPayload);
-        setQualificationHistory(qualificationHistoryPayload);
       } catch {
-        if (active) setStatus("Backend indisponible");
+        // Health is polled independently; preserve last operational snapshot.
       } finally {
         refreshing = false;
       }
@@ -1938,6 +1796,62 @@ export default function App() {
       window.clearInterval(timer);
     };
   }, []);
+
+  useEffect(() => {
+    if (activeView !== "trading") return;
+    let active = true;
+    let refreshing = false;
+
+    const refreshStrategyState = async () => {
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        const [
+          shadowResponse,
+          paperResponse,
+          marketStateResponse,
+          entryZonesResponse,
+          allocatorResponse,
+          opportunitiesResponse,
+          opportunityStatesResponse,
+          triggerEngineResponse,
+          positionManagerResponse
+        ] = await runSequentialFetches([
+          () => fetch("/api/v1/shadow/mt4/btc/break-retest"),
+          () => fetch("/api/v1/shadow/mt4/btc/break-retest/paper"),
+          () => fetch("/api/v1/market-state/v2"),
+          () => fetch("/api/v1/entry-zones/v2"),
+          () => fetch("/api/v1/portfolio/allocator/v2"),
+          () => fetch("/api/v1/shadow/overview"),
+          () => fetch("/api/v1/opportunities/v2/states"),
+          () => fetch("/api/v1/triggers/v2"),
+          () => fetch("/api/v1/position-manager/v2")
+        ]);
+        if (!active) return;
+        setShadow(shadowResponse.ok ? await shadowResponse.json() : null);
+        setPaper(paperResponse.ok ? await paperResponse.json() : null);
+        setMarketStates(marketStateResponse.ok ? await marketStateResponse.json() : []);
+        setEntryZones(entryZonesResponse.ok ? await entryZonesResponse.json() : []);
+        setAllocator(allocatorResponse.ok ? await allocatorResponse.json() : null);
+        setOpportunities(opportunitiesResponse.ok ? await opportunitiesResponse.json() : []);
+        setOpportunityStates(opportunityStatesResponse.ok ? await opportunityStatesResponse.json() : []);
+        setTriggerEngine(triggerEngineResponse.ok ? await triggerEngineResponse.json() : []);
+        setPositionManager(positionManagerResponse.ok ? await positionManagerResponse.json() : []);
+      } catch {
+        // Keep last strategy snapshot; backend health is independent.
+      } finally {
+        refreshing = false;
+      }
+    };
+
+    const initial = window.setTimeout(() => void refreshStrategyState(), 2_000);
+    const timer = window.setInterval(refreshStrategyState, 120_000);
+    return () => {
+      active = false;
+      window.clearTimeout(initial);
+      window.clearInterval(timer);
+    };
+  }, [activeView]);
 
   useEffect(() => {
     if (activeView !== "research") return;
@@ -2043,6 +1957,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (activeView !== "research") return;
     let active = true;
     let refreshing = false;
 
@@ -2070,13 +1985,14 @@ export default function App() {
       }
     };
 
-    void refreshWaitingCosts();
-    const timer = window.setInterval(refreshWaitingCosts, 300_000);
+    const initial = window.setTimeout(() => void refreshWaitingCosts(), 2_000);
+    const timer = window.setInterval(refreshWaitingCosts, 600_000);
     return () => {
       active = false;
+      window.clearTimeout(initial);
       window.clearInterval(timer);
     };
-  }, []);
+  }, [activeView]);
 
   const liveCount = quotes.filter((quote) => quote.status === "live").length;
   const paperCandidates = overview?.paper_strategies.filter(

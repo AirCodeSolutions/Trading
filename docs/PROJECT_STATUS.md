@@ -3780,3 +3780,17 @@ entry, structural stop, sizing, execution-cost model and 12-M5 horizon are
 identical. Validation delta is -0.163R and holdout delta is -0.977R, so 2.0R is
 rejected and the 1.5R champion remains unchanged. The dashboard Research tab
 exposes the paired negative result. No authority effect.
+
+## 2026-10-01 — P2-B conditional extension hypothesis #2
+
+A second family-specific exit hypothesis is complete in Research and rejected.
+The pre-registered rule extends XAU structural displacement from the canonical
+1.5R target to 2.0R only when, at the first 1.5R touch, the previous three fully
+closed M5 bars have strictly directional closes in trade direction. The rule
+reuses the frozen Position Manager structure window of 3; no threshold was fit
+from outcome data.
+
+Actual-equity paired replay: validation N=25, 4 extensions qualified, delta
+-1.954R; holdout N=14, 3 extensions qualified, delta -1.500R. PF also degraded
+in both windows. The rule is rejected and 1.5R remains the XAU structural-
+displacement champion. No broker/PAPER/admission/risk/sizing change is allowed.

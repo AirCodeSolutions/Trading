@@ -195,6 +195,13 @@ The canonical XAU structural-displacement champion remains fixed target 1.5R.
 The negative result is retained in Research to avoid retesting it.
 `authority_effect=false`; no PAPER/admission/broker/risk/sizing rule changes.
 
+Hypothesis 2 is also complete and rejected:
+`xau_sd_extend_2r_if_prior_3_m5_directional_v1` extends to 2.0R only when the
+three prior fully closed M5 bars are strictly directional at the first 1.5R
+touch. It qualified 4 validation and 3 holdout extensions, but degraded total R
+by -1.954R and -1.500R respectively. Simple M5 target-event momentum is therefore
+not a sufficient extension selector. Champion remains fixed 1.5R.
+
 Current evidence also still rejects Position Manager V2 as a wholesale
 replacement: validation and full-history performance degrade despite a holdout
 improvement. Any next P2-B hypothesis must be conditional and causal, and must

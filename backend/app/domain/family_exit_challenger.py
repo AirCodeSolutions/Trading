@@ -20,6 +20,7 @@ class ExitChallengerWindowMetrics(BaseModel):
     challenger_stops: int = Field(ge=0)
     champion_timeouts: int = Field(ge=0)
     challenger_timeouts: int = Field(ge=0)
+    extension_qualified: int = Field(default=0, ge=0)
 
 
 class FamilyExitChallengerReport(BaseModel):
@@ -37,4 +38,5 @@ class FamilyExitChallengerReport(BaseModel):
     holdout: ExitChallengerWindowMetrics
     authority_effect: bool = False
     human_review_required: bool = True
+    qualification_rule: str | None = None
     limitations: list[str] = Field(default_factory=list)

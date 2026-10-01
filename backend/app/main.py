@@ -124,6 +124,9 @@ from app.services.execution_cost_stress import (
 from app.services.family_exit_challenger import (
     build_xau_structural_displacement_exit_challenger,
 )
+from app.services.family_exit_conditional_extension import (
+    build_xau_structural_displacement_conditional_extension,
+)
 from app.services.live_market_quality import build_live_market_quality
 from app.services.macro_gate import load_macro_events, macro_gate_status
 from app.services.manual_demo import (
@@ -690,6 +693,23 @@ def xau_structural_displacement_execution_cost_stress() -> ExecutionCostStressRe
 def xau_structural_displacement_family_exit_challenger() -> FamilyExitChallengerReport:
     try:
         return build_xau_structural_displacement_exit_challenger(
+            _mt4_files_dir(),
+            generated_at=datetime.now(tz=_server_timezone()),
+            risk_fraction=settings.risk_per_trade_fraction,
+            research_execution_model_path=settings.research_execution_model_path,
+            macro_events_path=settings.macro_events_path,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get(
+    f"{settings.api_prefix}/research/xau-structural-displacement/conditional-exit-challenger",
+    response_model=FamilyExitChallengerReport,
+)
+def xau_structural_displacement_conditional_exit_challenger() -> FamilyExitChallengerReport:
+    try:
+        return build_xau_structural_displacement_conditional_extension(
             _mt4_files_dir(),
             generated_at=datetime.now(tz=_server_timezone()),
             risk_fraction=settings.risk_per_trade_fraction,

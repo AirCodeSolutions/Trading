@@ -2213,3 +2213,20 @@ Checkpoint at implementation time: XAUUSD:directional_transition is still
 COLLECTING at 16/20 resolved probes, +0.4289R expectancy, PF 2.0395 and 2.0350R
 max DD, with no open probe. It therefore remains research-only until four more
 resolved outcomes preserve the established thresholds.
+
+
+## 2026-10-01 — Runtime admissions pinned to actual MT4 DEMO capital
+
+The generic MT4 research matrix is now side-effect free: exploratory requests can
+no longer overwrite `strategy_admissions.json`.
+
+A dedicated runtime-admission refresh uses only the current MT4 DEMO sizing
+capital (equity first, balance fallback), the frozen review split, the active
+five-symbol universe and the configured risk-per-trade fraction. The refresh
+fails closed when DEMO capital is unavailable and atomically replaces the
+runtime admission registry only after the full portfolio replay succeeds.
+
+This fixes a stale-capital failure mode where historical admissions could be
+computed with `reference_capital_eur` even though runtime sizing had moved to
+actual MT4 equity. No admission threshold, PF/DD rule, spread guard, lot cap,
+stop/target or broker authority rule changed.

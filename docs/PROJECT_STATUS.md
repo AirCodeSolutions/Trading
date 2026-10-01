@@ -3628,3 +3628,17 @@ Safety boundaries:
 
 Validation before PR: 509 backend tests, Ruff green, frontend production build
 green and git diff --check green.
+
+
+## 2026-10-01 — Admission source of truth uses broker DEMO equity
+
+Runtime admissions are no longer a side effect of arbitrary research matrix
+calls. A dedicated refresh contract recomputes all compatible active families
+with actual MT4 DEMO equity (balance only if equity is unavailable), the frozen
+train/validation/holdout split and the configured risk fraction.
+
+The current actual-equity replay showed why this matters: XAU break/retest is
+REJECTED on independent holdout, while XAU structural displacement and
+structural persistence are positive but under-sampled SHADOW candidates. The
+runtime registry will be refreshed only under drain/book-flat deployment
+discipline.

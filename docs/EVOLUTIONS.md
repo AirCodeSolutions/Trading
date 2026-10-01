@@ -2317,3 +2317,18 @@ Stable version ids:
 
 The collector is research-only, respects drain for new entries, exposes no
 broker authority and requires human review.
+
+
+## 2026-10-01 — P1-A Authority Regret Ledger
+
+A research-only authority-regret report now separates executable opportunities
+rejected from PAPER authority, accepted PAPER outcomes, exact DEMO-executed
+PAPER ids, and economically blocked guard counterfactuals.
+
+The report measures winners missed, losses avoided, accepted winners/losses,
+rejected counterfactual total R, and attribution by strategy/reason. Economic
+guard blocks are explicitly excluded from executable authority regret.
+
+Persisted PAPER/probe result R is spread-aware. Broker slippage and commissions
+are not inferred for counterfactual observations; broker-net adjustment remains
+unavailable unless an exact fill can be paired. No authority rule changed.

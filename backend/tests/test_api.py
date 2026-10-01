@@ -60,3 +60,19 @@ def test_paired_economic_contracts_endpoint_is_research_only() -> None:
     assert payload["human_review_required"] is True
     assert payload["champion"]["contract_id"] == "xau_sd_target_1r_v1"
     assert payload["challenger"]["contract_id"] == "xau_sd_target_1_5r_v2"
+
+
+def test_authority_regret_endpoint_is_descriptive() -> None:
+    response = client.get("/api/v1/research/authority-regret?hours=24")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["window_hours"] == 24
+    assert "winners_missed" in payload
+    assert "losses_avoided" in payload
+    assert "guard_blocked_total_r" in payload
+    assert "cost_basis" in payload
+
+
+def test_authority_regret_endpoint_rejects_invalid_window() -> None:
+    response = client.get("/api/v1/research/authority-regret?hours=0")
+    assert response.status_code == 422

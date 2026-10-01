@@ -286,6 +286,17 @@ type PairedEconomicContractReport = {
   challenger: { contract_id: string; role: string; closed_trades: number; total_r: number; expectancy_r: number; profit_factor: number; max_drawdown_r: number };
 };
 
+type AuthorityRegretReport = {
+  window_hours: number;
+  accepted_resolved: number; accepted_winners: number; accepted_losers: number; accepted_total_r: number;
+  broker_executed_resolved: number; broker_executed_winners: number; broker_executed_losers: number; broker_executed_total_r: number;
+  authority_rejected_resolved: number; winners_missed: number; winners_missed_r: number; losses_avoided: number; losses_avoided_r: number; rejected_counterfactual_total_r: number;
+  guard_blocked_resolved: number; guard_blocked_winners: number; guard_blocked_losses: number; guard_blocked_total_r: number;
+  by_reason: Array<{ key: string; observations: number; wins: number; losses: number; flats: number; total_r: number; expectancy_r: number | null; positive_r: number; negative_r: number; broker_cost_adjusted_total_r: number | null; broker_cost_adjustment_complete: boolean }>;
+  cost_basis: string;
+  limitations: string[];
+};
+
 type PortfolioAllocatorReport = {
   ready: boolean; capital_eur: number | null; capital_source: string;
   max_total_open_risk_fraction: number; max_total_open_risk_eur: number | null;
@@ -1644,6 +1655,7 @@ export default function App() {
   const [assetSpecialization, setAssetSpecialization] = useState<AssetSpecializationSnapshot[]>([]);
   const [championChallengers, setChampionChallengers] = useState<ChampionChallengerReport | null>(null);
   const [pairedEconomicContracts, setPairedEconomicContracts] = useState<PairedEconomicContractReport | null>(null);
+  const [authorityRegret, setAuthorityRegret] = useState<AuthorityRegretReport | null>(null);
   const positionManagerAggregates = useMemo(
     () => aggregatePositionManagerComparisons(positionManagerResearch?.comparisons),
     [positionManagerResearch?.comparisons],
@@ -1882,6 +1894,7 @@ export default function App() {
           assetSpecializationResponse,
           championChallengersResponse,
           pairedEconomicContractsResponse,
+          authorityRegretResponse,
           blockedProbesResponse,
           opportunityFunnelResponse,
           stopGeometryResponse,
@@ -1906,6 +1919,7 @@ export default function App() {
           () => fetch("/api/v1/asset-specialization/v2"),
           () => fetch("/api/v1/research/champion-challengers/v2?hours=168"),
           () => fetch("/api/v1/research/paired-economic-contracts/xau-structural-displacement"),
+          () => fetch("/api/v1/research/authority-regret?hours=168"),
           () => fetch("/api/v1/shadow/blocked-probes"),
           () => fetch("/api/v1/shadow/opportunity-funnel?hours=24"),
           () => fetch("/api/v1/research/stop-geometry?hours=168"),
@@ -1931,6 +1945,7 @@ export default function App() {
         setAssetSpecialization(assetSpecializationResponse.ok ? await assetSpecializationResponse.json() : []);
         setChampionChallengers(championChallengersResponse.ok ? await championChallengersResponse.json() : null);
         setPairedEconomicContracts(pairedEconomicContractsResponse.ok ? await pairedEconomicContractsResponse.json() : null);
+        setAuthorityRegret(authorityRegretResponse.ok ? await authorityRegretResponse.json() : null);
         setBlockedProbes(blockedProbesResponse.ok ? await blockedProbesResponse.json() : []);
         setOpportunityFunnel(opportunityFunnelResponse.ok ? await opportunityFunnelResponse.json() : null);
         setStopGeometryResearch(stopGeometryResponse.ok ? await stopGeometryResponse.json() : null);
@@ -5034,6 +5049,45 @@ export default function App() {
           </div>
           <small>{pairedEconomicContracts.champion.contract_id} vs {pairedEconomicContracts.challenger.contract_id} · revue humaine obligatoire</small>
         </> : <p>Cohorte A/B appariée indisponible.</p>}
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "research"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">P1-A · AUTHORITY REGRET · READ ONLY</p><h2>Ce que l'autorité évite et ce qu'elle rate</h2></div>
+          <p>Les refus exécutables et les gardes économiques restent séparés ; aucune décision n'est modifiée.</p>
+        </div>
+        {authorityRegret ? <>
+          <div className="opportunity-summary">
+            <span>ACCEPTED N <strong>{authorityRegret.accepted_resolved}</strong></span>
+            <span>ACCEPTED W/L <strong>{authorityRegret.accepted_winners}/{authorityRegret.accepted_losers}</strong></span>
+            <span>ACCEPTED R <strong>{authorityRegret.accepted_total_r.toFixed(2)}R</strong></span>
+            <span>BROKER EXEC N <strong>{authorityRegret.broker_executed_resolved}</strong></span>
+            <span>BROKER EXEC R <strong>{authorityRegret.broker_executed_total_r.toFixed(2)}R</strong></span>
+            <span>REJECTED N <strong>{authorityRegret.authority_rejected_resolved}</strong></span>
+            <span>WINNERS MISSED <strong>{authorityRegret.winners_missed} · {authorityRegret.winners_missed_r.toFixed(2)}R</strong></span>
+            <span>LOSSES AVOIDED <strong>{authorityRegret.losses_avoided} · {authorityRegret.losses_avoided_r.toFixed(2)}R</strong></span>
+            <span>REJECTED CF <strong>{authorityRegret.rejected_counterfactual_total_r.toFixed(2)}R</strong></span>
+            <span>GUARD BLOCKED N <strong>{authorityRegret.guard_blocked_resolved}</strong></span>
+            <span>GUARD CF R <strong>{authorityRegret.guard_blocked_total_r.toFixed(2)}R</strong></span>
+          </div>
+          <p>{authorityRegret.cost_basis}</p>
+          <div className="opportunity-table">
+            <div className="opportunity-row opportunity-head"><span>Decision / reason</span><span>N</span><span>W/L/F</span><span>Total R</span><span>Exp R</span><span>Positive R</span><span>Negative R</span><span>Broker-net</span></div>
+            {authorityRegret.by_reason.map((row) => (
+              <div className="opportunity-row" key={row.key}>
+                <strong>{row.key.replaceAll("_", " ")}</strong>
+                <span>{row.observations}</span>
+                <span>{row.wins}/{row.losses}/{row.flats}</span>
+                <span>{row.total_r.toFixed(2)}</span>
+                <span>{row.expectancy_r?.toFixed(3) ?? "—"}</span>
+                <span>{row.positive_r.toFixed(2)}</span>
+                <span>{row.negative_r.toFixed(2)}</span>
+                <span>{row.broker_cost_adjustment_complete ? row.broker_cost_adjusted_total_r?.toFixed(2) ?? "—" : "UNAVAILABLE"}</span>
+              </div>
+            ))}
+          </div>
+          {authorityRegret.limitations.map((item) => <small key={item}>• {item}</small>)}
+        </> : <p>Authority Regret indisponible.</p>}
       </section>
 
       <section className="position-manager-panel" hidden={activeView !== "research"}>

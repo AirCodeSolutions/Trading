@@ -11,9 +11,13 @@ from app.domain.portfolio import (
     ProspectiveQualificationState,
     TradingOverview,
 )
-from app.services.admission import demo_collection_allowed, paper_entry_allowed
+from app.services.admission import demo_collection_allowed
 from app.services.broker_account import read_broker_demo_snapshot
 from app.services.paper_registry import load_paper_registry
+from app.services.probe_qualification import (
+    paper_entry_allowed_with_probe_evidence,
+    probe_supports_paper,
+)
 from app.services.prospective_qualification import (
     prospective_demo_execution_allowed,
     prospective_entry_allowed,
@@ -41,26 +45,34 @@ def build_trading_overview(
         settings.paper_evidence_cutover_at,
     )
     admissions = load_research_admissions(runtime_dir / "strategy_admissions.json")
-    paper_rows = [
-        row.model_copy(
-            update={
-                "historical_state": admissions[row.strategy_id].state,
-                "historical_weakest_expectancy_r": admissions[
-                    row.strategy_id
-                ].weakest_expectancy_r,
-                "paper_collection_candidate": admissions[
-                    row.strategy_id
-                ].paper_collection_candidate,
-                "paper_entry_allowed": (
-                    paper_entry_allowed(admissions[row.strategy_id])
-                    and prospective_entry_allowed(row.qualification)
-                ),
-            }
+    enriched_rows: list[PaperStrategyRuntime] = []
+    for row in paper_rows:
+        admission = admissions.get(row.strategy_id)
+        if admission is None:
+            enriched_rows.append(row)
+            continue
+        probe_promotion = probe_supports_paper(
+            admission,
+            row.research_probe_qualification,
         )
-        if row.strategy_id in admissions
-        else row
-        for row in paper_rows
-    ]
+        enriched_rows.append(
+            row.model_copy(
+                update={
+                    "historical_state": admission.state,
+                    "historical_weakest_expectancy_r": admission.weakest_expectancy_r,
+                    "paper_collection_candidate": admission.paper_collection_candidate,
+                    "probe_supports_paper": probe_promotion,
+                    "paper_entry_allowed": (
+                        paper_entry_allowed_with_probe_evidence(
+                            admission,
+                            row.research_probe_qualification,
+                        )
+                        and prospective_entry_allowed(row.qualification)
+                    ),
+                }
+            )
+        )
+    paper_rows = enriched_rows
 
     qualifications = [row.qualification for row in paper_rows]
     open_rows = [row for row in paper_rows if row.summary.open_trade is not None]

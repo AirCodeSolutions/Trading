@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from app.domain.admission import AdmissionState
 from app.domain.opportunity import OpportunityMechanism
+from app.domain.opportunity_funnel import ResearchProbeQualification
 from app.domain.shadow_paper import ShadowPaperSummary
 
 
@@ -55,6 +56,8 @@ class PaperStrategyRuntime(BaseModel):
     historical_state: AdmissionState | None = None
     historical_weakest_expectancy_r: float | None = None
     paper_collection_candidate: bool = False
+    research_probe_qualification: ResearchProbeQualification | None = None
+    probe_supports_paper: bool = False
     paper_entry_allowed: bool = False
     daily_pnl_eur: float = 0.0
     daily_r: float = 0.0

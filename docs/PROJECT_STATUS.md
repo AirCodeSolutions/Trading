@@ -3609,3 +3609,22 @@ Current economic checkpoint remains negative, so this change is risk/evidence
 discipline rather than a profitability claim. XAU directional transition is the
 leading research challenger at 16/20 resolved probes (+6.86R); it has not been
 promoted automatically.
+
+
+## 2026-10-01 — Probe → PAPER graduation path prepared
+
+The runtime model now exposes research_probe_qualification and
+probe_supports_paper per PAPER family. The dashboard labels PAPER eligibility
+separately from broker DEMO eligibility and shows PROBE→PAPER when applicable.
+
+Safety boundaries:
+- SHADOW only; REJECTED is never promoted by probes;
+- existing N=20 / expectancy / PF / DD thresholds reused unchanged;
+- no probe → broker path;
+- PAPER cohort starts at zero and must independently reach SUPPORTS_DEMO before
+  broker DEMO authority;
+- 5-lot cap, spread guard 0.15, risk, stops, targets, macro guards and no-daily-cap
+  policy unchanged.
+
+Validation before PR: 509 backend tests, Ruff green, frontend production build
+green and git diff --check green.

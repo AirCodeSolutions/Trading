@@ -1,9 +1,18 @@
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
+from zoneinfo import ZoneInfo
+
+import pytest
 
 from app.domain.admission import AdmissionDecision, AdmissionState
 from app.domain.opportunity import OpportunityMechanism
+from app.domain.opportunity_funnel import (
+    ResearchProbeQualification,
+    ResearchProbeQualificationState,
+)
 from app.services.multi_shadow_collector import (
+    collect_all_shadow_once,
     paper_entry_allowed,
     shadow_mechanism_enabled,
     should_advance_unqualified_probe,
@@ -180,3 +189,106 @@ def test_symbol_paper_guard_blocks_only_same_symbol_other_family(
         "BTCUSD",
         current_state_path=tmp_path / "BTCUSD_break_retest_paper_state.json",
     )
+
+
+def test_probe_promotion_routes_signal_to_paper_and_stops_new_probe(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    now = datetime(2026, 10, 1, 10, 0, tzinfo=ZoneInfo("Europe/Athens"))
+    strategy_id = "XAUUSD:directional_transition"
+    admission = AdmissionDecision(
+        strategy_id=strategy_id,
+        state=AdmissionState.SHADOW,
+        reason="under-sampled",
+        weakest_expectancy_r=0.0,
+        worst_drawdown_r=0.0,
+        paper_collection_candidate=False,
+    )
+    qualification = ResearchProbeQualification(
+        state=ResearchProbeQualificationState.SUPPORTS_REVIEW,
+        closed_trades=20,
+        minimum_trades=20,
+        expectancy_r=0.4,
+        profit_factor=2.0,
+        max_drawdown_r=2.0,
+        reason="supports paper review",
+    )
+
+    class FakeDiagnostic:
+        latest_closed_m5_at = now
+
+        def model_copy(self, *, update):
+            return self
+
+    calls: list[tuple[str, bool]] = []
+
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.load_research_admissions",
+        lambda path: {strategy_id: admission},
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.build_market_universe",
+        lambda *args, **kwargs: [
+            SimpleNamespace(symbol="XAUUSD", paper_ready=True, quote_live=True)
+        ],
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.get_mt4_symbol_spec",
+        lambda *args, **kwargs: object(),
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.load_closed_market_bars",
+        lambda *args, **kwargs: [object()] * 50,
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.shadow_mechanism_enabled",
+        lambda symbol, mechanism: (
+            mechanism == OpportunityMechanism.DIRECTIONAL_TRANSITION
+        ),
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.scan_shadow_opportunity",
+        lambda *args, **kwargs: FakeDiagnostic(),
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.load_macro_events",
+        lambda path: [],
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.classify_macro_signal_context",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.append_shadow_observation",
+        lambda *args, **kwargs: True,
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.capture_xau_sequence_microstructure",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.load_research_probe_qualification",
+        lambda *args, **kwargs: qualification,
+    )
+
+    def record_paper_call(*, state_path, allow_new_entries, **kwargs):
+        calls.append((state_path.name, allow_new_entries))
+        return SimpleNamespace()
+
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.advance_shadow_paper_book",
+        record_paper_call,
+    )
+    monkeypatch.setattr(
+        "app.services.multi_shadow_collector.advance_blocked_probe_book",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("stop")),
+    )
+
+    with pytest.raises(RuntimeError, match="stop"):
+        collect_all_shadow_once(tmp_path, tmp_path, now)
+
+    assert calls == [
+        ("XAUUSD_directional_transition_paper_state.json", True),
+        ("XAUUSD_directional_transition_unqualified_probe_state.json", False),
+    ]

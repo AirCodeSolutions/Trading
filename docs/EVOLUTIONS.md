@@ -2193,3 +2193,23 @@ Evidence that motivated the change at the checkpoint: XAU break/retest had
 research-only with 16/20 resolved executable probes, +6.86R, expectancy +0.429R,
 PF 2.04 and DD 2.04R. Directional transition remains research-only until the
 existing 20-outcome gate is reached.
+
+
+## 2026-10-01 — Research probe evidence can graduate SHADOW to PAPER only
+
+A single shared probe-qualification service now drives both the Opportunity Funnel
+and the shadow collector. For a SHADOW strategy that is not historically
+PAPER-eligible, executable research probes may unlock PAPER collection only when
+the existing prospective thresholds are satisfied: at least 20 resolved probes,
+positive expectancy, PF >= 1.05 and DD <= 12R.
+
+This is not an admission or broker promotion. REJECTED strategies cannot use the
+probe-to-PAPER path. Once a SHADOW is promoted to PAPER, new unqualified probes
+stop opening to avoid duplicate exposure, while any already-open probe may still
+resolve. Broker DEMO authority remains governed by the independent PAPER
+qualification introduced in PR #189 and still requires SUPPORTS_DEMO.
+
+Checkpoint at implementation time: XAUUSD:directional_transition is still
+COLLECTING at 16/20 resolved probes, +0.4289R expectancy, PF 2.0395 and 2.0350R
+max DD, with no open probe. It therefore remains research-only until four more
+resolved outcomes preserve the established thresholds.

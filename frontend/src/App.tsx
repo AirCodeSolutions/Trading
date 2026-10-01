@@ -431,6 +431,16 @@ type ProspectiveQualification = {
   reason: string;
 };
 
+type ResearchProbeQualification = {
+  state: "collecting" | "failed" | "supports_review";
+  closed_trades: number;
+  minimum_trades: number;
+  expectancy_r: number;
+  profit_factor: number;
+  max_drawdown_r: number;
+  reason: string;
+};
+
 type PaperStrategyRuntime = {
   strategy_id: string;
   symbol: string;
@@ -440,6 +450,8 @@ type PaperStrategyRuntime = {
   historical_state: "rejected" | "shadow" | "active" | null;
   historical_weakest_expectancy_r: number | null;
   paper_collection_candidate: boolean;
+  research_probe_qualification: ResearchProbeQualification | null;
+  probe_supports_paper: boolean;
   paper_entry_allowed: boolean;
 };
 
@@ -4421,7 +4433,14 @@ export default function App() {
                         prospectif {row.summary.closed_trades}/{prospectiveTarget} ·{" "}
                         {row.qualification.state.replaceAll("_", " ")}
                         {row.historical_state === "shadow" && row.paper_entry_allowed
-                          ? " · DEMO COLLECTABLE"
+                          ? " · PAPER COLLECTABLE"
+                          : ""}
+                        {row.probe_supports_paper ? " · PROBE→PAPER" : ""}
+                        {row.research_probe_qualification
+                          ? " · probe " +
+                            row.research_probe_qualification.closed_trades +
+                            "/" +
+                            row.research_probe_qualification.minimum_trades
                           : ""}
                         {row.paper_collection_candidate ? " · UNDER-SAMPLED RULE" : ""}
                       </span>
@@ -4688,6 +4707,7 @@ export default function App() {
                 <span>
                   {row.historical_state?.toUpperCase() ?? "—"}
                   {row.paper_entry_allowed ? " · PAPER ELIGIBLE" : ""}
+                  {row.probe_supports_paper ? " · PROBE→PAPER" : ""}
                 </span>
                 <span>{row.qualification.state.replaceAll("_", " ").toUpperCase()}</span>
               </div>

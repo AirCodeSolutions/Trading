@@ -5,6 +5,7 @@ from app.domain.opportunity import OpportunityMechanism
 from app.domain.portfolio import PaperStrategyRuntime
 from app.domain.strategy_universe import MECHANISM_SLUGS
 from app.domain.strategy_universe import strategy_id as family_strategy_id
+from app.services.probe_qualification import load_research_probe_qualification
 from app.services.prospective_qualification import assess_prospective
 from app.services.shadow_paper import load_closed_trades, load_shadow_paper_summary
 
@@ -28,6 +29,11 @@ def load_paper_registry(
         )
         strategy_id = family_strategy_id(symbol, mechanism)
         qualification = assess_prospective(strategy_id, summary)
+        research_probe_qualification = load_research_probe_qualification(
+            runtime_dir,
+            prefix=prefix,
+            strategy_id=strategy_id,
+        )
         daily_pnl, daily_r = _daily_results(
             trades_path,
             now,
@@ -40,6 +46,7 @@ def load_paper_registry(
                 mechanism=mechanism,
                 summary=summary,
                 qualification=qualification,
+                research_probe_qualification=research_probe_qualification,
                 daily_pnl_eur=daily_pnl,
                 daily_r=daily_r,
             )

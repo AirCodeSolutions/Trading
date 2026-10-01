@@ -3690,3 +3690,13 @@ XAU with essentially unchanged drawdown, while the same change was not robust on
 BTC. No signal predicate, stop, sizing, spread rule, lot cap or broker admission
 changed. Existing 1.0R prospective evidence must not be mixed with the new
 contract after deployment; preserve it as legacy and start a fresh PAPER cohort.
+
+
+## 2026-10-01 — P2-A cost robustness
+
+Execution-cost stress confirms XAU structural displacement as the more robust
+candidate: it preserves positive validation and holdout edge through 1.50x the
+observed spread proxy. Structural persistence becomes marginal and fails the
+existing holdout PF floor at 1.50x.
+
+This is research evidence only. Broker authority remains unchanged.

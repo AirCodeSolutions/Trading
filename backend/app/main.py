@@ -30,6 +30,7 @@ from app.domain.economic_feasibility import EconomicFeasibilityReport
 from app.domain.economic_validation_v2 import EconomicValidationReport
 from app.domain.entry_zone import ExecutableEntryZoneV2
 from app.domain.execution_audit import ExecutionQualitySummary
+from app.domain.execution_cost_stress import ExecutionCostStressReport
 from app.domain.live_market import LiveMarketQuote
 from app.domain.macro import MacroGateStatus
 from app.domain.manual_demo import (
@@ -111,6 +112,14 @@ from app.services.economic_validation_v2 import build_economic_validation_report
 from app.services.entry_zone import build_entry_zone
 from app.services.execution_audit import AUDIT_FILE, build_execution_quality_summary
 from app.services.execution_cost_history import summarize_execution_costs
+from app.services.execution_cost_stress import (
+    REPORT_FILE as EXECUTION_COST_STRESS_FILE,
+)
+from app.services.execution_cost_stress import (
+    evaluate_execution_cost_stress,
+    load_execution_cost_stress_report,
+    save_execution_cost_stress_report,
+)
 from app.services.live_market_quality import build_live_market_quality
 from app.services.macro_gate import load_macro_events, macro_gate_status
 from app.services.manual_demo import (
@@ -618,6 +627,38 @@ def champion_challengers_v2_evaluate(request: ChampionChallengerResearchRequest)
         return evaluate_asset_specialization(_mt4_files_dir(), AssetSpecializationResearchRequest(split=request.split, symbols=request.symbols))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get(
+    f"{settings.api_prefix}/research/execution-cost-stress",
+    response_model=ExecutionCostStressReport,
+)
+def execution_cost_stress() -> ExecutionCostStressReport:
+    report = load_execution_cost_stress_report(
+        settings.shadow_ledger_dir / EXECUTION_COST_STRESS_FILE
+    )
+    if report is None:
+        raise HTTPException(
+            status_code=404,
+            detail="execution cost stress report is not available",
+        )
+    return report
+
+
+@app.post(
+    f"{settings.api_prefix}/research/execution-cost-stress/evaluate",
+    response_model=ExecutionCostStressReport,
+)
+def execution_cost_stress_evaluate() -> ExecutionCostStressReport:
+    report = evaluate_execution_cost_stress(
+        _mt4_files_dir(),
+        generated_at=datetime.now(tz=_server_timezone()),
+    )
+    save_execution_cost_stress_report(
+        settings.shadow_ledger_dir / EXECUTION_COST_STRESS_FILE,
+        report,
+    )
+    return report
 
 
 @app.get(

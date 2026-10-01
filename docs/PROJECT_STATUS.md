@@ -3485,3 +3485,27 @@ BID pour SELL). Le capital runtime provient de l'equity DEMO, puis du balance
 DEMO si nécessaire ; l'absence de capital ne retombe pas sur le capital de
 recherche. `post_trigger_chase_atr` et la room vers le landmark restent
 descriptifs, sans seuil late ou target supplémentaire.
+
+## Étape 4 — Trigger Engine V2 M1/M5
+
+Le Trigger Engine V2 est une couche descriptive qui observe uniquement les
+opportunités `ARMED` des familles `break_retest_reaccel` et
+`directional_pullback_resumption`. Il réutilise le ledger causal
+`XauMicrobarM1` existant, uniquement avec des microbars fermées
+(`minute_at + 1 minute <= evaluated_at`). Les états M1 indisponible, stale,
+waiting et early trigger sont séparés du `TRIGGERED` M5 V1 de référence.
+
+Les prix early sont ASK pour BUY et BID pour SELL. Le tick pressure et les
+mesures de géométrie sont descriptifs ; aucun seuil optimisé n'est introduit.
+Le lead temporel et le mouvement économisé par rapport au trigger V1 sont
+exposés pour la recherche, sans influencer l'Opportunity Engine, l'Entry Zone,
+le sizing, l'admission ou l'exécution. `GET /api/v1/triggers/v2` est en lecture
+seule et ne possède aucune autorité broker. Le support logiciel des cinq actifs
+ne constitue pas une preuve de disponibilité M1 runtime.
+
+La correction #182 sélectionne le premier M1 causal valide après ARMED, dans
+l'ordre chronologique, et limite la recherche au trigger V1 lorsqu'il existe.
+L'ATR de comparaison est celui disponible à ARMED ; le prix V1 est le close de
+sa M5 source. Les géométries M1 5m/15m sont calculées uniquement avec les
+microbars closes au plus tard au trigger. La fraîcheur live suit la cadence de
+clôture M1 ; les reconstructions historiques sont marquées `historical`.

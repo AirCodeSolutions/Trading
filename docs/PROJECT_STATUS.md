@@ -3678,3 +3678,15 @@ Safety/evidence state:
 The latest one-state structural challenger search produced no validated new
 mechanism, so further pattern tuning is stopped pending new prospective
 evidence.
+
+
+## 2026-10-01 — XAU structural displacement target research
+
+Current preferred XAU structural-displacement research contract is 1.5R target,
+1.50 ATR stop and 12 M5 bars. BTC structural displacement remains 1.0R.
+
+Reason: the single target change improved both frozen validation and holdout for
+XAU with essentially unchanged drawdown, while the same change was not robust on
+BTC. No signal predicate, stop, sizing, spread rule, lot cap or broker admission
+changed. Existing 1.0R prospective evidence must not be mixed with the new
+contract after deployment; preserve it as legacy and start a fresh PAPER cohort.

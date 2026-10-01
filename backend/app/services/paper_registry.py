@@ -3,19 +3,10 @@ from pathlib import Path
 
 from app.domain.opportunity import OpportunityMechanism
 from app.domain.portfolio import PaperStrategyRuntime
+from app.domain.strategy_universe import MECHANISM_SLUGS
+from app.domain.strategy_universe import strategy_id as family_strategy_id
 from app.services.prospective_qualification import assess_prospective
 from app.services.shadow_paper import load_closed_trades, load_shadow_paper_summary
-
-_SLUG_TO_MECHANISM = {
-    "break_retest": OpportunityMechanism.BREAK_RETEST_REACCEL,
-    "failed_auction": OpportunityMechanism.FAILED_AUCTION_REVERSAL,
-    "post_shock": OpportunityMechanism.POST_SHOCK_CONTINUATION,
-    "directional_transition": OpportunityMechanism.DIRECTIONAL_TRANSITION,
-    "directional_pullback": OpportunityMechanism.DIRECTIONAL_PULLBACK_RESUMPTION,
-    "asia_range_sweep": OpportunityMechanism.ASIA_RANGE_SWEEP_REVERSAL,
-    "structural_displacement_sequence": OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE,
-    "structural_persistence_sequence": OpportunityMechanism.STRUCTURAL_PERSISTENCE_SEQUENCE,
-}
 
 
 def load_paper_registry(
@@ -35,7 +26,7 @@ def load_paper_registry(
             trades_path,
             evidence_cutover_at=evidence_cutover_at,
         )
-        strategy_id = f"{symbol}:{mechanism.value}"
+        strategy_id = family_strategy_id(symbol, mechanism)
         qualification = assess_prospective(strategy_id, summary)
         daily_pnl, daily_r = _daily_results(
             trades_path,
@@ -84,7 +75,7 @@ def _parse_state_name(
     path: Path,
 ) -> tuple[str, OpportunityMechanism, str] | None:
     stem = path.name.removesuffix("_paper_state.json")
-    for slug, mechanism in _SLUG_TO_MECHANISM.items():
+    for slug, mechanism in MECHANISM_SLUGS.items():
         suffix = f"_{slug}"
         if stem.endswith(suffix):
             symbol = stem.removesuffix(suffix)

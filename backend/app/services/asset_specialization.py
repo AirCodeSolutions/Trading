@@ -4,7 +4,6 @@ from pathlib import Path
 from app.core.config import settings
 from app.domain.admission import AdmissionState
 from app.domain.asset_specialization import (
-    ACTIVE_ASSETS,
     AssetMechanismEvidence,
     AssetMechanismRole,
     AssetProfileStatus,
@@ -15,6 +14,14 @@ from app.domain.asset_specialization import (
     EvidenceAlignment,
 )
 from app.domain.opportunity import OpportunityMechanism, PortfolioResearchRequest
+from app.domain.strategy_universe import (
+    ACTIVE_ASSETS,
+    INCOMPATIBLE_FAMILIES,
+    mechanism_is_compatible,
+)
+from app.domain.strategy_universe import (
+    strategy_id as family_strategy_id,
+)
 from app.services.opportunity_matrix import run_mt4_portfolio_research
 from app.services.paper_registry import load_paper_registry
 from app.services.runtime_admission_registry import load_research_admissions
@@ -63,15 +70,7 @@ _SECONDARY: dict[str, tuple[OpportunityMechanism, ...]] = {
         OpportunityMechanism.POST_SHOCK_CONTINUATION,
     ),
 }
-_INCOMPATIBLE = {
-    ("EURUSD", OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE),
-    ("GBPUSD", OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE),
-    ("XAGUSD", OpportunityMechanism.STRUCTURAL_DISPLACEMENT_SEQUENCE),
-    ("BTCUSD", OpportunityMechanism.STRUCTURAL_PERSISTENCE_SEQUENCE),
-    ("EURUSD", OpportunityMechanism.STRUCTURAL_PERSISTENCE_SEQUENCE),
-    ("GBPUSD", OpportunityMechanism.STRUCTURAL_PERSISTENCE_SEQUENCE),
-    ("XAGUSD", OpportunityMechanism.STRUCTURAL_PERSISTENCE_SEQUENCE),
-}
+_INCOMPATIBLE = INCOMPATIBLE_FAMILIES
 
 
 def _role(symbol: str, mechanism: OpportunityMechanism) -> AssetMechanismRole:
@@ -104,11 +103,11 @@ def build_asset_specialization_snapshots(runtime_dir: Path, now: datetime) -> li
     for symbol in ACTIVE_ASSETS:
         rows: list[AssetMechanismEvidence] = []
         for mechanism in OpportunityMechanism:
-            strategy_id = f"{symbol}:{mechanism.value}"
+            strategy_id = family_strategy_id(symbol, mechanism)
             admission = admissions.get(strategy_id)
             paper_row = paper.get(strategy_id)
             shadow_row = shadow.get(strategy_id)
-            compatible = (symbol, mechanism) not in _INCOMPATIBLE
+            compatible = mechanism_is_compatible(symbol, mechanism)
             rows.append(AssetMechanismEvidence(
                 mechanism=mechanism, role=_role(symbol, mechanism), compatible=compatible,
                 compatibility_reason=None if compatible else "mechanism is not compatible with this asset playbook",

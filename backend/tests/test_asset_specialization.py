@@ -6,13 +6,13 @@ from fastapi.testclient import TestClient
 
 from app.domain.admission import AdmissionState
 from app.domain.asset_specialization import (
-    ACTIVE_ASSETS,
     AssetMechanismRole,
     AssetSpecializationResearchRequest,
     AssetSpecializationResearchRow,
     EvidenceAlignment,
 )
 from app.domain.opportunity import OpportunityMechanism, ResearchSplit
+from app.domain.strategy_universe import ACTIVE_ASSETS
 from app.main import app
 from app.services.asset_specialization import (
     _INCOMPATIBLE,

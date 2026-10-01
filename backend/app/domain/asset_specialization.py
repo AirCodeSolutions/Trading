@@ -5,8 +5,6 @@ from pydantic import BaseModel, Field
 from app.domain.admission import AdmissionState
 from app.domain.opportunity import OpportunityMechanism, PortfolioResearchResult, ResearchSplit
 
-ACTIVE_ASSETS = ("BTCUSD", "EURUSD", "GBPUSD", "XAUUSD", "XAGUSD")
-
 
 class AssetMechanismRole(StrEnum):
     PRIMARY_HYPOTHESIS = "primary_hypothesis"

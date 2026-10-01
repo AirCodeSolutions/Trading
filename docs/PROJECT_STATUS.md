@@ -3564,3 +3564,13 @@ Une position par symbole reste la règle ; le risque agrégé ne peut pas dépas
 `absolute_max_risk_fraction`. Les buckets de corrélation sont descriptifs et
 signalent la concentration. Aucun cap de perte journalier ne bloque désormais
 les ordres DEMO ; LIVE reste désactivé et le plafond reste 5 lots par trade.
+
+
+## Étape 9 — Simplification V2
+
+La pile V2 possède désormais des sources de vérité partagées pour l'univers
+d'actifs, les compatibilités des mécanismes, les slugs de fichiers shadow/PAPER
+et le chargement runtime Position Manager. La compatibilité reste exactement
+33 familles et les règles displacement/persistence sont inchangées. Cette étape
+est un refactor de structure : elle ne supprime ni V1 ni collecte tant que la
+validation économique et le cutover de l'Étape 10 ne sont pas terminés.

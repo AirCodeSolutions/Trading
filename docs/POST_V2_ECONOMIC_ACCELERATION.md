@@ -117,12 +117,27 @@ Exit criteria:
 
 ### P1-C — Regime/session attribution
 
-Status: QUEUED
+Status: IMPLEMENTED — VALIDATION IN PROGRESS
 
-Test whether family edge is concentrated by causal session/regime using fixed
-pre-registered partitions. No threshold tuning after outcome inspection.
+Scope is frozen to XAUUSD structural displacement 1.5R. Attribution uses the
+existing causal session contract and the existing M15 regime classifier.
 
-Start with XAU structural displacement only.
+Pre-registered partitions:
+- sessions: asia, london, us, transition;
+- regimes: warmup, dead, balanced_auction, directional_expansion, post_shock;
+- windows: validation and holdout remain separate.
+
+No session×regime cross-product, ranking or automatic gate is produced.
+
+Current actual-equity replay reconstructs exactly 25 validation and 14 holdout
+trades. Descriptively:
+- Asia, London and US are positive in both independent windows;
+- transition is +3R on only 2 validation trades and -1R on only 1 holdout trade;
+- balanced_auction contains most observations and is positive in both windows;
+- directional_expansion is positive on 2 validation trades but -1R on only
+  1 holdout trade.
+
+These small cells are not sufficient to create a session/regime veto.
 
 ## P2 — Robustness
 

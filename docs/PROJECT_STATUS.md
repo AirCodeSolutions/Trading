@@ -3735,3 +3735,14 @@ P1-B is implemented. The daily admission cron is PREVIEW-only and uses the
 same actual-MT4-DEMO-capital service as the API. Explicit APPLY is guarded by
 drain ON + Trading-New BOOK_FLAT + complete active-symbol replay, with atomic
 registry/receipt writes and an old/new admission diff.
+
+
+## 2026-10-01 — P1-C regime/session attribution
+
+P1-C is implemented for XAUUSD structural displacement 1.5R:
+- fixed canonical session buckets;
+- fixed causal M15 regime buckets;
+- validation/holdout separated;
+- current replay: 25 validation, 14 holdout;
+- no ranking, no gate, no broker authority effect;
+- Research dashboard shows every pre-registered bucket including N=0.

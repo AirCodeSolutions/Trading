@@ -2362,3 +2362,23 @@ An APPLY requires the explicit `--apply` flag and remains fail-closed behind
 drain ON, Trading-New BOOK_FLAT and zero skipped active symbols. This removes
 the last path where a scheduled runtime admission calculation could silently
 fall back to research capital.
+
+
+## 2026-10-01 — P1-C XAU structural-displacement regime/session attribution
+
+A read-only attribution report now replays the current XAU structural
+displacement 1.5R contract with actual MT4 DEMO equity and attributes only
+validation/holdout outcomes to fixed causal partitions.
+
+Sessions reuse the canonical session-landmark contract: asia, london, us,
+transition. Regimes reuse the existing M15 classifier: warmup, dead,
+balanced_auction, directional_expansion, post_shock. Future M15 bars cannot
+change a historical regime label.
+
+The current replay contains 25 validation and 14 holdout trades. Asia, London
+and US are positive in both windows. Balanced auction contains the majority of
+observations and is positive in both windows. Transition and directional cells
+contain too few holdout trades to justify any gate.
+
+No ranking, session×regime cross-product, authority change or automatic filter is
+created.

@@ -3700,3 +3700,16 @@ P0-A is implemented in a separate development branch: XAU structural
 displacement champion 1R and challenger 1.5R receive the same executable signal,
 entry, stop, lots and risk. Their outcomes are matched by pair and exposed as a
 research-only report. No broker authority is connected to this experiment.
+
+
+## 2026-10-01 — P1-A Authority Regret implemented
+
+P1-A is implemented and validation-green:
+- research endpoint: `GET /api/v1/research/authority-regret?hours=168`;
+- dashboard Research panel: accepted outcomes, winners missed, losses avoided,
+  rejected counterfactual R and guard-blocked counterfactual R;
+- guard-blocked outcomes never enter executable authority regret;
+- exact DEMO execution tagging uses completed PAPER trade ids;
+- no automatic authority/admission change;
+- backend complete: 523 tests passed;
+- Ruff and frontend production build green.

@@ -376,3 +376,15 @@ Priorities:
 The first active experiment is XAU structural displacement 1R champion vs 1.5R
 challenger on exactly paired PAPER signals. This comparison is research-only and
 cannot create broker authority.
+
+
+## 2026-10-01 — P1-A Authority Regret
+
+Post-V2 economic acceleration P1-A is implemented as a research-only ledger.
+It measures accepted PAPER/DEMO outcomes, executable authority rejections and
+economic-guard counterfactuals without changing any authority path.
+
+Critical interpretation: only resolved unqualified executable probes count
+toward winners-missed / losses-avoided. Blocked probes remain a separate guard
+counterfactual population. Broker-net costs are not fabricated when exact fills
+are unavailable.

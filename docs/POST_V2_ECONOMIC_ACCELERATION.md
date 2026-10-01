@@ -60,17 +60,31 @@ The existing XAU structural-displacement 1.0R evidence remains legacy when a
 
 ### P1-A — Authority regret ledger
 
-Status: QUEUED
+Status: IMPLEMENTED — VALIDATION GREEN, PR PENDING
 
-For every executable opportunity, preserve the contemporaneous authority
-decision and future resolved outcome. Measure separately:
+The report reuses persisted Trading-New ledgers and keeps three populations
+strictly separate:
+- executable opportunities rejected from PAPER authority;
+- accepted PAPER outcomes, with exact DEMO-executed tagging when the PAPER trade
+  id appears in the DEMO collection completion ledger;
+- economically blocked probes, which remain guard counterfactuals and are never
+  counted as executable authority regret.
+
+Measured outputs include:
 - losses avoided by authority;
 - winners missed by authority;
-- accepted winners;
-- accepted losers;
-- R and broker-cost-adjusted R by reason.
+- accepted winners and losers;
+- rejected counterfactual total R;
+- guard-blocked counterfactual R by persisted block reason;
+- by-strategy and by-reason attribution.
 
-No authority rule changes in the measurement PR.
+Persisted PAPER/probe R is already spread-aware through its executable geometry.
+Counterfactual observations do not have exact broker fills, so slippage and
+commissions are not invented: broker_cost_adjusted_r remains unavailable unless
+an exact broker fill can be paired.
+
+No admission, PAPER, portfolio, risk, sizing or broker authority rule changes in
+this measurement PR.
 
 ### P1-B — Controlled admission refresh
 

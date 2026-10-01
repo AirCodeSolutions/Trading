@@ -3746,3 +3746,23 @@ P1-C is implemented for XAUUSD structural displacement 1.5R:
 - current replay: 25 validation, 14 holdout;
 - no ranking, no gate, no broker authority effect;
 - Research dashboard shows every pre-registered bucket including N=0.
+
+
+## 2026-10-01 — P2-A execution-cost stress
+
+Status: implemented and validated locally.
+
+XAU structural displacement 1.5R remains positive in validation and holdout
+under OBSERVED, ADVERSE_25 and ADVERSE_50 cost assumptions. The most adverse
+scenario still reports validation expectancy +0.312R / PF 2.05 and holdout
+expectancy +0.458R / PF 2.28.
+
+Validation:
+- 4 dedicated P2-A tests;
+- API descriptive coverage;
+- 538 backend tests passed;
+- Ruff green;
+- frontend production build green;
+- git diff --check green.
+
+No runtime authority changes.

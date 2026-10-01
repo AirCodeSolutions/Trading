@@ -2382,3 +2382,32 @@ contain too few holdout trades to justify any gate.
 
 No ranking, session×regime cross-product, authority change or automatic filter is
 created.
+
+
+## 2026-10-01 — P2-A XAU structural-displacement execution-cost stress
+
+P2-A is implemented as a descriptive Research-only stress test for
+XAUUSD:structural_displacement_sequence under the current 1.5R target contract.
+
+Pre-registered scenarios:
+- OBSERVED: spread 1.00x, slippage 0.25x spread;
+- ADVERSE_25: spread 1.25x, slippage 0.50x spread;
+- ADVERSE_50: spread 1.50x, slippage 1.00x spread.
+
+All scenarios reuse the existing backtester, actual MT4 DEMO equity, frozen
+validation/holdout split, causal signal logic, unchanged structural stop,
+unchanged 1.5R target and unchanged 12-M5 horizon.
+
+Runtime evidence at 2026-10-01:
+- OBSERVED: validation N=25, expectancy +0.423R, PF 2.46, DD 1.74R; holdout
+  N=14, expectancy +0.661R, PF 3.31, DD 2.00R.
+- ADVERSE_25: validation +0.400R, PF 2.37, DD 1.78R; holdout +0.473R,
+  PF 2.32, DD 2.00R.
+- ADVERSE_50: validation +0.312R, PF 2.05, DD 2.29R; holdout +0.458R,
+  PF 2.28, DD 2.00R.
+
+Conclusion: the current XAU structural-displacement 1.5R historical edge remains
+positive in both independent windows under all three pre-registered cost
+scenarios. This is robustness evidence only. authority_effect=false and no
+admission, PAPER, portfolio, broker, risk, sizing, spread guard or lot-cap rule
+changes.

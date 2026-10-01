@@ -3654,3 +3654,27 @@ Broker execution remains unchanged: one Trading-New position per symbol,
 prospective SUPPORTS_DEMO required, LIVE disabled. The purpose is faster and less
 biased qualification of the five PAPER-eligible SHADOW candidates produced by
 the DEMO-equity admission refresh.
+
+
+## 2026-10-01 — Current economic focus
+
+The technical V2 rebuild is complete. The system is not yet economically
+qualified for new broker DEMO authority.
+
+Current focus is prospective PAPER evidence on the actual-equity SHADOW
+families, especially XAU structural displacement and structural persistence.
+XAU break/retest and XAU directional transition are currently REJECTED by the
+frozen historical validation/holdout contract and cannot start new PAPER from
+historical admission.
+
+Safety/evidence state:
+- broker DEMO requires SUPPORTS_DEMO; COLLECTING is PAPER-only;
+- research probes may graduate SHADOW to PAPER only, never directly to broker;
+- PAPER books are parallel by strategy family;
+- max 5 lots, spread guard 0.15, risk fractions, stops/targets and macro guards
+  are unchanged;
+- no daily trade cap or daily-loss broker veto has been introduced.
+
+The latest one-state structural challenger search produced no validated new
+mechanism, so further pattern tuning is stopped pending new prospective
+evidence.

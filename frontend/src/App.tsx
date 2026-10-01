@@ -286,6 +286,17 @@ type PairedEconomicContractReport = {
   challenger: { contract_id: string; role: string; closed_trades: number; total_r: number; expectancy_r: number; profit_factor: number; max_drawdown_r: number };
 };
 
+type ClearPathRecoveryReport = {
+  generated_at: string; window_hours: number; hypothesis_id: string; resolved_unqualified: number; context_available: number; selected_resolved: number; selection_rate: number; minimum_observations: number; required_additional_observations: number; evidence_state: string; supports_demo: boolean; authority_effect: boolean; human_review_required: boolean; limitations: string[];
+  selected: { observations: number; wins: number; losses: number; flats: number; total_r: number; expectancy_r: number | null; profit_factor: number; max_drawdown_r: number };
+  older_half: { observations: number; wins: number; losses: number; flats: number; total_r: number; expectancy_r: number | null; profit_factor: number; max_drawdown_r: number };
+  recent_half: { observations: number; wins: number; losses: number; flats: number; total_r: number; expectancy_r: number | null; profit_factor: number; max_drawdown_r: number };
+};
+
+type AuthorityRecoveryReport = {
+  generated_at: string; window_hours: number; hypothesis_id: string; strategy_id: string; candidate_resolved: number; wins: number; losses: number; flats: number; candidate_total_r: number; expectancy_r: number | null; profit_factor: number; max_drawdown_r: number; minimum_observations: number; required_additional_observations: number; evidence_state: string; supports_demo: boolean; authority_effect: boolean; human_review_required: boolean; limitations: string[];
+};
+
 type AuthorityRegretReport = {
   window_hours: number;
   accepted_resolved: number; accepted_winners: number; accepted_losers: number; accepted_total_r: number;
@@ -1682,6 +1693,8 @@ export default function App() {
   const [championChallengers, setChampionChallengers] = useState<ChampionChallengerReport | null>(null);
   const [pairedEconomicContracts, setPairedEconomicContracts] = useState<PairedEconomicContractReport | null>(null);
   const [authorityRegret, setAuthorityRegret] = useState<AuthorityRegretReport | null>(null);
+  const [authorityRecovery, setAuthorityRecovery] = useState<AuthorityRecoveryReport | null>(null);
+  const [clearPathRecovery, setClearPathRecovery] = useState<ClearPathRecoveryReport | null>(null);
   const [admissionRefreshPreview, setAdmissionRefreshPreview] = useState<RuntimeAdmissionRefreshReport | null>(null);
   const [admissionRefreshBusy, setAdmissionRefreshBusy] = useState(false);
   const [admissionRefreshMessage, setAdmissionRefreshMessage] = useState("");
@@ -1929,6 +1942,8 @@ export default function App() {
           championChallengersResponse,
           pairedEconomicContractsResponse,
           authorityRegretResponse,
+          authorityRecoveryResponse,
+          clearPathRecoveryResponse,
           regimeSessionAttributionResponse,
           executionCostStressResponse,
           familyExitChallengerResponse,
@@ -1959,6 +1974,8 @@ export default function App() {
           () => fetch("/api/v1/research/champion-challengers/v2?hours=168"),
           () => fetch("/api/v1/research/paired-economic-contracts/xau-structural-displacement"),
           () => fetch("/api/v1/research/authority-regret?hours=168"),
+          () => fetch("/api/v1/research/authority-recovery?hours=168"),
+          () => fetch("/api/v1/research/authority-recovery/clear-path?hours=168"),
           () => fetch("/api/v1/research/xau-structural-displacement/regime-session-attribution"),
           () => fetch("/api/v1/research/xau-structural-displacement/execution-cost-stress"),
           () => fetch("/api/v1/research/xau-structural-displacement/family-exit-challenger"),
@@ -1990,6 +2007,8 @@ export default function App() {
         setChampionChallengers(championChallengersResponse.ok ? await championChallengersResponse.json() : null);
         setPairedEconomicContracts(pairedEconomicContractsResponse.ok ? await pairedEconomicContractsResponse.json() : null);
         setAuthorityRegret(authorityRegretResponse.ok ? await authorityRegretResponse.json() : null);
+        setAuthorityRecovery(authorityRecoveryResponse.ok ? await authorityRecoveryResponse.json() : null);
+        setClearPathRecovery(clearPathRecoveryResponse.ok ? await clearPathRecoveryResponse.json() : null);
         setRegimeSessionAttribution(regimeSessionAttributionResponse.ok ? await regimeSessionAttributionResponse.json() : null);
         setExecutionCostStress(executionCostStressResponse.ok ? await executionCostStressResponse.json() : null);
         setFamilyExitChallenger(familyExitChallengerResponse.ok ? await familyExitChallengerResponse.json() : null);
@@ -5186,6 +5205,56 @@ export default function App() {
           </div>
           {regimeSessionAttribution.limitations.map((item) => <small key={item}>• {item}</small>)}
         </> : <p>Attribution régime/session indisponible.</p>}
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "research"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">P2-C · AUTHORITY RECOVERY · READ ONLY</p><h2>Rejected XAU Structural Displacement · 1.5R</h2></div>
+          <p>Récupération candidate limitée à la famille déjà robuste. Aucun SUPPORTS_DEMO automatique.</p>
+        </div>
+        {authorityRecovery ? <>
+          <div className="opportunity-summary">
+            <span>STATE <strong>{authorityRecovery.evidence_state.replaceAll("_", " ").toUpperCase()}</strong></span>
+            <span>RESOLVED <strong>{authorityRecovery.candidate_resolved}/{authorityRecovery.minimum_observations}</strong></span>
+            <span>MISSING <strong>{authorityRecovery.required_additional_observations}</strong></span>
+            <span>W/L <strong>{authorityRecovery.wins}/{authorityRecovery.losses}</strong></span>
+            <span>TOTAL <strong>{authorityRecovery.candidate_total_r.toFixed(3)}R</strong></span>
+            <span>EXP <strong>{authorityRecovery.expectancy_r?.toFixed(3) ?? "—"}R</strong></span>
+            <span>PF <strong>{authorityRecovery.profit_factor.toFixed(2)}</strong></span>
+            <span>SUPPORTS DEMO <strong>{authorityRecovery.supports_demo ? "YES" : "NO"}</strong></span>
+          </div>
+          {authorityRecovery.limitations.map((item) => <small key={item}>• {item}</small>)}
+        </> : <p>Authority recovery indisponible.</p>}
+      </section>
+
+      <section className="position-manager-panel" hidden={activeView !== "research"}>
+        <div className="section-heading">
+          <div><p className="eyebrow">P2-C · CLEAR PATH RECOVERY · READ ONLY</p><h2>Rejected executable opportunities · existing target path</h2></div>
+          <p>Pas de nouveau seuil : le premier landmark favorable connu à l'entrée ne doit pas se trouver avant le target existant.</p>
+        </div>
+        {clearPathRecovery ? <>
+          <div className="opportunity-summary">
+            <span>STATE <strong>{clearPathRecovery.evidence_state.replaceAll("_", " ").toUpperCase()}</strong></span>
+            <span>RESOLVED <strong>{clearPathRecovery.resolved_unqualified}</strong></span>
+            <span>CONTEXT <strong>{clearPathRecovery.context_available}</strong></span>
+            <span>SELECTED <strong>{clearPathRecovery.selected_resolved}</strong></span>
+            <span>RATE <strong>{(100 * clearPathRecovery.selection_rate).toFixed(1)}%</strong></span>
+            <span>W/L <strong>{clearPathRecovery.selected.wins}/{clearPathRecovery.selected.losses}</strong></span>
+            <span>TOTAL <strong>{clearPathRecovery.selected.total_r.toFixed(3)}R</strong></span>
+            <span>EXP <strong>{clearPathRecovery.selected.expectancy_r?.toFixed(3) ?? "—"}R</strong></span>
+            <span>PF <strong>{clearPathRecovery.selected.profit_factor.toFixed(2)}</strong></span>
+            <span>DD <strong>{clearPathRecovery.selected.max_drawdown_r.toFixed(2)}R</strong></span>
+            <span>SUPPORTS DEMO <strong>{clearPathRecovery.supports_demo ? "YES" : "NO"}</strong></span>
+          </div>
+          <div className="opportunity-table">
+            <div className="opportunity-row opportunity-head"><span>Window</span><span>N</span><span>W/L</span><span>Total R</span><span>Exp R</span><span>PF</span><span>DD</span><span>Authority</span></div>
+            {[['OLDER HALF', clearPathRecovery.older_half], ['RECENT HALF', clearPathRecovery.recent_half]].map(([label, row]) => {
+              const metrics = row as ClearPathRecoveryReport['older_half'];
+              return <div className="opportunity-row" key={label as string}><strong>{label as string}</strong><span>{metrics.observations}</span><span>{metrics.wins}/{metrics.losses}</span><span>{metrics.total_r.toFixed(3)}</span><span>{metrics.expectancy_r?.toFixed(3) ?? "—"}</span><span>{metrics.profit_factor.toFixed(2)}</span><span>{metrics.max_drawdown_r.toFixed(2)}</span><span>NONE</span></div>;
+            })}
+          </div>
+          {clearPathRecovery.limitations.map((item) => <small key={item}>• {item}</small>)}
+        </> : <p>Clear-path recovery indisponible.</p>}
       </section>
 
       <section className="position-manager-panel" hidden={activeView !== "research"}>

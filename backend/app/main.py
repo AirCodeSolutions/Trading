@@ -12,6 +12,8 @@ from app.domain.asset_specialization import (
     AssetSpecializationResearchResult,
     AssetSpecializationSnapshot,
 )
+from app.domain.authority_recovery import AuthorityRecoveryReport
+from app.domain.authority_recovery_clear_path import ClearPathRecoveryReport
 from app.domain.authority_regret import AuthorityRegretReport
 from app.domain.blocked_probe import BlockedProbeRuntime
 from app.domain.broker import (
@@ -90,6 +92,8 @@ from app.services.asset_specialization import (
     build_asset_specialization_snapshots,
     evaluate_asset_specialization,
 )
+from app.services.authority_recovery import build_authority_recovery_report
+from app.services.authority_recovery_clear_path import build_clear_path_recovery_report
 from app.services.authority_regret import build_authority_regret_report
 from app.services.blocked_probe_registry import load_blocked_probe_registry
 from app.services.broker_history import (
@@ -738,6 +742,36 @@ def xau_structural_displacement_landmark_exit_challenger() -> FamilyExitChalleng
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get(
+    f"{settings.api_prefix}/research/authority-recovery",
+    response_model=AuthorityRecoveryReport,
+)
+def authority_recovery(hours: int = 168) -> AuthorityRecoveryReport:
+    try:
+        return build_authority_recovery_report(
+            settings.shadow_ledger_dir,
+            now=datetime.now(tz=_server_timezone()),
+            window_hours=hours,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get(
+    f"{settings.api_prefix}/research/authority-recovery/clear-path",
+    response_model=ClearPathRecoveryReport,
+)
+def authority_recovery_clear_path(hours: int = 168) -> ClearPathRecoveryReport:
+    try:
+        return build_clear_path_recovery_report(
+            settings.shadow_ledger_dir,
+            now=datetime.now(tz=_server_timezone()),
+            window_hours=hours,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get(
